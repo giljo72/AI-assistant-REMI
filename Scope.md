@@ -97,13 +97,15 @@ The FastAPI backend delivers:
 
 ## Technology Stack
 
+## Technology Stack
+
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| Frontend | React + TypeScript | User interface with type safety |
+| Frontend | React + TypeScript + Vite | User interface with fast build system |
 | State Management | Redux Toolkit | Centralized application state |
 | Backend API | FastAPI | High-performance API endpoints |
 | Vector Database | PostgreSQL + pgvector | Vector storage and retrieval |
-| LLM Interface | Ollama + TensorRT | Local language model hosting (30-35B models) |
+| LLM Options | NeMo (primary) / Ollama + TensorRT (alternative) | Language model capabilities |
 | Document Processing | NeMo Document AI + Python libraries | Hierarchical document processing |
 | Voice Processing | Whisper | Transcription for voice input |
 | NVIDIA Integration | TensorRT, NeMo | Hardware optimization and document understanding |
