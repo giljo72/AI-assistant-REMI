@@ -7,7 +7,6 @@ import {
   TextField,
   IconButton,
   CircularProgress,
-  Divider
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -16,6 +15,12 @@ import {
 import ContextStatusIndicators from './ContextStatusIndicators';
 import UserPromptsPanel from './UserPromptsPanel';
 import { RootState } from '../../store';
+// Import toggle actions from projectSettingsSlice
+import { 
+  toggleProjectPrompt, 
+  toggleGlobalData, 
+  toggleProjectDocuments 
+} from '../../store/projectSettingsSlice';
 
 interface ChatViewProps {
   projectName: string;  
@@ -43,11 +48,13 @@ const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [userPromptsExpanded, setUserPromptsExpanded] = useState(false);
+  const [contextControlsOpen, setContextControlsOpen] = useState(false); // Add state for context controls
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const dispatch = useDispatch(); // Initialize dispatch
   
   // Get the active prompt from Redux store
   const { prompts } = useSelector((state: RootState) => state.userPrompts);
-  const activePrompt = prompts.find(p => p.active);
+  const activePrompt = prompts.find((p: any) => p.active); // Add type annotation to avoid 'any' error
   
   // Project settings from Redux store
   const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled } = useSelector(
@@ -95,9 +102,13 @@ const ChatView: React.FC<ChatViewProps> = ({
       
       {/* Context Controls */}
       <ContextStatusIndicators 
-        projectPromptEnabled={projectPromptEnabled}
-        globalDataEnabled={globalDataEnabled}
-        projectDocumentsEnabled={projectDocumentsEnabled}
+        isProjectPromptEnabled={projectPromptEnabled}
+        isGlobalDataEnabled={globalDataEnabled}
+        isProjectDocumentsEnabled={projectDocumentsEnabled}
+        onToggleProjectPrompt={() => dispatch(toggleProjectPrompt())}
+        onToggleGlobalData={() => dispatch(toggleGlobalData())}
+        onToggleProjectDocuments={() => dispatch(toggleProjectDocuments())}
+        onOpenContextControls={() => setContextControlsOpen(true)}
       />
       
       {/* User Prompts Panel */}

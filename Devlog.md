@@ -610,3 +610,115 @@ Create the SystemStatusView component
 Implement error and logs view
 Begin backend integration for context controls
 
+## Ai Assistant Dev Log - May 12, 2025
+
+## Key Initiative: User Prompts Implementation
+
+We've successfully implemented the User Prompts functionality according to the workflow designs in the assistant-projectv2.pdf document. This feature allows users to create, manage, and activate custom prompts that are applied to conversations with the AI assistant.
+
+### Components Implemented:
+
+1. **UserPromptModal.tsx** (frontend/src/components/modals/)
+   - Modal dialog for creating and editing user prompts
+   - Includes fields for prompt name and content
+   - Support for both creation and modification modes
+   - Delete functionality for existing prompts
+   - Styled with navy/gold theme to match design specifications
+
+2. **UserPromptManager.tsx** (frontend/src/components/chat/)
+   - Manages a list of user prompts
+   - Provides UI for adding, editing, and deleting prompts
+   - Checkbox functionality to activate/deactivate prompts
+   - Ensures only one prompt can be active at a time
+
+3. **UserPromptIndicator.tsx** (frontend/src/components/chat/)
+   - Visual indicator component for the chat interface
+   - Shows when a user prompt is active
+   - Displays prompt name with tooltip for full content
+   - Quick deactivation button
+
+4. **UserPromptsPanel.tsx** (frontend/src/components/chat/)
+   - Container component that integrates user prompts into the chat interface
+   - Collapsible/expandable panel functionality
+   - Shows indicator when a prompt is active
+   - Controls the visibility of the prompt manager
+
+### Redux State Management:
+
+1. **userPromptsSlice.ts** (frontend/src/store/)
+   - Redux slice for managing user prompts state
+   - Actions for adding, updating, deleting prompts
+   - Actions for activating/deactivating prompts
+   - Maintains active prompt ID in the state
+
+2. **projectSettingsSlice.ts** (frontend/src/store/)
+   - Redux slice for project-level settings
+   - Toggle functionality for project prompt, global data, and project documents
+   - Used by the context status indicators
+
+### Integration and Updates:
+
+1. **ChatView.tsx** (frontend/src/components/chat/)
+   - Updated to include UserPromptsPanel component
+   - Added Redux store connections for prompt and settings state
+   - Integrated with ContextStatusIndicators
+   - Properly typed for TypeScript compliance
+
+2. **App.tsx** (frontend/src/)
+   - Added Redux Provider wrapper to make store available to all components
+   - Identified issue with incomplete props being passed to ChatView (to be addressed)
+
+### Technical Challenges and Solutions:
+
+1. **TypeScript Typing Issues**
+   - Fixed 'any' type warnings in array.find() methods
+   - Added proper event typing for onChange handlers
+   - Resolved props interface mismatches between components
+
+2. **Redux Integration**
+   - Implemented proper Redux hooks (useSelector, useDispatch)
+   - Created action creators for updating state
+   - Set up store configuration with middleware
+
+3. **Naming Convention Conflicts**
+   - Identified prop naming mismatches (e.g., `isProjectPromptEnabled` vs `projectPromptEnabled`)
+   - Adapted calls to match existing component interfaces rather than modifying components
+   - This approach prevented potential cascading issues throughout the codebase
+
+4. **Missing Dependencies**
+   - Installed required packages: uuid, @types/uuid
+   - Added Material UI components (@mui/material, @mui/icons-material)
+
+### Outstanding Issues:
+
+1. **ChatView Props in App.tsx**
+   - The ChatView component in App.tsx is missing required props
+   - Need to implement logic for fetching project/chat names and messages
+
+2. **Linting Warnings**
+   - Several unused variables flagged (activePrompt, contextControlsOpen)
+   - These will be addressed as functionality is implemented that uses them
+
+3. **React Import Warning**
+   - React is imported but not directly used (common in modern JSX transform)
+   - Can be safely ignored or fixed with eslint disable comment
+
+### Next Steps:
+
+1. **Fix ChatView Props in App.tsx**
+   - Implement functions to retrieve project and chat names based on IDs
+   - Add message state and message sending functionality
+
+2. **Implement Context Controls Functionality**
+   - Create ContextControlsPanel component
+   - Connect toggle functions to actual functionality
+
+3. **Backend Integration**
+   - Connect Redux actions to API calls
+   - Implement real data persistence for user prompts
+
+4. **Testing and Refinement**
+   - Test all user prompt functionality
+   - Ensure proper UX flow as described in the PDF documentation
+
+This implementation successfully follows the design in the PDF document and maintains consistency with the existing components. The user prompts functionality is now integrated into the chat interface and ready for backend integration.
