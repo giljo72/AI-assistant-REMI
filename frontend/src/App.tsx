@@ -15,11 +15,52 @@ import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
 // Define the possible view types
 type View = 'project' | 'chat' | 'document' | 'projectFiles' | 'mainFiles' | 'searchResults';
 
+// Mock data for chat messages
+const mockMessages = [
+  {
+    id: '1',
+    content: 'Hello, how can I help with your project today?',
+    sender: 'assistant' as const, // Use 'as const' to narrow the type
+    timestamp: '2025-05-12 10:00 AM'
+  },
+  {
+    id: '2',
+    content: 'I need help organizing my research documents.',
+    sender: 'user' as const, // Use 'as const' to narrow the type
+    timestamp: '2025-05-12 10:01 AM'
+  },
+  {
+    id: '3',
+    content: 'I can definitely help with that. Would you like to create a new project for your research or use an existing one?',
+    sender: 'assistant' as const, // Use 'as const' to narrow the type
+    timestamp: '2025-05-12 10:02 AM'
+  }
+];
+
+// Mock project and chat data for lookups
+const mockProjects = [
+  { id: '1', name: 'Research Paper' },
+  { id: '2', name: 'Website Redesign' },
+  { id: '3', name: 'Marketing Campaign' },
+  { id: '4', name: 'Product Launch' },
+];
+
+const mockChats = [
+  { id: '1', name: 'Research Question #1', projectId: '1' },
+  { id: '2', name: 'Literature Review', projectId: '1' },
+  { id: '3', name: 'Methodology Discussion', projectId: '1' },
+  { id: '4', name: 'Navigation Design', projectId: '2' },
+  { id: '5', name: 'Color Schemes', projectId: '2' },
+  { id: '6', name: 'Social Media Strategy', projectId: '3' },
+];
+
 function App() {
   // State for active project and view
   const [activeProjectId, setActiveProjectId] = useState<string>('1');
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('project');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [chatMessages, setChatMessages] = useState(mockMessages);
   
   // State for file search and upload
   const [isTagAndAddModalOpen, setIsTagAndAddModalOpen] = useState(false);
@@ -31,6 +72,46 @@ function App() {
     { id: '7', name: 'General Notes.txt', type: 'TXT', size: '45 KB', active: true, projectId: null, addedAt: '2025-05-04', processed: true, chunks: 5, relevance: 82 },
     { id: '8', name: 'Template.docx', type: 'DOCX', size: '230 KB', active: true, projectId: null, addedAt: '2025-05-03', processed: true, chunks: 7, relevance: 75 },
   ];
+
+  // Helper functions to get project and chat names by ID
+  const getProjectName = (projectId: string): string => {
+    const project = mockProjects.find(p => p.id === projectId);
+    return project ? project.name : 'Unknown Project';
+  };
+
+  const getChatName = (chatId: string | null): string => {
+    if (!chatId) return 'New Chat';
+    const chat = mockChats.find(c => c.id === chatId);
+    return chat ? chat.name : 'Unknown Chat';
+  };
+
+  // Handle message sending
+  const handleSendMessage = (content: string) => {
+    setIsProcessing(true);
+    
+    // Add user message
+    const userMessage = {
+      id: Date.now().toString(),
+      content,
+      sender: 'user' as const,
+      timestamp: new Date().toLocaleString()
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    
+    // Simulate assistant response after delay
+    setTimeout(() => {
+      const assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        content: `I received your message: "${content}". This is a mock response.`,
+        sender: 'assistant' as const,
+        timestamp: new Date().toLocaleString()
+      };
+      
+      setChatMessages(prev => [...prev, assistantMessage]);
+      setIsProcessing(false);
+    }, 1000);
+  };
 
   // Handle project selection from sidebar
   const handleProjectSelect = (projectId: string) => {
@@ -101,7 +182,13 @@ function App() {
         return (
           <ChatView 
             projectId={activeProjectId} 
-            chatId={activeChatId} 
+            chatId={activeChatId}
+            projectName={getProjectName(activeProjectId)}
+            chatName={getChatName(activeChatId)}
+            messages={chatMessages}
+            isProcessing={isProcessing}
+            onSendMessage={handleSendMessage}
+            onEnableMic={() => console.log('Mic enabled')}
           />
         );
       case 'document':

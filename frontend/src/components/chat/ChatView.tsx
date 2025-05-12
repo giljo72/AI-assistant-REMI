@@ -1,3 +1,7 @@
+// File: frontend/src/components/chat/ChatView.tsx
+// Update the component to move the toggle buttons below the chat input area
+// and adjust the color scheme to be darker
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -13,7 +17,6 @@ import {
   Mic as MicIcon
 } from '@mui/icons-material';
 import ContextStatusIndicators from './ContextStatusIndicators';
-import UserPromptsPanel from './UserPromptsPanel';
 import { RootState } from '../../store';
 // Import toggle actions from projectSettingsSlice
 import { 
@@ -47,14 +50,8 @@ const ChatView: React.FC<ChatViewProps> = ({
   onEnableMic
 }) => {
   const [input, setInput] = useState('');
-  const [userPromptsExpanded, setUserPromptsExpanded] = useState(false);
-  const [contextControlsOpen, setContextControlsOpen] = useState(false); // Add state for context controls
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch(); // Initialize dispatch
-  
-  // Get the active prompt from Redux store
-  const { prompts } = useSelector((state: RootState) => state.userPrompts);
-  const activePrompt = prompts.find((p: any) => p.active); // Add type annotation to avoid 'any' error
   
   // Project settings from Redux store
   const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled } = useSelector(
@@ -100,30 +97,13 @@ const ChatView: React.FC<ChatViewProps> = ({
         </Typography>
       </Paper>
       
-      {/* Context Controls */}
-      <ContextStatusIndicators 
-        isProjectPromptEnabled={projectPromptEnabled}
-        isGlobalDataEnabled={globalDataEnabled}
-        isProjectDocumentsEnabled={projectDocumentsEnabled}
-        onToggleProjectPrompt={() => dispatch(toggleProjectPrompt())}
-        onToggleGlobalData={() => dispatch(toggleGlobalData())}
-        onToggleProjectDocuments={() => dispatch(toggleProjectDocuments())}
-        onOpenContextControls={() => setContextControlsOpen(true)}
-      />
-      
-      {/* User Prompts Panel */}
-      <UserPromptsPanel 
-        expanded={userPromptsExpanded}
-        onToggleExpand={() => setUserPromptsExpanded(!userPromptsExpanded)}
-      />
-      
       {/* Messages Area */}
       <Box 
         sx={{ 
           flexGrow: 1, 
           overflowY: 'auto',
           padding: '0 16px',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: '#080d13', // Much darker background as per PDF
           borderRadius: '8px',
           marginBottom: '16px'
         }}
@@ -192,8 +172,9 @@ const ChatView: React.FC<ChatViewProps> = ({
         elevation={3}
         sx={{
           backgroundColor: '#152238', // Darker navy
-          borderRadius: '0 0 8px 8px',
+          borderRadius: '8px',
           padding: '16px',
+          marginBottom: '16px',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
@@ -207,12 +188,15 @@ const ChatView: React.FC<ChatViewProps> = ({
             onKeyPress={handleKeyPress}
             disabled={isProcessing}
             sx={{
-              backgroundColor: '#f5f5f5',
+              backgroundColor: '#1a2b47',
               borderRadius: '8px',
               '& .MuiOutlinedInput-root': {
                 padding: '12px',
                 '& fieldset': {
                   border: 'none',
+                },
+                '& textarea': {
+                  color: '#ffffff', // White text
                 },
               },
             }}
@@ -252,6 +236,17 @@ const ChatView: React.FC<ChatViewProps> = ({
           </IconButton>
         </Box>
       </Paper>
+      
+      {/* Context Controls - Moved below the chat input */}
+      <ContextStatusIndicators 
+        isProjectPromptEnabled={projectPromptEnabled}
+        isGlobalDataEnabled={globalDataEnabled}
+        isProjectDocumentsEnabled={projectDocumentsEnabled}
+        onToggleProjectPrompt={() => dispatch(toggleProjectPrompt())}
+        onToggleGlobalData={() => dispatch(toggleGlobalData())}
+        onToggleProjectDocuments={() => dispatch(toggleProjectDocuments())}
+        onOpenContextControls={() => {}} // We'll handle this from the sidebar now
+      />
     </Box>
   );
 };
