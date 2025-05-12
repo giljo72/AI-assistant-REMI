@@ -15,11 +15,13 @@ import {
 } from '@mui/icons-material';
 import ContextStatusIndicators from './ContextStatusIndicators';
 import UserPromptsPanel from './UserPromptsPanel';
-import { RootState } from '../store';
+import { RootState } from '../../store';
 
 interface ChatViewProps {
-  projectName: string;
-  chatName: string;
+  projectName: string;  
+  chatName: string;     
+  projectId?: string;   
+  chatId?: string | null;
   messages: Array<{
     id: string;
     content: string;

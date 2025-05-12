@@ -1,5 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState } from 'react';
+import { Provider } from 'react-redux'; // Add this import
+import { store } from './store'; // Add this import
 import MainLayout from './components/layout/MainLayout';
 import ProjectManagerView from './components/project/ProjectManagerView';
 import ChatView from './components/chat/ChatView';
@@ -139,18 +141,20 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <MainLayout onProjectSelect={handleProjectSelect}>
-        {renderView()}
-      </MainLayout>
-      
-      {/* Modals */}
-      <TagAndAddFileModal 
-        isOpen={isTagAndAddModalOpen}
-        onClose={() => setIsTagAndAddModalOpen(false)}
-        onProcessFiles={handleProcessFiles}
-      />
-    </div>
+    <Provider store={store}>
+      <div className="App">
+        <MainLayout onProjectSelect={handleProjectSelect}>
+          {renderView()}
+        </MainLayout>
+        
+        {/* Modals */}
+        <TagAndAddFileModal 
+          isOpen={isTagAndAddModalOpen}
+          onClose={() => setIsTagAndAddModalOpen(false)}
+          onProcessFiles={handleProcessFiles}
+        />
+      </div>
+    </Provider>
   );
 }
 
