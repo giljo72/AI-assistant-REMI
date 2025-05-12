@@ -59,6 +59,24 @@ The application is optimized for the following hardware configuration:
 - **RAM**: 64GB
 - **OS**: Windows 11
 
+## Current Implementation Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **UI Shell & Navigation** | ✅ Completed | Layout structure with sidebar and content areas |
+| **Project Management UI** | ✅ Completed | Create, view, and manage projects |
+| **Chat Interface UI** | ✅ Completed | Message display with mock functionality |
+| **Document Management UI** | ✅ Completed | Document viewing with mock functionality |
+| **Project-Centered Containment** | ✅ Completed | Project structure and navigation flows |
+| **File Management System** | ✅ Completed | Project and global file management |
+| **User Prompts System** | ✅ Completed | Custom prompts creation and management |
+| **Context Controls UI** | ✅ Completed | Context toggle controls and settings panel |
+| **Backend Foundation** | 🟡 In Progress | API structure defined, mock implementation |
+| **NeMo Integration** | 🟡 In Progress | Mock implementation for development |
+| **TensorRT Optimization** | 🟡 Pending | Architecture defined |
+| **RAG Implementation** | 🟡 Pending | Architecture defined |
+| **Reasoning Modes** | 🟡 Pending | UI designs created |
+
 ## Key Features
 
 ### Project-Centered Containment
@@ -87,33 +105,18 @@ The application is optimized for the following hardware configuration:
 - Context depth slider balancing conciseness vs. comprehensiveness
 - Performance-aware settings optimized for target hardware
 
-### Enhanced Reasoning Capabilities
-- Multiple reasoning modes optimized for 30-35B parameter models with TensorRT
-- Standard: Balanced analysis with normal context depth
-- Comprehensive: Multi-step reasoning with expanded context
-- Expert: Detailed chains of thought with maximum context utilization
-- Hardware monitoring to optimize performance
+### User Prompt System
+- Create and manage custom prompts for specialized assistant behavior
+- One-click activation of saved prompts
+- Visual indicators for active prompts
+- Custom instructions for different project contexts
 
-### Future Expansion: External Services
-The system is architected for future (optional) integration with external services:
-- External API verification (Claude, ChatGPT) for complex queries
-- Web search capabilities for time-sensitive information
-- Privacy-preserving controls for external service usage
-- Clear visual indicators when using external resources
-
-## UI-First Development Approach
-
-The project follows a UI-first approach with progressive enhancement:
-
-1. **UI Shell & Navigation**: Build the complete visual interface with static data
-2. **Project-Centered Components**: Implement containment architecture in UI
-3. **Context Controls & Memory System**: Create tiered memory UI and controls
-4. **Basic Backend Services**: Implement essential backend functionality
-5. **Backend-Frontend Integration**: Connect UI to real services
-6. **NVIDIA Integration & Enhancement**: Connect advanced features and optimizations
-7. **Testing and Refinement**: Polish the user experience based on feedback
-
-This approach ensures a consistent and polished user experience throughout development.
+### File Management System
+- Project-specific file management with containment
+- Global file repository with search capabilities
+- File attachment to projects with priority settings
+- File upload with custom descriptions and tags
+- Status indicators for processing and project attachment
 
 ## Setup Instructions
 
@@ -138,17 +141,12 @@ venv\Scripts\activate
 ```
 pip install -r requirements.txt
 ```
-5. Run NVIDIA setup script:
-```
-python -m scripts.setup_tensorrt
-python -m scripts.setup_nemo
-```
-6. Set up environment variables (copy .env.example to .env and edit)
-7. Initialize database:
+5. Set up environment variables (copy .env.example to .env and edit)
+6. Initialize database:
 ```
 python -m scripts.setup_database
 ```
-8. Start the backend server:
+7. Start the backend server:
 ```
 uvicorn app.main:app --reload
 ```
@@ -161,12 +159,12 @@ npm install
 ```
 3. Start the development server:
 ```
-npm start
+npm run dev
 ```
 
 ## Usage
 
-1. Access the application at http://localhost:3000
+1. Access the application at http://localhost:5173
 2. Create projects to organize your knowledge
 3. Upload and process documents (processed with NeMo for enhanced understanding)
 4. Attach key documents to projects for prioritized retrieval
@@ -175,24 +173,6 @@ npm start
 7. Adjust context controls to balance depth vs. speed or expand beyond project boundaries
 8. Select reasoning modes appropriate for your questions
 9. Monitor hardware utilization during operation
-
-## Project Status
-
-Current implementation status:
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| **UI Shell & Navigation** | 🟢 Completed | Layout structure with sidebar and content areas |
-| **Project Management UI** | 🟡 In Progress | Basic sidebar and project manager implemented |
-| **Chat Interface UI** | 🟡 In Progress | Placeholder chat view created |
-| **Document Management UI** | 🟡 In Progress | Placeholder document view created |
-| **Project-Centered Containment** | 🟡 In Progress | Project structure created, functionality pending |
-| **Context Controls UI** | 🟡 Pending | Architecture defined |
-| **Backend Foundation** | 🟡 Pending | Waiting for UI phase completion |
-| **NeMo Integration** | 🟡 Pending | Architecture defined |
-| **TensorRT Optimization** | 🟡 Pending | Architecture defined |
-| **RAG Implementation** | 🟡 Pending | Architecture defined |
-| **Reasoning Modes** | 🟡 Pending | UI designs created |
 
 ## Development
 
@@ -259,41 +239,6 @@ Backend will serve the static files from the build directory
 - Implement multiple reasoning modes with appropriate context sizing
 - Use CUDA optimization for vector operations
 - Implement progressive response generation for perceived responsiveness
-
-### 6. Architecture for Future Expansion
-**Challenge**: Building for offline use while enabling future external integration  
-**Solution**:
-- Abstract provider interfaces for reasoning and retrieval
-- Clear separation between local and external components
-- Privacy-preserving design patterns for future implementation
-- Visual indicators for knowledge source transparency
-
-## Workflow Overview
-
-The application follows a structured workflow:
-
-1. **Welcome Screen**: Project list, system status, and global navigation
-2. **Project Management**: Create, modify, and delete projects; manage project-specific chats and documents
-3. **Chat Interface**: Interact with AI within project context using different reasoning modes
-4. **Document Management**: Upload, process, and attach documents to projects with prioritization
-5. **Context Controls**: Select interaction mode, adjust context depth, choose knowledge sources
-6. **System Settings**: Configure models, monitor hardware performance, manage preferences
-
-## NVIDIA Integration
-
-The project leverages key NVIDIA technologies:
-
-- **NeMo Document AI**: Enhanced document understanding with structure preservation
-- **TensorRT**: Hardware-optimized inference for 30-35B models
-- **CUDA Optimization**: Performance tuning for RTX 4090
-- **Hybrid Deployment**: Native + Docker approach for maximum performance on Windows
-
-## Development Notes
-
-For development purposes, a mock NeMo implementation is provided to enable
-progress without requiring the full NeMo installation. This allows for
-frontend and backend development while the full NeMo integration can be
-addressed at a later stage.
 
 ## License
 

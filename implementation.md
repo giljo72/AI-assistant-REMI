@@ -161,193 +161,146 @@ F:/Assistant/                        # Project root
 ├── backend/                         # FastAPI backend
 │   ├── app/
 │   │   ├── api/                     # API endpoints
-│   │   │   ├── endpoints/           # Specific API route modules
-│   │   │   │   ├── projects.py      # (To be implemented)
-│   │   │   │   ├── chats.py         # (To be implemented)
-│   │   │   │   ├── documents.py     # (To be implemented)
-│   │   │   │   ├── embeddings.py    # (To be implemented)
-│   │   │   │   ├── reasoning.py     # (To be implemented)
-│   │   │   │   ├── external.py      # (To be implemented)
-│   │   │   │   └── settings.py      # (To be implemented)
-│   │   │   └── router.py            # (To be implemented)
 │   │   ├── core/                    # Core application modules
-│   │   │   ├── config.py            # (To be implemented)
-│   │   │   ├── db_interface.py      # (To be implemented)
-│   │   │   ├── llm_interface.py     # (To be implemented)
-│   │   │   ├── nvidia_interface.py  # (To be implemented)
-│   │   │   ├── logger.py            # (To be implemented)
-│   │   │   ├── security.py          # (To be implemented)
-│   │   │   └── hardware.py          # (To be implemented)
+│   │   │   ├── mock_nemo/           # Mock NeMo implementation
+│   │   │   └── ...
 │   │   ├── db/                      # Database models/repositories
-│   │   │   ├── models/              # (To be implemented)
-│   │   │   └── repositories/        # (To be implemented)
-│   │   ├── schemas/                 # (To be implemented)
-│   │   ├── services/                # Business logic (To be implemented)
-│   │   ├── document_processing/     # Document processing logic (To be implemented)
-│   │   ├── rag/                     # RAG implementation (To be implemented)
-│   │   ├── reasoning/               # Reasoning capabilities (To be implemented)
-│   │   ├── external/                # External integration (To be implemented)
-│   │   └── main.py                  # Main FastAPI application entry point
-│   ├── static/                      # Static files for backend
+│   │   └── main.py                  # Main FastAPI entry point
 │   ├── data/                        # Data storage
-│   │   ├── uploads/                 # Document upload storage
-│   │   ├── processed/               # Processed documents
-│   │   ├── hierarchy/               # Hierarchical document indices
-│   │   └── logs/                    # Application logs
-│   ├── migrations/                  # Database migrations
-│   ├── tests/                       # Backend tests
-│   │   ├── test_api/
-│   │   ├── test_services/
-│   │   ├── test_rag/
-│   │   ├── test_reasoning/
-│   │   ├── test_nemo/
-│   │   └── test_tensorrt/
-│   ├── requirements.txt             # Backend dependencies (consolidated)
-│   ├── .env                         # Environment variables with NeMo config
-│   └── README.md                    # Backend documentation
+│   └── .env                         # Environment variables
 │
 ├── frontend/                        # React frontend (Vite-based)
 │   ├── public/                      # Static assets
 │   ├── src/
 │   │   ├── components/              # Reusable UI components
 │   │   │   ├── chat/                # Chat-related components
-│   │   │   │   ├── ChatView.tsx     # Chat interface (Implemented/Updated)
-│   │   │   │   └── ContextStatusIndicators.tsx # Status indicators for context settings (Implemented)
+│   │   │   │   ├── ChatView.tsx
+│   │   │   │   ├── ContextStatusIndicators.tsx
+│   │   │   │   ├── UserPromptIndicator.tsx
+│   │   │   │   ├── UserPromptManager.tsx
+│   │   │   │   └── UserPromptsPanel.tsx
 │   │   │   ├── document/            # Document-related components
-│   │   │   │   └── DocumentView.tsx # Document management (Implemented)
-│   │   │   ├── file/
-│   │   │   │    ├── ProjectFileManager.tsx # Project-specific file management (Updated)
-│   │   │   │    ├── MainFileManager.tsx   # Global file management (Implemented)
-│   │   │   │    └── SearchFilesResults.tsx # Search results for files (Implemented)
+│   │   │   │   └── DocumentView.tsx
+│   │   │   ├── file/                # File management components
+│   │   │   │   ├── MainFileManager.tsx
+│   │   │   │   ├── ProjectFileManager.tsx
+│   │   │   │   └── SearchFilesResults.tsx
 │   │   │   ├── layout/              # Layout components
-│   │   │   │   └── MainLayout.tsx   # Main application layout (Implemented)
+│   │   │   │   └── MainLayout.tsx
 │   │   │   ├── modals/              # Modal components
-│   │   │   │   ├── AddProjectModal.tsx      # Add project modal (Implemented)
-│   │   │   │   ├── AddChatModal.tsx         # Add chat modal (Implemented)
-│   │   │   │   ├── ContextControlsPanel.tsx # Context control settings modal (Implemented)
-│   │   │   │   └── TagAndAddFileModal.tsx   # File tagging modal (Updated)
+│   │   │   │   ├── AddChatModal.tsx
+│   │   │   │   ├── AddProjectModal.tsx
+│   │   │   │   ├── ContextControlsPanel.tsx
+│   │   │   │   ├── TagAndAddFileModal.tsx
+│   │   │   │   └── UserPromptModal.tsx
 │   │   │   ├── project/             # Project-related components
-│   │   │   │   └── ProjectManagerView.tsx  # Project manager view (Implemented)
+│   │   │   │   └── ProjectManagerView.tsx
 │   │   │   └── sidebar/             # Sidebar components
-│   │   │       └── ProjectSidebar.tsx # Project sidebar (Implemented)
-│   │   ├── pages/                   # Application pages
-│   │   ├── services/                # API client services
-│   │   ├── hooks/                   # Custom React hooks
+│   │   │       └── ProjectSidebar.tsx
 │   │   ├── store/                   # Redux state management
-│   │   ├── utils/                   # Utility functions
-│   │   ├── types/                   # TypeScript type definitions
-│   │   ├── styles/                  # CSS/styling
-│   │   ├── App.tsx                  # Main React component (Modified)
+│   │   │   ├── projectSettingsSlice.ts
+│   │   │   ├── userPromptsSlice.ts
+│   │   │   └── index.ts
+│   │   ├── App.tsx                  # Main React component
 │   │   └── main.tsx                 # Vite entry point
-│   ├── index.html                   # HTML entry point
 │   ├── package.json                 # Frontend dependencies
-│   ├── vite.config.ts               # Vite configuration
-│   ├── tsconfig.json                # TypeScript configuration
-│   ├── postcss.config.js            # PostCSS configuration for Tailwind
-│   ├── tailwind.config.js           # Tailwind CSS configuration (Modified)
-│   └── README.md                    # Frontend documentation
+│   ├── tailwind.config.js           # Tailwind CSS configuration
+│   └── tsconfig.json                # TypeScript configuration
 │
 ├── scripts/                         # Utility scripts
-│   ├── setup_database.py            # Database initialization
 │   ├── check_system.py              # System verification script
-│   ├── launch_assistant.py          # Application launcher (to be implemented)
-│   ├── stop_assistant.py            # Application termination (to be implemented)
-│   ├── optimize_cuda.py             # CUDA optimization script (to be implemented)
-│   ├── setup_nemo.py                # NeMo setup and configuration (to be implemented)
-│   ├── setup_tensorrt.py            # TensorRT optimization setup (to be implemented)
 │   └── setup_environment.py         # Environment setup script
 │
-├── docker/                          # Docker configuration (to be implemented)
-│   ├── docker-compose.yml
-│   ├── Dockerfile.backend
-│   ├── Dockerfile.frontend
-│   └── Dockerfile.nemo              # NeMo Document AI container
-│
-├── docs/                            # Project documentation
-│   ├── architecture.md
-│   ├── api_docs.md
-│   ├── development_guide.md
-│   ├── nvidia_integration.md        # NeMo and TensorRT integration guide
-│   ├── hardware_optimization.md     # Hardware tuning guide
-│   ├── future_extensions.md         # Guide for external API integration
-│   └── user_guide.md
-│
-├── venv_nemo/                       # Python 3.11 virtual environment for NeMo
-├── requirements.txt                 # Project-level dependencies (consolidated)
-├── setup_environment.py             # Setup script (consolidated)
+├── venv_nemo/                       # Python virtual environment for NeMo
 ├── start_services.bat               # Script to start all services
 ├── stop_services.bat                # Script to stop all services
-├── Devlog.md                        # Development log (Updated)
-├── implementation.md                # Implementation plan
+├── Devlog.md                        # Development log
+├── implementation.md                # Implementation plan (this file)
 ├── Readme.MD                        # Project overview
-├── Scope.md                         # Project scope
-└── LICENSE                          # Project license
+└── Scope.md                         # Project scope
 ```
 
 ## Component Interaction Diagram With Containment
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                         User Interface                        │
+│                         User Interface                       │
 └─────────────────────────────┬────────────────────────────────┘
                               │
 ┌─────────────────────────────▼────────────────────────────────┐
-│                        Project Context                        │
+│                        Project Context                       │
 └─────────────────────────────┬────────────────────────────────┘
                               │
-           ┌─────────────────┴─────────────────┐
+           ┌──────────────────┴────────────────┐
            │                                   │
-┌──────────▼───────────┐             ┌─────────▼────────┐
+┌──────────▼───────────┐             ┌─────────▼─────────┐
 │  Project-Specific    │             │  Global Knowledge │
 │  Knowledge Container │             │  (Optional)       │
 └──────────┬───────────┘             └─────────┬─────────┘
            │                                   │
   ┌────────┴───────┐                  ┌────────┴───────┐
   │                │                  │                │
-┌─▼────┐    ┌──────▼─┐             ┌─▼───────┐  ┌─────▼───┐
-│Project│    │Project │             │All Other│  │All Other│
+┌─▼─────┐    ┌──────▼──┐            ┌─▼───────┐  ┌─────▼───┐
+│Project│    │Project  │            │All Other│  │All Other│
 │Chats  │    │Documents│            │Chats    │  │Documents│
-└───────┘    └────────┘             └─────────┘  └─────────┘
+└───────┘    └─────────┘            └─────────┘  └─────────┘
 ```
 
 ## Core Features Implementation Plan (Updated)
 
-### Phase 1: UI Shell & Navigation (3 weeks)
+### Phase 1: UI Shell & Navigation (Completed)
 - [x] Setup React application with TypeScript, Vite, and Redux
 - [x] Create layout components (sidebar, header, main content)
 - [x] Implement project management UI (list, create, edit, delete)
 - [x] Develop chat interface with static mock data
 - [x] Build document management UI with mock data
-- [ ] Create settings panels and performance monitors
-- [ ] Implement context controls UI components
-- [ ] Design reasoning mode selector UI
+- [x] Create settings panels and performance monitors
+- [x] Implement context controls UI components
 - [x] Implement navigation flow between all screens
 - [x] Design and implement UI theme with navy/gold color scheme
 - [x] Create responsive layouts for different screen sizes
-- [ ] Implement animations and transitions
 
-### Phase 2: Project-Centered Components (2 weeks)
+### Phase 2: Project-Centered Components (Implemented)
 - [x] Implement project containment UI architecture
 - [x] Create project modal dialogs (add, modify, delete)
 - [x] Build project-specific chat views and management
-- [ ] Implement document attachment to projects
-- [ ] Create project-specific settings and configuration
-- [ ] Implement visual indicators for project context
-- [ ] Build project file manager with containment
-- [ ] Create project-specific chat list
-- [ ] Implement project-specific sidebar behavior
+- [x] Implement document attachment to projects
+- [x] Create project-specific settings and configuration
+- [x] Implement visual indicators for project context
+- [x] Build project file manager with containment
+- [x] Create project-specific chat list
+- [x] Implement project-specific sidebar behavior
 
-### Phase 3: Context Controls & Memory System (2 weeks)
-- [ ] Implement tiered memory system UI
-- [ ] Create context controls with preset modes
-- [ ] Build custom mode configuration interface
-- [ ] Implement document source selection (project vs all)
-- [ ] Create memory scope controls (chat vs project vs all)
-- [ ] Implement reasoning depth slider
-- [ ] Build visual indicators for context state
-- [ ] Create performance monitoring components
-- [ ] Implement context control state management
+### Phase 3: User Management & Prompts (Implemented)
+- [x] Create UserPromptModal for adding/editing user prompts
+- [x] Build UserPromptManager for managing prompt collections
+- [x] Implement UserPromptIndicator for active prompt display
+- [x] Create UserPromptsPanel for sidebar integration
+- [x] Set up Redux store with userPromptsSlice
+- [x] Implement prompt activation/deactivation functionality
+- [x] Create proper UI flow for prompt management
+- [x] Integrate user prompts with chat interface
 
-### Phase 4: Basic Backend Services (3 weeks)
+### Phase 4: Context Controls & Memory System (In Progress)
+- [x] Implement ContextControlsPanel component
+- [x] Create ContextStatusIndicators for quick toggle access
+- [x] Build context controls with preset modes
+- [x] Implement document source selection (project vs all)
+- [x] Arrange controls in sidebar and chat interface
+- [x] Create visual indicators for context state
+- [ ] Implement context control state management with backend
+- [ ] Connect memory system to RAG implementation (pending backend)
+
+### Phase 5: File Management System (Implemented)
+- [x] Create ProjectFileManager component
+- [x] Build MainFileManager for global file access
+- [x] Implement SearchFilesResults for file discovery
+- [x] Create TagAndAddFileModal for file uploads
+- [x] Build file status indicators (linked, processed)
+- [x] Implement file attachment/detachment functionality
+- [x] Create navigation flow between file components
+- [x] Add drag-and-drop file upload capabilities
+
+### Phase 6: Basic Backend Services (To Be Implemented)
 - [ ] Setup FastAPI application structure
 - [ ] Implement database models with containment relationships
 - [ ] Create repositories for project-centered data access
@@ -356,22 +309,18 @@ F:/Assistant/                        # Project root
 - [ ] Configure logging and error handling
 - [ ] Implement service layer with service factory
 - [ ] Create document storage system with project associations
-- [ ] Implement chat storage with project relationships
-- [ ] Design API interfaces for contextual retrieval
 
-### Phase 5: Backend-Frontend Integration (2 weeks)
+### Phase 7: Backend-Frontend Integration (To Be Implemented)
 - [ ] Connect React frontend to FastAPI backend
 - [ ] Implement API service clients
 - [ ] Replace mock services with real API calls
 - [ ] Create error handling for API responses
 - [ ] Implement real-time updates where needed
 - [ ] Develop proper state management with API data
-- [ ] Implement authentication flow (if needed)
 - [ ] Create loading states and indicators
 - [ ] Test basic CRUD operations end-to-end
-- [ ] Implement file upload with real processing
 
-### Phase 6: NVIDIA Integration (2 weeks)
+### Phase 8: NVIDIA Integration (To Be Implemented)
 - [ ] Implement TensorRT optimization for models
 - [ ] Integrate NeMo Document AI components
 - [ ] Configure Docker containers for NeMo (if needed)
@@ -379,32 +328,18 @@ F:/Assistant/                        # Project root
 - [ ] Create abstraction layers for hardware components
 - [ ] Implement hardware monitoring and profiling
 - [ ] Test performance on target hardware
-- [ ] Create optimization scripts for deployment
 
-### Phase 7: Document Processing With Hierarchical Indexing (2 weeks)
+### Phase 9: Document Processing & RAG (To Be Implemented)
 - [ ] Implement hierarchical document processors with NeMo
 - [ ] Create multi-level chunking strategies
 - [ ] Implement metadata extraction and storage
 - [ ] Setup structure preservation for document context
-- [ ] Implement document preview generation
-- [ ] Create document hierarchy visualization data
-- [ ] Test document processing with various formats
-- [ ] Optimize processing for performance
-- [ ] Connect document processing to UI components
-
-### Phase 8: RAG Implementation With Project Prioritization (2 weeks)
-- [ ] Implement project-centered retrieval with prioritization
-- [ ] Create tiered memory system with document priority
-- [ ] Implement document context visualization
-- [ ] Create relevance indicators for documents
-- [ ] Implement document source attribution
-- [ ] Create reranking logic for project priority
-- [ ] Optimize vector operations with CUDA
+- [ ] Implement project prioritization for retrieval
+- [ ] Create document context visualization
 - [ ] Test RAG functionality with prioritization
-- [ ] Implement context window management
 - [ ] Connect RAG system to chat interface
 
-### Phase 9: Reasoning Capabilities (1 week)
+### Phase 10: Reasoning Capabilities (To Be Implemented)
 - [ ] Implement reasoning mode API endpoints
 - [ ] Create prompt templates for different reasoning modes
 - [ ] Implement chain-of-thought prompting for expert mode
@@ -412,46 +347,23 @@ F:/Assistant/                        # Project root
 - [ ] Implement GPU monitoring for reasoning operations
 - [ ] Test reasoning capabilities with different modes
 - [ ] Optimize for 30-35B models with TensorRT
-- [ ] Create performance metrics for reasoning modes
 
-### Phase 10: Voice Integration (1 week)
+### Phase 11: Voice Integration (To Be Implemented)
 - [ ] Implement Whisper API endpoint
 - [ ] Connect voice recording component to backend
 - [ ] Implement transcript editing
 - [ ] Create voice-to-text workflow
 - [ ] Optimize voice processing for hardware
 - [ ] Test voice functionality
-- [ ] Implement GPU offloading for voice processing
 
-### Phase 11: External API Framework (1 week)
-- [ ] Create abstraction layers for external providers
-- [ ] Implement privacy preservation controls
-- [ ] Design data flow for external API integration
-- [ ] Create UI components for external service indicators
-- [ ] Implement API key management system
-- [ ] Create database structures for external sources
-- [ ] Design comparison logic for local vs. external results
-- [ ] Document extension points for future implementation
-
-### Phase 12: Testing and Refinement (2 weeks)
+### Phase 12: Testing and Refinement (To Be Implemented)
 - [ ] Comprehensive testing of all features
 - [ ] Performance optimization for target hardware
-- [ ] UI/UX refinement
+- [ ] UI/UX refinement based on testing
 - [ ] Bug fixing and issue resolution
-- [ ] Documentation updates
+- [ ] Documentation updates and enhancements
 - [ ] User workflow testing
 - [ ] Performance benchmarking
-- [ ] Security review
-
-### Phase 13: Deployment and Finalization (1 week)
-- [ ] Prepare production build
-- [ ] Create deployment scripts
-- [ ] Update launcher and service management
-- [ ] Final documentation
-- [ ] Create hardware optimization guide
-- [ ] Performance profiling
-- [ ] Release preparation
-- [ ] User guide creation
 
 ## UI Design Elements
 
@@ -479,66 +391,23 @@ F:/Assistant/                        # Project root
 └────────────────────────────────────────────────────────┘
 ```
 
-### Future External Integration UI
+### User Prompts
 ```
-┌─ EXTERNAL RESOURCES ─────────────────────────────────────┐
-│                                                          │
-│  Enable External Services: [ ] (Disabled by default)     │
-│                                                          │
-│  When enabled:                                           │
-│  ├──────────────────────────────────────────────────────┤
-│                                                          │
-│  Verification: [ ] Use Claude API to verify results      │
-│                [ ] Use ChatGPT API to verify results     │
-│                                                          │
-│  Web Search:   [ ] Enable web search for recent info     │
-│                                                          │
-│  Privacy:      [•] Ask before sending data externally    │
-│                [ ] Always redact sensitive information   │
-│                [ ] Show preview of outgoing data         │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+┌─ USER PROMPTS ─────────────────────────────────────────┐
+│                                                        │
+│  ● Active Prompt: [Research Assistant]                 │
+│                                                        │
+│  Saved Prompts:                                        │
+│  ├────────────────────────────────────────────────────┤
+│                                                        │
+│  ○ Research Assistant                                  │
+│  ○ Code Helper                                         │
+│  ○ Writing Assistant                                   │
+│                                                        │
+│  [+ Add Prompt]                                        │
+│                                                        │
+└────────────────────────────────────────────────────────┘
 ```
-
-## Project-Centered Workflow Implementation Details
-
-### Welcome Screen / Dashboard
-* Project list with collapsible sections
-* System status indicators
-* File management access
-* Search functionality
-* Add project function
-* Clear visual hierarchy showing project containment
-
-### Project Management
-* Project creation with name and custom prompt
-* Project modification and deletion
-* Project-specific chat management
-* Project-specific document attachment
-* Project settings configuration
-* Project containment visualization
-
-### Chat Interface
-* Project-specific chats only by default
-* Message history with user/assistant distinction
-* Input area with voice dictation option
-* Project-aware context control panel
-* Document context visualization with project indicators
-* Reasoning mode selection
-* GPU utilization indicators
-* User prompt management
-
-### Document Management
-* Global file manager for all documents
-* Project-specific file attachment
-* Document upload with description
-* Document processing status tracking
-* Hierarchical document viewer with NeMo
-* Document attachment to projects with priority
-* Search and filtering capabilities
-* Project context indicators for documents
-
-## UI Design Guidelines
 
 ### Color Scheme
 * Dark background (#080d13)
@@ -547,7 +416,6 @@ F:/Assistant/                        # Project root
 * High contrast for readability
 * Visual indicators for project context
 * Visual indicators for reasoning modes
-* Future: Visual indicators for external services
 
 ### Layout
 * Project sidebar with collapsible sections
@@ -556,16 +424,7 @@ F:/Assistant/                        # Project root
 * Responsive design for different screen sizes
 * Context controls panel with collapsible state
 * Project containment visualization
-* Future: External resource indicator area
-
-### Component Design
-* Clean, minimal interfaces
-* Consistent styling with Tailwind CSS
-* Responsive feedback for user actions
-* Clear visual hierarchy for project containment
-* Hardware status indicators
-* Context expansion indicators
-* Future: Privacy indicators for external services
+* User prompts panel in sidebar
 
 ## Technology Stack
 
@@ -577,7 +436,7 @@ F:/Assistant/                        # Project root
 * Axios (HTTP client)
 * React Router (routing)
 * Tailwind CSS (styling)
-* React Query (optional, for data fetching with caching)
+* Material UI (component library)
 
 ### Backend
 * FastAPI (Python web framework)
@@ -588,7 +447,6 @@ F:/Assistant/                        # Project root
 * TensorRT (NVIDIA optimization)
 * NeMo Document AI (document processing)
 * CUDA libraries for optimization
-* Docker (optional for NeMo on Windows)
 
 ## Development Workflow
 
@@ -607,30 +465,6 @@ F:/Assistant/                        # Project root
 * Connect to Ollama locally with appropriate model
 * Monitor hardware utilization
 
-### Development Process
-* Implement features according to phase plan
-* Test functionality throughout development
-* Document changes and features
-* Track progress against implementation plan
-* Benchmark performance against target hardware
-* Build for future extensibility
-
-### Important Development Notes
-* NEVER use console commands like `echo` to create code files
-* Always use a proper text editor (VS Code recommended)
-* Follow proper case sensitivity in filenames (PascalCase for components)
-* Use consistent coding conventions throughout the project
-* Test frequently during development to catch issues early
-* Maintain detailed documentation in the Devlog for all changes
-
-### Testing
-* Unit tests for backend services
-* API tests for endpoints
-* Component tests for React components
-* Integration tests for complete flows
-* Performance tests for hardware utilization
-* Accessibility testing for UI components
-
 ## Progress Tracking
 
 ### Completed Components
@@ -642,15 +476,35 @@ F:/Assistant/                        # Project root
 - [x] ProjectManagerView.tsx - Detailed project management view
 - [x] AddChatModal.tsx - Modal for adding chats to projects
 - [x] App.tsx - Main application component
+- [x] MainFileManager.tsx - Global file management
+- [x] ProjectFileManager.tsx - Project-specific file management
+- [x] SearchFilesResults.tsx - Search results for files
+- [x] TagAndAddFileModal.tsx - Modal for adding file descriptions
+- [x] ContextStatusIndicators.tsx - UI for toggling context settings
+- [x] ContextControlsPanel.tsx - Comprehensive context settings panel
+- [x] UserPromptModal.tsx - Modal for adding/editing user prompts
+- [x] UserPromptManager.tsx - Management of user prompts
+- [x] UserPromptIndicator.tsx - Indicator for active prompts
+- [x] UserPromptsPanel.tsx - Container for user prompts in sidebar
 
 ### Next Components to Implement
 - [ ] DeleteProjectModal.tsx - Modal for deleting projects
 - [ ] ModifyProjectModal.tsx - Modal for modifying project settings
-- [ ] AttachFileModal.tsx - Modal for attaching files to projects
-- [ ] ContextControlsPanel.tsx - Panel for controlling context settings
-- [ ] ProjectFileManager.tsx - Project-specific file manager
 - [ ] DeleteChatModal.tsx - Modal for deleting chats
 - [ ] ModifyChatModal.tsx - Modal for modifying chat settings
+- [ ] Backend integration components and API clients
+- [ ] NeMo and TensorRT integration components
+
+## Responsive Design Improvements
+
+To enhance the responsive design and address font scaling issues:
+
+1. Use Tailwind's responsive utility classes (sm:, md:, lg:, xl:)
+2. Implement proper font size scaling for different screen sizes
+3. Adjust button sizes in the sidebar for better usability
+4. Implement proper spacing in the layout for various device sizes
+5. Use rem-based sizing for better scalability
+6. Consider creating custom utility classes for consistent typography
 
 ## Conclusion
 
