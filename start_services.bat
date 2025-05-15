@@ -2,8 +2,17 @@
 echo Starting AI Assistant services...
 echo.
 
-echo Starting PostgreSQL service...
-net start postgresql-x64-17
+echo Checking PostgreSQL service...
+sc query postgresql-x64-17 | find "RUNNING" > nul
+if %ERRORLEVEL% NEQ 0 (
+    echo PostgreSQL is not running. Please start it manually with admin privileges.
+    echo Command: net start postgresql-x64-17
+    echo.
+    echo Press any key to continue anyway...
+    pause > nul
+) else (
+    echo PostgreSQL service is already running.
+)
 
 echo Starting FastAPI backend...
 cd backend
@@ -16,8 +25,8 @@ start cmd /k "npm run dev"
 
 echo.
 echo All services started. The application should be available at:
-echo Frontend: http://localhost:5173
-echo Backend API: http://localhost:8000/docs
+Frontend: http://localhost:5173
+Backend API: http://localhost:8000/docs
 echo.
 echo Press any key to continue...
 pause > nul
