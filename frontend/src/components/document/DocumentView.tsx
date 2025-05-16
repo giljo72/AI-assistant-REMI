@@ -18,25 +18,11 @@ type Project = {
   name: string;
 };
 
-// Mock project data
-const mockProjects: Project[] = [
-  { id: '1', name: 'Research Paper' },
-  { id: '2', name: 'Website Redesign' },
-  { id: '3', name: 'Marketing Campaign' },
-  { id: '4', name: 'Product Launch' },
-];
+// Import project service to fetch project data
+import { projectService } from '../../services';
 
-// Mock data for documents
-const mockFiles: File[] = [
-  { id: '1', name: 'Research Paper.pdf', type: 'PDF', size: '1.2 MB', active: true, projectId: '1', addedAt: '2025-05-10' },
-  { id: '2', name: 'Literature Notes.docx', type: 'DOCX', size: '538 KB', active: true, projectId: '1', addedAt: '2025-05-09' },
-  { id: '3', name: 'Data Analysis.xlsx', type: 'XLSX', size: '724 KB', active: false, projectId: '1', addedAt: '2025-05-08' },
-  { id: '4', name: 'Website Mockup.png', type: 'PNG', size: '2.4 MB', active: true, projectId: '2', addedAt: '2025-05-07' },
-  { id: '5', name: 'Campaign Brief.pdf', type: 'PDF', size: '890 KB', active: true, projectId: '3', addedAt: '2025-05-06' },
-  { id: '6', name: 'Reference Paper.pdf', type: 'PDF', size: '1.7 MB', active: true, projectId: null, addedAt: '2025-05-05' },
-  { id: '7', name: 'General Notes.txt', type: 'TXT', size: '45 KB', active: true, projectId: null, addedAt: '2025-05-04' },
-  { id: '8', name: 'Template.docx', type: 'DOCX', size: '230 KB', active: true, projectId: null, addedAt: '2025-05-03' },
-];
+// Empty initial state for files - will be replaced with API call later
+const initialFiles: File[] = [];
 
 // Get file type badge color
 const getFileTypeColor = (type: string): string => {
@@ -74,23 +60,35 @@ const DocumentView: React.FC<DocumentViewProps> = ({ projectId }) => {
   // Effect to filter files by project when projectId changes
   useEffect(() => {
     if (projectId) {
-      // Find the project name
-      const project = mockProjects.find(p => p.id === projectId);
-      setProjectName(project?.name || '');
+      // Fetch project data from API
+      const fetchProjectName = async () => {
+        try {
+          const project = await projectService.getProject(projectId);
+          setProjectName(project.name || '');
+        } catch (err) {
+          console.error('Error fetching project name:', err);
+          setProjectName('Unknown Project');
+        }
+      };
       
-      // Filter files for this project
-      const filesForProject = mockFiles.filter(file => file.projectId === projectId);
-      setProjectFiles(filesForProject);
+      fetchProjectName();
       
-      // Get unattached files (that can be attached to this project)
-      const unattached = mockFiles.filter(file => file.projectId === null);
-      setUnattachedFiles(unattached);
+      // TODO: Replace with API call to get files for this project
+      // For now, use empty arrays
+      setProjectFiles([]);
+      
+      // TODO: Replace with API call to get unattached files
+      // For now, use empty arrays
+      setUnattachedFiles([]);
     } else {
       // If no project is specified, show all files
       setProjectName('');
       setProjectFiles([]);
-      setUnattachedFiles(mockFiles);
+      setUnattachedFiles([]);
     }
+    
+    // TODO: Implement file fetching service
+    console.log('Fetching files for project:', projectId);
   }, [projectId]);
 
   const handleFileFilter = (filter: string) => {
@@ -98,32 +96,26 @@ const DocumentView: React.FC<DocumentViewProps> = ({ projectId }) => {
   };
 
   const handleAttachFile = (fileId: string) => {
-    // In a real app, this would make an API call to attach the file to the project
+    // TODO: Implement API call to attach the file to the project
     console.log(`Attaching file ${fileId} to project ${projectId}`);
     
-    // For now, simulate updating the UI
-    const updatedUnattachedFiles = unattachedFiles.filter(file => file.id !== fileId);
-    const fileToAttach = unattachedFiles.find(file => file.id === fileId);
-    
-    if (fileToAttach && projectId) {
-      const attachedFile = { ...fileToAttach, projectId };
-      setProjectFiles([...projectFiles, attachedFile]);
-      setUnattachedFiles(updatedUnattachedFiles);
+    // This is a placeholder for future implementation
+    if (projectId) {
+      console.log(`Will attach file ${fileId} to project ${projectId}`);
+      // TODO: Update UI after API call succeeds
+      // For now, do nothing to avoid errors
     }
   };
 
   const handleDetachFile = (fileId: string) => {
-    // In a real app, this would make an API call to detach the file from the project
+    // TODO: Implement API call to detach the file from the project
     console.log(`Detaching file ${fileId} from project ${projectId}`);
     
-    // For now, simulate updating the UI
-    const fileToDetach = projectFiles.find(file => file.id === fileId);
-    const updatedProjectFiles = projectFiles.filter(file => file.id !== fileId);
-    
-    if (fileToDetach) {
-      const detachedFile = { ...fileToDetach, projectId: null };
-      setUnattachedFiles([...unattachedFiles, detachedFile]);
-      setProjectFiles(updatedProjectFiles);
+    // This is a placeholder for future implementation
+    if (projectId) {
+      console.log(`Will detach file ${fileId} from project ${projectId}`);
+      // TODO: Update UI after API call succeeds
+      // For now, do nothing to avoid errors
     }
   };
 
@@ -166,7 +158,7 @@ const DocumentView: React.FC<DocumentViewProps> = ({ projectId }) => {
           </div>
           
           <div className="space-y-2">
-            {getFilteredFiles(projectId ? unattachedFiles : mockFiles).map(file => (
+            {getFilteredFiles(projectId ? unattachedFiles : []).map(file => (
               <div key={file.id} className="p-3 bg-navy hover:bg-navy-lighter rounded-lg flex items-center justify-between group">
                 <div className="flex items-center">
                   <div className={`w-8 h-8 bg-${getFileTypeColor(file.type)}-500/20 rounded flex items-center justify-center mr-3`}>
@@ -193,7 +185,7 @@ const DocumentView: React.FC<DocumentViewProps> = ({ projectId }) => {
               </div>
             ))}
             
-            {getFilteredFiles(projectId ? unattachedFiles : mockFiles).length === 0 && (
+            {getFilteredFiles(projectId ? unattachedFiles : []).length === 0 && (
               <div className="p-3 text-center text-gray-400">
                 No documents found with the selected filter.
               </div>

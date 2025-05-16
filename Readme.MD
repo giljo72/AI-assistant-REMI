@@ -61,25 +61,28 @@ The application is optimized for the following hardware configuration:
 
 ## Current Implementation Status
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| **UI Shell & Navigation** | ✅ Completed | Layout structure with sidebar and content areas |
-| **Project Management UI** | ✅ Completed | Create, view, and manage projects |
-| **Chat Interface UI** | ✅ Completed | Message display with mock functionality |
-| **Document Management UI** | ✅ Completed | Document viewing with mock functionality |
-| **Project-Centered Containment** | ✅ Completed | Project structure and navigation flows |
-| **File Management System** | ✅ Completed | Project and global file management |
-| **User Prompts System** | ✅ Completed | Custom prompts creation and management |
-| **Context Controls UI** | ✅ Completed | Context toggle controls and settings panel |
-| **Backend Foundation** | ✅ Completed | API endpoints for all main features implemented |
-| **Database Integration** | ✅ Completed | PostgreSQL with SQLAlchemy ORM, models created |
-| **Document Processing** | ✅ Completed | File upload, chunking, and processing system |
-| **File Search & Retrieval** | ✅ Completed | Keyword and content-based search functionality |
-| **Vector Database** | ✅ Completed | pgvector integration for semantic search |
-| **NeMo Integration** | 🟡 In Progress | Mock implementation for development |
-| **TensorRT Optimization** | 🟡 Pending | Architecture defined |
-| **Chat Backend** | 🟡 Pending | API structure defined, implementation pending |
-| **Reasoning Modes** | 🟡 Pending | UI designs created, backend pending |
+| Feature | Backend Status | Frontend Status | Integration Status | Notes |
+|---------|---------------|-----------------|-------------------|-------|
+| **UI Shell & Navigation** | ✅ N/A | ✅ Completed | ✅ Completed | Layout structure with sidebar and content areas |
+| **Project Management** | ✅ Completed | ✅ Completed | 🟡 Partial | Project creation works, deletion has issues |
+| **Chat Interface** | 🟡 Partial | ✅ Completed | 🟡 Partial | Messages display but don't persist to backend |
+| **Document Management** | ✅ Completed | ✅ Completed | 🟡 Partial | Document viewing implemented, upload has issues |
+| **Project Containment** | ✅ Completed | ✅ Completed | 🟡 Partial | Architecture implemented but some flows incomplete |
+| **File Management** | ✅ Completed | ✅ Completed | 🟡 Partial | Upload and attachment functionality issues |
+| **User Prompts** | ✅ Completed | ✅ Completed | ✅ Complete | Create, activate, and manage prompts by project |
+| **Context Controls** | 🟡 Pending | ✅ Completed | 🟡 Pending | UI implemented, backend integration pending |
+| **Document Processing** | ✅ Completed | ✅ Completed | 🟡 Partial | Backend pipeline exists, frontend integration partial |
+| **Vector Database** | ✅ Completed | N/A | ✅ Completed | pgvector integrated for semantic search |
+| **Search Functionality** | ✅ Completed | ✅ Completed | 🟡 Partial | Keyword and content search API implemented |
+| **NeMo Integration** | 🟡 Mock Only | N/A | 🟡 Pending | Mock implementation for development |
+| **RAG Implementation** | 🟡 Partial | 🟡 Pending | 🟡 Pending | Vector search implemented, retrieval integration pending |
+| **Reasoning Modes** | 🟡 Pending | ✅ UI Done | 🟡 Pending | UI completed, backend implementation pending |
+
+**Legend**:
+- ✅ Completed: Feature is fully implemented and working
+- 🟡 Partial/Pending: Feature is partially implemented or planned
+- ❌ Not Started: Feature implementation not yet begun
+- N/A: Not applicable
 
 ## Key Features
 

@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Provider } from 'react-redux'; // Add this import
 import { store } from './store'; // Add this import
 import MainLayout from './components/layout/MainLayout';
@@ -10,79 +10,73 @@ import ProjectFileManager from './components/file/ProjectFileManager';
 import MainFileManager from './components/file/MainFileManager';
 import SearchFilesResults from './components/file/SearchFilesResults';
 import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
-
+import { projectService } from './services';
+import { ProjectProvider } from './context/ProjectContext';
 
 // Define the possible view types
 type View = 'project' | 'chat' | 'document' | 'projectFiles' | 'mainFiles' | 'searchResults';
 
-// Mock data for chat messages
-const mockMessages = [
-  {
-    id: '1',
-    content: 'Hello, how can I help with your project today?',
-    sender: 'assistant' as const, // Use 'as const' to narrow the type
-    timestamp: '2025-05-12 10:00 AM'
-  },
-  {
-    id: '2',
-    content: 'I need help organizing my research documents.',
-    sender: 'user' as const, // Use 'as const' to narrow the type
-    timestamp: '2025-05-12 10:01 AM'
-  },
-  {
-    id: '3',
-    content: 'I can definitely help with that. Would you like to create a new project for your research or use an existing one?',
-    sender: 'assistant' as const, // Use 'as const' to narrow the type
-    timestamp: '2025-05-12 10:02 AM'
-  }
-];
-
-// Mock project and chat data for lookups
-const mockProjects = [
-  { id: '1', name: 'Research Paper' },
-  { id: '2', name: 'Website Redesign' },
-  { id: '3', name: 'Marketing Campaign' },
-  { id: '4', name: 'Product Launch' },
-];
-
-const mockChats = [
-  { id: '1', name: 'Research Question #1', projectId: '1' },
-  { id: '2', name: 'Literature Review', projectId: '1' },
-  { id: '3', name: 'Methodology Discussion', projectId: '1' },
-  { id: '4', name: 'Navigation Design', projectId: '2' },
-  { id: '5', name: 'Color Schemes', projectId: '2' },
-  { id: '6', name: 'Social Media Strategy', projectId: '3' },
-];
+// Initial empty state for chat messages
+const initialMessages: {
+  id: string;
+  content: string;
+  sender: 'user' | 'assistant';
+  timestamp: string;
+}[] = [];
 
 function App() {
   // State for active project and view
-  const [activeProjectId, setActiveProjectId] = useState<string>('1');
+  const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('project');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [chatMessages, setChatMessages] = useState(mockMessages);
+  const [chatMessages, setChatMessages] = useState(initialMessages);
+  const [projectNames, setProjectNames] = useState<{[key: string]: string}>({});
+  const [chatNames, setChatNames] = useState<{[key: string]: string}>({});
   
   // State for file search and upload
   const [isTagAndAddModalOpen, setIsTagAndAddModalOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   
-  // Mock data for testing
-  const mockSearchResults = [
-    { id: '6', name: 'Reference Paper.pdf', type: 'PDF', size: '1.7 MB', active: true, projectId: null, addedAt: '2025-05-05', processed: true, chunks: 32, relevance: 95 },
-    { id: '7', name: 'General Notes.txt', type: 'TXT', size: '45 KB', active: true, projectId: null, addedAt: '2025-05-04', processed: true, chunks: 5, relevance: 82 },
-    { id: '8', name: 'Template.docx', type: 'DOCX', size: '230 KB', active: true, projectId: null, addedAt: '2025-05-03', processed: true, chunks: 7, relevance: 75 },
-  ];
+  // Initial empty search results
+  const initialSearchResults: any[] = [];
+
+  // Use project context to maintain reactive UI
+  const { projects } = useProjects();
+  
+  // Effect to update project names and set active project when projects change
+  useEffect(() => {
+    if (projects.length > 0) {
+      const projectsMap: {[key: string]: string} = {};
+      projects.forEach(project => {
+        projectsMap[project.id] = project.name;
+      });
+      setProjectNames(projectsMap);
+      
+      // If we have no active project but projects exist, set the first one
+      if (!activeProjectId && projects.length > 0) {
+        setActiveProjectId(projects[0].id);
+      }
+      
+      // If active project was deleted, switch to first available
+      if (activeProjectId && !projects.find(p => p.id === activeProjectId) && projects.length > 0) {
+        setActiveProjectId(projects[0].id);
+      }
+    } else {
+      // No projects exist
+      setProjectNames({});
+      setActiveProjectId('');
+    }
+  }, [projects, activeProjectId]);
 
   // Helper functions to get project and chat names by ID
   const getProjectName = (projectId: string): string => {
-    const project = mockProjects.find(p => p.id === projectId);
-    return project ? project.name : 'Unknown Project';
+    return projectNames[projectId] || 'Unknown Project';
   };
 
   const getChatName = (chatId: string | null): string => {
     if (!chatId) return 'New Chat';
-    const chat = mockChats.find(c => c.id === chatId);
-    return chat ? chat.name : 'Unknown Chat';
+    return chatNames[chatId] || 'Unknown Chat';
   };
 
   // Handle message sending
@@ -143,9 +137,9 @@ function App() {
 
   // Handle navigating to search results
   const handleShowSearchResults = () => {
-    // In a real app, we would perform the search here
-    // For now, just use mock data
-    setSearchResults(mockSearchResults);
+    // TODO: Implement real search functionality
+    // For now, just use empty results
+    setSearchResults(initialSearchResults);
     setActiveView('searchResults');
   };
 
@@ -176,6 +170,11 @@ function App() {
             projectId={activeProjectId} 
             onOpenChat={handleOpenChat}
             onOpenFiles={handleOpenProjectFiles}
+            onProjectDeleted={() => {
+              // Reset to project view
+              setActiveProjectId('');
+              setActiveView('project');
+            }}
           />
         );
       case 'chat':
@@ -229,18 +228,20 @@ function App() {
 
   return (
     <Provider store={store}>
-      <div className="App">
-        <MainLayout onProjectSelect={handleProjectSelect}>
-          {renderView()}
-        </MainLayout>
-        
-        {/* Modals */}
-        <TagAndAddFileModal 
-          isOpen={isTagAndAddModalOpen}
-          onClose={() => setIsTagAndAddModalOpen(false)}
-          onProcessFiles={handleProcessFiles}
-        />
-      </div>
+      <ProjectProvider>
+        <div className="App">
+          <MainLayout onProjectSelect={handleProjectSelect}>
+            {renderView()}
+          </MainLayout>
+          
+          {/* Modals */}
+          <TagAndAddFileModal 
+            isOpen={isTagAndAddModalOpen}
+            onClose={() => setIsTagAndAddModalOpen(false)}
+            onProcessFiles={handleProcessFiles}
+          />
+        </div>
+      </ProjectProvider>
     </Provider>
   );
 }

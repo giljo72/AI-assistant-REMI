@@ -1,20 +1,6 @@
 import React, { useState } from 'react';
 import AddProjectModal from '../modals/AddProjectModal';
-
-// Define a type for our project data
-type Project = {
-  id: string;
-  name: string;
-  chatCount: number;
-};
-
-// Mock data for projects
-const mockProjects: Project[] = [
-  { id: '1', name: 'Research Paper', chatCount: 3 },
-  { id: '2', name: 'Website Redesign', chatCount: 5 },
-  { id: '3', name: 'Marketing Campaign', chatCount: 2 },
-  { id: '4', name: 'Product Launch', chatCount: 1 },
-];
+import { useProjects } from '../../context/ProjectContext';
 
 // Props type for the sidebar
 type ProjectSidebarProps = {
@@ -23,20 +9,35 @@ type ProjectSidebarProps = {
 
 const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect }) => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
-  const [activeProjectId, setActiveProjectId] = useState<string>('1'); // Default to first project
+  const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  
+  // Use the shared project context
+  const { projects, loading, error, addProject } = useProjects();
+  
+  // Effect to set active project when projects change
+  React.useEffect(() => {
+    // Set active project ID to first project if we have projects and no active project
+    if (projects.length > 0 && !activeProjectId) {
+      setActiveProjectId(projects[0].id);
+      onProjectSelect(projects[0].id);
+    } else if (projects.length === 0) {
+      // If no projects, clear active project
+      setActiveProjectId('');
+    }
+  }, [projects, activeProjectId, onProjectSelect]);
 
-  const handleAddProject = (name: string, prompt: string) => {
-    // In a real app, this would be an API call to create a project
-    const newProject: Project = {
-      id: (projects.length + 1).toString(),
-      name,
-      chatCount: 0,
-    };
-    setProjects([...projects, newProject]);
-    setActiveProjectId(newProject.id);
-    onProjectSelect(newProject.id); // Notify parent component
+  const handleAddProject = async (name: string, prompt: string) => {
+    try {
+      // Use the addProject method from context
+      const newProject = await addProject(name, prompt || undefined);
+      
+      // Set this as the active project
+      setActiveProjectId(newProject.id);
+      onProjectSelect(newProject.id);
+    } catch (err) {
+      console.error("Error creating project:", err);
+    }
   };
 
   const handleProjectSelect = (projectId: string) => {
@@ -86,15 +87,35 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect }) => {
           
           {isProjectsExpanded && (
             <div className="mt-1 space-y-1">
-              {projects.map((project) => (
-                <div 
-                  key={project.id} 
-                  onClick={() => handleProjectSelect(project.id)}
-                  className={`p-3 rounded cursor-pointer ${activeProjectId === project.id ? 'bg-navy text-gold font-bold' : 'hover:bg-navy-lighter'}`}
-                >
-                  {project.name}
+              {loading ? (
+                <div className="p-3 text-center text-gray-400">
+                  <p>Loading projects...</p>
                 </div>
-              ))}
+              ) : error ? (
+                <div className="p-3 text-center text-red-400">
+                  <p>{error}</p>
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="p-3 text-center text-gray-400">
+                  <p>No projects found</p>
+                  <button
+                    onClick={() => setIsAddProjectModalOpen(true)}
+                    className="mt-2 px-3 py-1 bg-navy hover:bg-navy-lighter text-white rounded text-sm"
+                  >
+                    Create your first project
+                  </button>
+                </div>
+              ) : (
+                projects.map((project) => (
+                  <div 
+                    key={project.id} 
+                    onClick={() => handleProjectSelect(project.id)}
+                    className={`p-3 rounded cursor-pointer ${activeProjectId === project.id ? 'bg-navy text-gold font-bold' : 'hover:bg-navy-lighter'}`}
+                  >
+                    {project.name}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

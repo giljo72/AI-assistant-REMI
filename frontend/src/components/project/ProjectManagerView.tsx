@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AddChatModal from '../modals/AddChatModal';
+import DeleteProjectModal from '../modals/DeleteProjectModal';
 import { projectService, userPromptService } from '../../services';
 import { Project, UserPrompt } from '../../services';
+import { useProjects } from '../../context/ProjectContext';
 
 type Tab = 'overview' | 'chats' | 'files' | 'settings';
 
@@ -23,37 +25,25 @@ type File = {
   addedAt: string;
 };
 
-// Mock data for chats and files until we implement their APIs
-const mockChats: Chat[] = [
-  { id: '1', name: 'Research Question #1', projectId: '1', createdAt: '2025-05-10' },
-  { id: '2', name: 'Literature Review', projectId: '1', createdAt: '2025-05-09' },
-  { id: '3', name: 'Methodology Discussion', projectId: '1', createdAt: '2025-05-08' },
-  { id: '4', name: 'Navigation Design', projectId: '2', createdAt: '2025-05-07' },
-  { id: '5', name: 'Color Schemes', projectId: '2', createdAt: '2025-05-06' },
-  { id: '6', name: 'Social Media Strategy', projectId: '3', createdAt: '2025-05-05' },
-];
-
-const mockFiles: File[] = [
-  { id: '1', name: 'Research Paper.pdf', type: 'PDF', size: '1.2 MB', active: true, projectId: '1', addedAt: '2025-05-10' },
-  { id: '2', name: 'Literature Notes.docx', type: 'DOCX', size: '538 KB', active: true, projectId: '1', addedAt: '2025-05-09' },
-  { id: '3', name: 'Data Analysis.xlsx', type: 'XLSX', size: '724 KB', active: false, projectId: '1', addedAt: '2025-05-08' },
-  { id: '4', name: 'Website Mockup.png', type: 'PNG', size: '2.4 MB', active: true, projectId: '2', addedAt: '2025-05-07' },
-  { id: '5', name: 'Campaign Brief.pdf', type: 'PDF', size: '890 KB', active: true, projectId: '3', addedAt: '2025-05-06' },
-];
+// Empty initial states for chats and files (will be replaced with API calls later)
+const initialChats: Chat[] = [];
+const initialFiles: File[] = [];
 
 type ProjectManagerViewProps = {
   projectId: string;
   onOpenChat?: (chatId: string) => void;
   onOpenFiles?: () => void;
+  onProjectDeleted?: () => void; // Callback for project deletion
 };
 
-const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOpenChat, onOpenFiles }) => {
+const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOpenChat, onOpenFiles, onProjectDeleted }) => {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [project, setProject] = useState<Project | null>(null);
   const [projectChats, setProjectChats] = useState<Chat[]>([]);
   const [projectFiles, setProjectFiles] = useState<File[]>([]);
   const [projectPrompts, setProjectPrompts] = useState<UserPrompt[]>([]);
   const [isAddChatModalOpen, setIsAddChatModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -76,12 +66,10 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
         const prompts = await userPromptService.getUserPromptsForProject(projectId);
         setProjectPrompts(prompts);
         
-        // Use mock data for chats and files for now
-        const chats = mockChats.filter(chat => chat.projectId === projectId);
-        setProjectChats(chats);
-        
-        const files = mockFiles.filter(file => file.projectId === projectId);
-        setProjectFiles(files);
+        // TODO: Replace with actual API calls to fetch chats and files
+        // For now, use empty arrays
+        setProjectChats([]);
+        setProjectFiles([]);
       } catch (err) {
         console.error("Error fetching project data:", err);
         setError("Failed to load project. Please try again.");
@@ -98,8 +86,11 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
   const handleAddChat = (name: string) => {
     if (!project) return;
     
+    // Generate a unique ID (should be replaced with server-generated ID in the future)
+    const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2);
+    
     const newChat: Chat = {
-      id: (projectChats.length + 1).toString(),
+      id: uniqueId,
       name,
       projectId: project.id,
       createdAt: new Date().toISOString().split('T')[0],
@@ -108,7 +99,8 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
     // Update local state
     setProjectChats([...projectChats, newChat]);
     
-    // TODO: In the future, implement API call to create a chat
+    // TODO: Implement API call to create a chat
+    console.log('Creating chat:', newChat);
   };
 
   // Handler for opening a chat
@@ -152,6 +144,29 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
       setIsSaving(false);
     }
   };
+  
+  // Use project context
+  const { deleteProject: contextDeleteProject } = useProjects();
+  
+  // Handler for deleting the project
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    
+    try {
+      // Use the context method to delete and update state everywhere
+      await contextDeleteProject(project.id);
+      
+      // Call the onProjectDeleted callback if provided
+      if (onProjectDeleted) {
+        onProjectDeleted();
+      }
+    } catch (err) {
+      console.error("Error deleting project:", err);
+      setError("Failed to delete project. Please try again.");
+      // Close the delete modal
+      setIsDeleteModalOpen(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-4 text-center">Loading project...</div>;
@@ -174,10 +189,16 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-gold">{project.name}</h2>
           <div className="flex space-x-2">
-            <button className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm">
+            <button 
+              className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm"
+              onClick={() => setActiveTab('settings')}
+            >
               Modify
             </button>
-            <button className="px-3 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded text-sm">
+            <button 
+              className="px-3 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded text-sm"
+              onClick={() => setIsDeleteModalOpen(true)}
+            >
               Delete
             </button>
           </div>
@@ -489,6 +510,14 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
         isOpen={isAddChatModalOpen}
         onClose={() => setIsAddChatModalOpen(false)}
         onAddChat={handleAddChat}
+        projectName={project.name}
+      />
+
+      {/* Delete Project Modal */}
+      <DeleteProjectModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onDelete={handleDeleteProject}
         projectName={project.name}
       />
     </div>

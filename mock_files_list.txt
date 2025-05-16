@@ -1,0 +1,5 @@
+Files with mock data (4):
+frontend\src\App.tsx
+frontend\src\components\document\DocumentView.tsx
+frontend\src\components\project\ProjectManagerView.tsx
+frontend\src\components\sidebar\ProjectSidebar.tsx
