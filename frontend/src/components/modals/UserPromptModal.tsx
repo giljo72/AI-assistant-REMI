@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
   IconButton,
-  // Paper  rem'd out until we need it
+  CircularProgress
 } from '@mui/material';
 import { 
   Close as CloseIcon,
@@ -24,6 +24,7 @@ interface UserPromptModalProps {
   initialPrompt?: string;
   editMode?: boolean;
   onDelete?: () => void;
+  isSaving?: boolean;
 }
 
 const UserPromptModal: React.FC<UserPromptModalProps> = ({
@@ -33,7 +34,8 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
   initialName = '',
   initialPrompt = '',
   editMode = false,
-  onDelete
+  onDelete,
+  isSaving = false
 }) => {
   const [name, setName] = useState(initialName);
   const [prompt, setPrompt] = useState(initialPrompt);
@@ -54,23 +56,21 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
     }
     
     onSave(name, prompt);
-    onClose();
   };
 
   const handleDelete = () => {
     if (onDelete) {
       onDelete();
-      onClose();
     }
   };
 
   const handleCancel = () => {
-    // Show confirmation if there are changes
-    if (name !== initialName || prompt !== initialPrompt) {
+    // Only show confirmation if there are changes and we're not currently saving
+    if (!isSaving && (name !== initialName || prompt !== initialPrompt)) {
       if (window.confirm('Are you sure you want to discard your changes?')) {
         onClose();
       }
-    } else {
+    } else if (!isSaving) {
       onClose();
     }
   };
@@ -104,6 +104,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
           color="inherit" 
           onClick={handleCancel} 
           aria-label="close"
+          disabled={isSaving}
           sx={{ color: '#ffffff' }}
         >
           <CloseIcon />
@@ -129,13 +130,14 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
             placeholder="Enter prompt name"
             value={name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setName(e.target.value);
-                if (e.target.value.trim()) {
-                    setNameError('');
-                 }
+              setName(e.target.value);
+              if (e.target.value.trim()) {
+                setNameError('');
+              }
             }}
             error={!!nameError}
             helperText={nameError}
+            disabled={isSaving}
             sx={{
               '& .MuiOutlinedInput-root': {
                 '& fieldset': {
@@ -175,6 +177,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
             placeholder="Enter your prompt here..."
             value={prompt}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
+            disabled={isSaving}
             sx={{
               '& .MuiOutlinedInput-root': {
                 '& fieldset': {
@@ -209,6 +212,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
               color="error"
               startIcon={<DeleteIcon />}
               onClick={handleDelete}
+              disabled={isSaving}
               sx={{
                 borderColor: '#f44336',
                 color: '#f44336',
@@ -225,6 +229,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
         <Box>
           <Button 
             onClick={handleCancel}
+            disabled={isSaving}
             sx={{ 
               color: '#ffffff',
               marginRight: 2,
@@ -238,6 +243,8 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
           <Button 
             onClick={handleSave}
             variant="contained"
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{ 
               backgroundColor: '#d4af37', // Gold button
               color: '#000000',
@@ -246,7 +253,10 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
               }
             }}
           >
-            {editMode ? 'Update' : 'Add'}
+            {isSaving 
+              ? (editMode ? 'Updating...' : 'Adding...') 
+              : (editMode ? 'Update' : 'Add')
+            }
           </Button>
         </Box>
       </DialogActions>

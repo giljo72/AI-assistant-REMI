@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { fileService, projectService } from '../../services';
+import { File, FileFilterOptions, FileSortOptions, ProcessingStats, FileSearchResult } from '../../services/fileService';
 
-// Define types for our data
-type File = {
+// Local interface for mapped files from API response
+interface LocalFile {
   id: string;
   name: string;
   type: string;
@@ -13,34 +15,14 @@ type File = {
   processingFailed?: boolean; // If processing failed
   chunks?: number; // Number of chunks if processed
   description?: string;
-};
+  relevance?: number; // For search results
+}
 
 // Define types for projects
-type Project = {
+interface Project {
   id: string;
   name: string;
-};
-
-// Mock project data
-const mockProjects: Project[] = [
-  { id: '1', name: 'Research Paper' },
-  { id: '2', name: 'Website Redesign' },
-  { id: '3', name: 'Marketing Campaign' },
-  { id: '4', name: 'Product Launch' },
-];
-
-// Mock data for documents
-const mockFiles: File[] = [
-  { id: '1', name: 'Research Paper.pdf', type: 'PDF', size: '1.2 MB', active: true, projectId: '1', addedAt: '2025-05-10', processed: true, chunks: 24 },
-  { id: '2', name: 'Literature Notes.docx', type: 'DOCX', size: '538 KB', active: true, projectId: '1', addedAt: '2025-05-09', processed: true, chunks: 12 },
-  { id: '3', name: 'Data Analysis.xlsx', type: 'XLSX', size: '724 KB', active: false, projectId: '1', addedAt: '2025-05-08', processed: true, chunks: 8 },
-  { id: '4', name: 'Website Mockup.png', type: 'PNG', size: '2.4 MB', active: true, projectId: '2', addedAt: '2025-05-07', processed: true, chunks: 1 },
-  { id: '5', name: 'Campaign Brief.pdf', type: 'PDF', size: '890 KB', active: true, projectId: '3', addedAt: '2025-05-06', processed: true, chunks: 16 },
-  { id: '6', name: 'Reference Paper.pdf', type: 'PDF', size: '1.7 MB', active: true, projectId: null, addedAt: '2025-05-05', processed: true, chunks: 32 },
-  { id: '7', name: 'General Notes.txt', type: 'TXT', size: '45 KB', active: true, projectId: null, addedAt: '2025-05-04', processed: true, chunks: 5 },
-  { id: '8', name: 'Template.docx', type: 'DOCX', size: '230 KB', active: true, projectId: null, addedAt: '2025-05-03', processed: true, chunks: 7 },
-  { id: '9', name: 'Failed Document.pdf', type: 'PDF', size: '3.8 MB', active: false, projectId: null, addedAt: '2025-05-01', processed: false, processingFailed: true },
-];
+}
 
 // Get file type badge color
 const getFileTypeColor = (type: string): string => {
@@ -64,14 +46,37 @@ const getFileTypeColor = (type: string): string => {
   }
 };
 
-// This function returns the projects a file is linked to
-const getLinkedProjects = (fileId: string): Project[] => {
-  const projectIds = mockFiles
-    .filter(file => file.id === fileId && file.projectId !== null)
-    .map(file => file.projectId as string);
+// Helper to format bytes to human-readable size
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let size = bytes / 1024;
+  let unitIndex = 0;
   
-  return mockProjects.filter(project => projectIds.includes(project.id));
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  
+  return size.toFixed(1) + ' ' + units[unitIndex];
 };
+
+// Map API File to LocalFile format
+const mapApiFileToLocal = (apiFile: File): LocalFile => ({
+  id: apiFile.id,
+  name: apiFile.name,
+  type: apiFile.type.toUpperCase(),
+  size: formatFileSize(apiFile.size),
+  active: apiFile.active,
+  projectId: apiFile.project_id,
+  addedAt: apiFile.created_at.split('T')[0], // Format date
+  processed: apiFile.processed,
+  processingFailed: apiFile.processing_failed,
+  chunks: apiFile.chunk_count,
+  description: apiFile.description,
+  // Add relevance if this is a search result
+  relevance: (apiFile as any).relevance
+});
 
 type MainFileManagerProps = {
   onReturn: () => void; // Function to return to previous view
@@ -84,30 +89,84 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
   onSelectProject,
   projectId 
 }) => {
-  const [files, setFiles] = useState<File[]>([]);
+  // Files state
+  const [files, setFiles] = useState<LocalFile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Project state
+  const [projects, setProjects] = useState<Project[]>([]);
+  
+  // UI state
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<'name' | 'date' | 'size' | 'status' | 'processed'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showAddTagModal, setShowAddTagModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [searchResults, setSearchResults] = useState<Array<File & { relevance?: number }>>([]); 
+  const [searchResults, setSearchResults] = useState<LocalFile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [gpuUsage, setGpuUsage] = useState(0); // Mock GPU usage for processing indicator
+  
+  // Processing state
+  const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Effect to load all files
+  // Effect to load all files and processing stats
   useEffect(() => {
-    setFiles(mockFiles);
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Set up API filters
+        const filterOptions: FileFilterOptions = {};
+        if (projectId !== undefined) {
+          filterOptions.project_id = projectId;
+        }
+        
+        // Set up API sort
+        const sortOptions: FileSortOptions = {
+          field: sortField === 'date' ? 'created_at' : 
+                 sortField === 'status' ? 'project_id' : sortField,
+          direction: sortDirection
+        };
+        
+        // Fetch files
+        const apiFiles = await fileService.getAllFiles(filterOptions, sortOptions);
+        const localFiles = apiFiles.map(mapApiFileToLocal);
+        setFiles(localFiles);
+        
+        // Fetch processing stats
+        const stats = await fileService.getProcessingStatus();
+        setProcessingStats(stats);
+        
+        // Fetch projects for linking info
+        const projectsData = await projectService.getAllProjects();
+        setProjects(projectsData);
+      } catch (err) {
+        console.error('Error fetching files:', err);
+        setError('Failed to load files. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Simulate GPU usage fluctuation for visual effect
-    const interval = setInterval(() => {
-      setGpuUsage(Math.floor(Math.random() * 80) + 10); // Random number between 10-90%
-    }, 2000);
+    fetchData();
     
-    return () => clearInterval(interval);
-  }, []);
+    // Set up polling for processing stats
+    const statsInterval = setInterval(async () => {
+      try {
+        const stats = await fileService.getProcessingStatus();
+        setProcessingStats(stats);
+      } catch (err) {
+        console.error('Error fetching processing stats:', err);
+      }
+    }, 5000); // Poll every 5 seconds
+    
+    return () => clearInterval(statsInterval);
+  }, [projectId, sortField, sortDirection]);
 
   // Handle search
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchTerm.trim()) {
       setIsSearching(false);
       setSearchResults([]);
@@ -115,20 +174,37 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
     }
     
     setIsSearching(true);
+    setIsLoading(true);
     
-    // Simulate search with relevance scores
-    const results = files
-      .filter(file => 
-        file.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-      .map(file => ({
-        ...file,
-        relevance: Math.floor(Math.random() * 50) + 50 // Random relevance score between 50-100%
-      }))
-      .sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
-    
-    setSearchResults(results);
+    try {
+      // Build search request
+      const searchRequest = {
+        query: searchTerm,
+        project_id: projectId,
+        include_content: true
+      };
+      
+      // Call API for search
+      const results = await fileService.searchFileContents(searchRequest);
+      setSearchResults(results.map(mapApiFileToLocal));
+    } catch (err) {
+      console.error('Error searching files:', err);
+      setError('Search failed. Please try again.');
+      // Fall back to local search if API fails
+      const results = files
+        .filter(file => 
+          file.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+        .map(file => ({
+          ...file,
+          relevance: 70 // Default relevance for local search
+        }));
+      
+      setSearchResults(results);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle file selection for bulk operations
@@ -141,59 +217,84 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
   };
 
   // Handle attaching selected files to current project
-  const handleAttachToProject = () => {
+  const handleAttachToProject = async () => {
     if (!projectId || selectedFiles.length === 0) return;
     
-    // In a real app, this would make an API call
-    console.log(`Attaching files ${selectedFiles.join(', ')} to project ${projectId}`);
-    
-    // Update the local state to simulate the change
-    setFiles(prev => 
-      prev.map(file => 
-        selectedFiles.includes(file.id) 
-          ? { ...file, projectId } 
-          : file
-      )
-    );
-    
-    // Clear selection
-    setSelectedFiles([]);
-  };
-
-  // Handle retry processing for failed files
-  const handleRetryProcessing = (fileId: string) => {
-    // In a real app, this would trigger backend processing
-    console.log(`Retrying processing for file ${fileId}`);
-    
-    // Update local state to simulate starting the process
-    setFiles(prev => 
-      prev.map(file => 
-        file.id === fileId 
-          ? { ...file, processed: false, processingFailed: false } 
-          : file
-      )
-    );
-    
-    // Simulate successful processing after delay
-    setTimeout(() => {
+    try {
+      // Call API to link files
+      await fileService.linkFilesToProject({
+        file_ids: selectedFiles,
+        project_id: projectId
+      });
+      
+      // Update local state
       setFiles(prev => 
         prev.map(file => 
-          file.id === fileId 
-            ? { ...file, processed: true, processingFailed: false, chunks: Math.floor(Math.random() * 30) + 1 } 
+          selectedFiles.includes(file.id) 
+            ? { ...file, projectId } 
             : file
         )
       );
-    }, 2000);
+      
+      // Clear selection
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error('Error attaching files to project:', err);
+      setError('Failed to attach files to project. Please try again.');
+    }
+  };
+
+  // Handle retry processing for failed files
+  const handleRetryProcessing = async (fileId: string) => {
+    try {
+      // Update local state to show processing starting
+      setFiles(prev => 
+        prev.map(file => 
+          file.id === fileId 
+            ? { ...file, processed: false, processingFailed: false } 
+            : file
+        )
+      );
+      
+      // Call API to retry processing
+      const updatedFile = await fileService.retryProcessing(fileId);
+      
+      // Update file in local state
+      setFiles(prev => 
+        prev.map(file => 
+          file.id === fileId 
+            ? mapApiFileToLocal(updatedFile)
+            : file
+        )
+      );
+    } catch (err) {
+      console.error('Error retrying file processing:', err);
+      setError('Failed to retry processing. Please try again.');
+      
+      // Reset file to failed state
+      setFiles(prev => 
+        prev.map(file => 
+          file.id === fileId 
+            ? { ...file, processed: false, processingFailed: true } 
+            : file
+        )
+      );
+    }
   };
 
   // Handle file deletion
-  const handleDeleteFile = (fileId: string) => {
-    // In a real app, this would make an API call
-    console.log(`Deleting file ${fileId}`);
-    
-    // Update local state
-    setFiles(prev => prev.filter(file => file.id !== fileId));
-    setSelectedFiles(prev => prev.filter(id => id !== fileId));
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      // Call API to delete file
+      await fileService.deleteFile(fileId);
+      
+      // Update local state
+      setFiles(prev => prev.filter(file => file.id !== fileId));
+      setSelectedFiles(prev => prev.filter(id => id !== fileId));
+    } catch (err) {
+      console.error('Error deleting file:', err);
+      setError('Failed to delete file. Please try again.');
+    }
   };
 
   // Sort files based on current sort field and direction
@@ -278,24 +379,44 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
           <button 
             className="px-4 py-2 bg-gold text-navy font-medium rounded hover:bg-gold/90"
             onClick={() => setShowAddTagModal(true)}
+            disabled={isUploading}
           >
-            Browse Files
+            {isUploading ? 'Uploading...' : 'Browse Files'}
           </button>
         </div>
       </div>
       
-      {/* GPU Usage Indicator */}
-      {gpuUsage > 0 && (
+      {/* Processing Stats Indicator */}
+      {processingStats && (
         <div className="bg-navy-light p-4 mb-4 rounded-lg">
-          <div className="flex items-center">
-            <div className="mr-3 text-gray-400">GPU Usage:</div>
-            <div className="flex-1 bg-navy rounded-full h-2.5">
-              <div 
-                className="bg-gold h-2.5 rounded-full" 
-                style={{ width: `${gpuUsage}%` }}
-              ></div>
+          <div className="flex flex-col space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Processing Status:</span>
+              <span className="text-gold">
+                {processingStats.processing_files} processing, 
+                {processingStats.processed_files} complete, 
+                {processingStats.failed_files} failed
+              </span>
             </div>
-            <div className="ml-3 text-gold">{gpuUsage}%</div>
+            
+            {processingStats.gpu_usage !== undefined && (
+              <div className="flex items-center">
+                <div className="mr-3 text-gray-400">GPU Usage:</div>
+                <div className="flex-1 bg-navy rounded-full h-2.5">
+                  <div 
+                    className="bg-gold h-2.5 rounded-full" 
+                    style={{ width: `${processingStats.gpu_usage}%` }}
+                  ></div>
+                </div>
+                <div className="ml-3 text-gold">{processingStats.gpu_usage}%</div>
+              </div>
+            )}
+            
+            {processingStats.eta !== undefined && processingStats.eta > 0 && (
+              <div className="text-sm text-gray-400">
+                Estimated time remaining: {Math.ceil(processingStats.eta / 60)} minutes
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -383,12 +504,29 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
           )}
         </h3>
         
-        {getSortedFiles().length > 0 ? (
+        {isLoading ? (
+          <div className="p-6 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gold border-r-transparent align-[-0.125em]" role="status">
+              <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+            </div>
+            <div className="mt-2 text-gray-400">Loading files...</div>
+          </div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-400">
+            <div className="text-lg mb-2">⚠️</div>
+            <div>{error}</div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-navy hover:bg-navy-lighter rounded text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        ) : getSortedFiles().length > 0 ? (
           <div className="space-y-2">
             {getSortedFiles().map(file => {
               const isLinked = file.projectId !== null;
-              const linkedProjects = isLinked ? getLinkedProjects(file.id) : [];
-              const searchRelevance = 'relevance' in file ? file.relevance : undefined;
+              const linkedProject = isLinked && projects.find(p => p.id === file.projectId);
               
               return (
                 <div key={file.id} className="p-3 bg-navy hover:bg-navy-lighter rounded-lg flex items-center justify-between">
@@ -413,9 +551,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                       <h4 className="font-medium flex items-center">
                         {file.name}
                         {/* Search relevance if available */}
-                        {searchRelevance !== undefined && (
+                        {file.relevance !== undefined && (
                           <span className="ml-2 text-xs px-1.5 py-0.5 bg-gold/20 text-gold rounded">
-                            {searchRelevance}%
+                            {file.relevance}%
                           </span>
                         )}
                       </h4>
@@ -454,30 +592,16 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                           {isLinked ? "Linked" : "Unlinked"}
                         </span>
                         
-                        {/* Linked projects */}
-                        {isLinked && linkedProjects.length > 0 && (
+                        {/* Linked project */}
+                        {isLinked && linkedProject && (
                           <>
                             <span>•</span>
-                            <div className="relative inline-block">
-                              <button className="text-blue-400 hover:text-blue-300">
-                                <span className="bg-blue-400 text-navy rounded-full w-5 h-5 inline-flex items-center justify-center">!</span>
-                              </button>
-                              <div className="hidden group-hover:block absolute z-10 w-48 bg-navy-lighter p-2 rounded shadow-lg text-xs">
-                                <p className="font-bold mb-1">Linked Projects:</p>
-                                <ul>
-                                  {linkedProjects.map(project => (
-                                    <li key={project.id} className="mb-1">
-                                      <button 
-                                        className="text-blue-400 hover:underline"
-                                        onClick={() => onSelectProject && onSelectProject(project.id)}
-                                      >
-                                        {project.name}
-                                      </button>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
+                            <button 
+                              className="text-blue-400 hover:underline"
+                              onClick={() => onSelectProject && onSelectProject(linkedProject.id)}
+                            >
+                              {linkedProject.name}
+                            </button>
                           </>
                         )}
                       </div>
@@ -496,10 +620,31 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                       </button>
                     )}
                     
-                    <button className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded">
+                    <button 
+                      onClick={() => window.open(`/api/files/${file.id}/preview`, '_blank')}
+                      className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded"
+                    >
                       View
                     </button>
-                    <button className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded">
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const blob = await fileService.downloadFile(file.id);
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = file.name;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          a.remove();
+                        } catch (err) {
+                          console.error('Error downloading file:', err);
+                          setError('Failed to download file. Please try again.');
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded"
+                    >
                       Download
                     </button>
                     <button 
@@ -520,15 +665,58 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
         )}
       </div>
       
-      {/* Mock Tag and Add File Modal - We would implement this fully in a real app */}
+      {/* File Upload Modal with tagging */}
       {showAddTagModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-navy-light rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gold mb-4">Tag and Add Files</h3>
-            <p className="text-gray-400 mb-4">
-              This is a placeholder for the Tag and Add File modal. In a real implementation, 
-              this would allow adding file descriptions and initiating processing.
-            </p>
+            <h3 className="text-lg font-medium text-gold mb-4">Upload and Tag Files</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-1">Files</label>
+              <input 
+                type="file" 
+                multiple
+                className="w-full bg-navy p-2 rounded text-gray-300"
+                onChange={(e) => {
+                  // In a real implementation, we'd capture these files for upload
+                  console.log('Selected files:', e.target.files);
+                }}
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-1">Description</label>
+              <textarea 
+                className="w-full bg-navy p-2 rounded text-gray-300 h-20"
+                placeholder="Add a description for these files..."
+              />
+            </div>
+            
+            {projectId ? (
+              <div className="mb-4 px-3 py-2 bg-navy rounded">
+                <div className="text-sm text-gray-400">Files will be linked to current project</div>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-1">Link to Project (Optional)</label>
+                <select className="w-full bg-navy p-2 rounded text-gray-300">
+                  <option value="">No Project (Keep Unlinked)</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>{project.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-1">Tags (Optional)</label>
+              <input 
+                type="text" 
+                className="w-full bg-navy p-2 rounded text-gray-300"
+                placeholder="Add tags separated by commas..."
+              />
+            </div>
+            
             <div className="flex justify-end">
               <button 
                 onClick={() => setShowAddTagModal(false)}
@@ -537,10 +725,21 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                 Cancel
               </button>
               <button 
-                onClick={() => setShowAddTagModal(false)}
+                onClick={async () => {
+                  // In a real implementation, this would actually upload the files
+                  setShowAddTagModal(false);
+                  setIsUploading(true);
+                  
+                  // Simulate upload delay
+                  setTimeout(() => {
+                    setIsUploading(false);
+                    // Would refresh the file list here after upload
+                  }, 1500);
+                }}
                 className="px-3 py-1 bg-gold text-navy font-medium rounded hover:bg-gold/90"
+                disabled={isUploading}
               >
-                Process Files
+                {isUploading ? 'Uploading...' : 'Upload & Process Files'}
               </button>
             </div>
           </div>

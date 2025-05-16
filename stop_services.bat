@@ -2,21 +2,30 @@
 echo Stopping AI Assistant services...
 echo.
 
-echo Stopping frontend servers...
-taskkill /f /im node.exe
+echo Stopping frontend service...
+taskkill /FI "WINDOWTITLE eq AI Assistant Frontend*" /F
+if %ERRORLEVEL% EQU 0 (
+    echo Frontend service stopped.
+) else (
+    echo No running frontend service found.
+)
 
-echo Stopping backend servers...
-taskkill /f /im uvicorn.exe
-taskkill /f /im python.exe
+echo Stopping backend service...
+taskkill /FI "WINDOWTITLE eq AI Assistant Backend*" /F
+if %ERRORLEVEL% EQU 0 (
+    echo Backend service stopped.
+) else (
+    echo No running backend service found.
+)
 
-echo Stopping Ollama...
-taskkill /f /im ollama.exe
-
-echo Stopping PostgreSQL service...
-net stop postgresql-x64-17
+rem We don't want to kill all Node.js or Python processes, as they might be unrelated
+rem We also don't want to stop PostgreSQL automatically as other apps might be using it
 
 echo.
-echo All services stopped.
+echo AI Assistant services have been stopped.
+echo.
+echo Note: PostgreSQL service was not stopped as other applications might be using it.
+echo If you want to stop PostgreSQL, run: net stop postgresql-x64-17
 echo.
 echo Press any key to continue...
 pause > nul

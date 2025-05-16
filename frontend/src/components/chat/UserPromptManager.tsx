@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -11,7 +11,8 @@ import {
   Checkbox,
   Divider,
   Button,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -19,32 +20,47 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 import UserPromptModal from '../modals/UserPromptModal';
-
-// Define the user prompt interface
-export interface UserPrompt {
-  id: string;
-  name: string;
-  content: string;
-  active: boolean;
-}
+import { userPromptService, UserPrompt } from '../../services';
 
 interface UserPromptManagerProps {
-  prompts: UserPrompt[];
-  onAddPrompt: (prompt: Omit<UserPrompt, 'id'>) => void;
-  onUpdatePrompt: (prompt: UserPrompt) => void;
-  onDeletePrompt: (id: string) => void;
-  onActivatePrompt: (id: string, active: boolean) => void;
+  projectId?: string; // Optional project ID for project-specific prompts
+  onError?: (message: string) => void;
 }
 
 const UserPromptManager: React.FC<UserPromptManagerProps> = ({
-  prompts,
-  onAddPrompt,
-  onUpdatePrompt,
-  onDeletePrompt,
-  onActivatePrompt
+  projectId,
+  onError
 }) => {
+  const [prompts, setPrompts] = useState<UserPrompt[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<UserPrompt | null>(null);
+  const [savingPrompt, setSavingPrompt] = useState(false);
+
+  // Fetch prompts on component mount and when projectId changes
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setLoading(true);
+      try {
+        let fetchedPrompts;
+        if (projectId) {
+          fetchedPrompts = await userPromptService.getUserPromptsForProject(projectId);
+        } else {
+          fetchedPrompts = await userPromptService.getAllUserPrompts();
+        }
+        setPrompts(fetchedPrompts);
+      } catch (err) {
+        console.error("Error fetching user prompts:", err);
+        if (onError) {
+          onError("Failed to load user prompts");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrompts();
+  }, [projectId, onError]);
 
   const handleOpenAddModal = () => {
     setEditingPrompt(null);
@@ -61,40 +77,95 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
     setEditingPrompt(null);
   };
 
-  const handleSavePrompt = (name: string, content: string) => {
-    if (editingPrompt) {
-      // Update existing prompt
-      onUpdatePrompt({
-        ...editingPrompt,
-        name,
-        content
-      });
-    } else {
-      // Add new prompt
-      onAddPrompt({
-        name,
-        content,
-        active: false
-      });
+  const handleSavePrompt = async (name: string, content: string) => {
+    setSavingPrompt(true);
+    try {
+      if (editingPrompt) {
+        // Update existing prompt
+        const updatedPrompt = await userPromptService.updateUserPrompt(editingPrompt.id, {
+          name,
+          content,
+          project_id: projectId
+        });
+        
+        // Update local state
+        setPrompts(prevPrompts => 
+          prevPrompts.map(p => p.id === updatedPrompt.id ? updatedPrompt : p)
+        );
+      } else {
+        // Add new prompt
+        const newPrompt = await userPromptService.createUserPrompt({
+          name,
+          content,
+          project_id: projectId
+        });
+        
+        // Update local state
+        setPrompts(prevPrompts => [...prevPrompts, newPrompt]);
+      }
+      
+      // Close modal
+      handleCloseModal();
+    } catch (err) {
+      console.error("Error saving user prompt:", err);
+      if (onError) {
+        onError("Failed to save user prompt");
+      }
+    } finally {
+      setSavingPrompt(false);
     }
   };
 
-  const handleDeletePrompt = () => {
-    if (editingPrompt) {
-      onDeletePrompt(editingPrompt.id);
+  const handleDeletePrompt = async () => {
+    if (!editingPrompt) return;
+    
+    try {
+      await userPromptService.deleteUserPrompt(editingPrompt.id);
+      
+      // Update local state
+      setPrompts(prevPrompts => prevPrompts.filter(p => p.id !== editingPrompt.id));
+      
+      // Close modal
+      handleCloseModal();
+    } catch (err) {
+      console.error("Error deleting user prompt:", err);
+      if (onError) {
+        onError("Failed to delete user prompt");
+      }
     }
   };
 
-  const handleToggleActive = (prompt: UserPrompt) => {
-    // If activating this prompt, deactivate all others
-    if (!prompt.active) {
-      prompts.forEach(p => {
-        if (p.id !== prompt.id && p.active) {
-          onActivatePrompt(p.id, false);
-        }
-      });
+  const handleToggleActive = async (prompt: UserPrompt) => {
+    try {
+      if (!prompt.is_active) {
+        // Activate this prompt
+        await userPromptService.activateUserPrompt(prompt.id);
+        
+        // Update local state - activate this prompt and deactivate all others
+        setPrompts(prevPrompts => 
+          prevPrompts.map(p => ({
+            ...p,
+            is_active: p.id === prompt.id
+          }))
+        );
+      } else {
+        // Deactivate this prompt (note: backend might not support this)
+        // We'll need to handle this differently in a real implementation
+        const updatedPrompt = await userPromptService.updateUserPrompt(prompt.id, {
+          is_active: false
+        });
+        
+        // Update local state
+        setPrompts(prevPrompts => 
+          prevPrompts.map(p => p.id === updatedPrompt.id ? updatedPrompt : p)
+        );
+      }
+    } catch (err) {
+      console.error("Error toggling user prompt active state:", err);
+      if (onError) {
+        onError("Failed to update user prompt");
+      }
     }
-    onActivatePrompt(prompt.id, !prompt.active);
   };
 
   return (
@@ -135,93 +206,100 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
           </Button>
         </Box>
 
-        <List sx={{ maxHeight: '300px', overflow: 'auto' }}>
-          {prompts.length === 0 ? (
-            <ListItem>
-              <ListItemText 
-                primary="No prompts created yet" 
-                sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-              />
-            </ListItem>
-          ) : (
-            prompts.map((prompt, index) => (
-              <React.Fragment key={prompt.id}>
-                {index > 0 && <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />}
-                <ListItem
-                  secondaryAction={
-                    <Box>
-                      <Tooltip title="Edit Prompt">
-                        <IconButton 
-                          edge="end" 
-                          aria-label="edit"
-                          onClick={() => handleOpenEditModal(prompt)}
-                          sx={{ color: '#d4af37' }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete Prompt">
-                        <IconButton 
-                          edge="end" 
-                          aria-label="delete"
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to delete "${prompt.name}"?`)) {
-                              onDeletePrompt(prompt.id);
-                            }
-                          }}
-                          sx={{ color: '#f44336' }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  }
-                >
-                  <ListItemIcon>
-                    <Checkbox
-                      edge="start"
-                      checked={prompt.active}
-                      onChange={() => handleToggleActive(prompt)}
-                      sx={{
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        '&.Mui-checked': {
-                          color: '#d4af37',
-                        },
-                      }}
-                    />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Typography 
-                        sx={{ 
-                          fontWeight: prompt.active ? 'bold' : 'normal',
-                          color: prompt.active ? '#d4af37' : '#ffffff'
-                        }}
-                      >
-                        {prompt.name}
-                      </Typography>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', padding: 3 }}>
+            <CircularProgress size={24} sx={{ color: '#d4af37' }} />
+          </Box>
+        ) : (
+          <List sx={{ maxHeight: '300px', overflow: 'auto' }}>
+            {prompts.length === 0 ? (
+              <ListItem>
+                <ListItemText 
+                  primary="No prompts created yet" 
+                  sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                />
+              </ListItem>
+            ) : (
+              prompts.map((prompt, index) => (
+                <React.Fragment key={prompt.id}>
+                  {index > 0 && <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />}
+                  <ListItem
+                    secondaryAction={
+                      <Box>
+                        <Tooltip title="Edit Prompt">
+                          <IconButton 
+                            edge="end" 
+                            aria-label="edit"
+                            onClick={() => handleOpenEditModal(prompt)}
+                            sx={{ color: '#d4af37' }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Prompt">
+                          <IconButton 
+                            edge="end" 
+                            aria-label="delete"
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to delete "${prompt.name}"?`)) {
+                                setEditingPrompt(prompt);
+                                handleDeletePrompt();
+                              }
+                            }}
+                            sx={{ color: '#f44336' }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     }
-                    secondary={
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
+                  >
+                    <ListItemIcon>
+                      <Checkbox
+                        edge="start"
+                        checked={prompt.is_active}
+                        onChange={() => handleToggleActive(prompt)}
+                        sx={{
                           color: 'rgba(255, 255, 255, 0.7)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
+                          '&.Mui-checked': {
+                            color: '#d4af37',
+                          },
                         }}
-                      >
-                        {prompt.content}
-                      </Typography>
-                    }
-                  />
-                </ListItem>
-              </React.Fragment>
-            ))
-          )}
-        </List>
+                      />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Typography 
+                          sx={{ 
+                            fontWeight: prompt.is_active ? 'bold' : 'normal',
+                            color: prompt.is_active ? '#d4af37' : '#ffffff'
+                          }}
+                        >
+                          {prompt.name}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                          }}
+                        >
+                          {prompt.content}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                </React.Fragment>
+              ))
+            )}
+          </List>
+        )}
       </Paper>
 
       <UserPromptModal
@@ -232,6 +310,7 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
         initialPrompt={editingPrompt?.content || ''}
         editMode={!!editingPrompt}
         onDelete={editingPrompt ? handleDeletePrompt : undefined}
+        isSaving={savingPrompt}
       />
     </Box>
   );

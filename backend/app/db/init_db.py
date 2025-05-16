@@ -1,5 +1,7 @@
 import logging
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from .database import Base, engine, SessionLocal
 from .repositories.project_repository import project_repository
@@ -52,6 +54,22 @@ def init_db(db: Session) -> None:
     # Create tables
     Base.metadata.create_all(bind=engine)
     
+    # Setup pgvector extension
+    try:
+        db.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        db.commit()
+        logger.info("pgvector extension created successfully")
+    except SQLAlchemyError as e:
+        logger.warning(f"pgvector setup error: {str(e)}")
+        logger.warning("Vector search functionality may not be available")
+        logger.warning("Please install pgvector manually: https://github.com/pgvector/pgvector")
+    
+    # Check if we already have projects
+    existing_projects = project_repository.get_multi(db, limit=1)
+    if existing_projects:
+        logger.info("Sample data already exists, skipping initialization")
+        return
+    
     # Create projects
     project_ids = []
     for project_data in INITIAL_PROJECTS:
@@ -66,6 +84,12 @@ def init_db(db: Session) -> None:
         
         logger.info(f"Creating user prompt: {prompt_data['name']}")
         user_prompt_repository.create(db, obj_in=UserPromptCreate(**prompt_data))
+    
+    # Create directory structure if it doesn't exist
+    import os
+    for directory in ["uploads", "processed", "logs", "hierarchy"]:
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", directory)
+        os.makedirs(path, exist_ok=True)
     
     logger.info("Database initialized with sample data")
 

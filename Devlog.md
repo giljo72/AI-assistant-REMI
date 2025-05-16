@@ -555,3 +555,315 @@ Successful system verification with all checks passing:
 - Begin development of retrieval functionality using mock embeddings
 - Create API endpoints for document processing
 - Implement actual document view components in frontend
+
+## May 14, 2025
+
+### Key Initiative: Implementing Backend Database Models and API for Project-Centered Containment
+
+#### Action items and activities
+- Created comprehensive database models for projects, chats, documents, and user prompts
+- Implemented SQLAlchemy ORM for database access
+- Set up Pydantic schemas for data validation and serialization
+- Created RESTful API endpoints for projects and user prompts
+- Developed repository pattern for data access abstraction
+- Set up database initialization script with sample data
+- Created frontend API service classes for integration
+
+#### Technical Decisions
+- Used SQLAlchemy ORM with PostgreSQL for persistence
+- Implemented repository pattern for separation of concerns
+- Created base repository for common CRUD operations
+- Used Pydantic for validation and API documentation
+- Followed RESTful API design principles
+- Implemented proper error handling for API endpoints
+- Renamed reserved column names (metadata → meta_data) to avoid conflicts
+- Created TypeScript interfaces matching backend schemas
+
+#### Database Models Implemented:
+- **Project**: Self-contained knowledge environment
+- **UserPrompt**: Custom assistant instructions with project associations
+- **Chat**: Project-specific conversations
+- **ChatMessage**: Individual messages within chats
+- **Document**: Document metadata with project associations
+- **ProjectDocument**: Association model for projects and documents
+- **DocumentChunk**: Document chunks for embeddings and content
+
+#### API Endpoints Created:
+- **/api/projects**: CRUD operations for projects
+- **/api/user-prompts**: CRUD operations for user prompts
+- **/api/user-prompts/{id}/activate**: Endpoint to activate a specific prompt
+
+#### Frontend Integration:
+- Created API service wrapper with Axios
+- Implemented TypeScript interfaces for type safety
+- Created service classes for projects and user prompts
+- Set up API client configuration for local development
+
+#### Challenges Encountered:
+- SQLAlchemy reserved attribute name conflict (metadata)
+- Environment configuration for proper database connection
+- Import path resolution in the backend
+- Type safety between frontend and backend
+- Database schema design for proper relationships
+
+#### Files Created/Modified:
+- Created database models for core entities
+- Implemented repositories for data access
+- Created API endpoints with FastAPI
+- Set up validation schemas with Pydantic
+- Implemented API service classes for frontend
+- Updated main.py to include API router
+- Created database initialization script
+
+#### Test Results:
+- Successfully initialized database with sample data
+- Verified API endpoints with Swagger documentation
+- Confirmed database models create proper relations
+- Tested integration with frontend services
+
+#### Next Steps:
+- Connect frontend UI components to API services
+- Replace mock data with real API calls
+- Implement remaining API endpoints for chats and documents
+- Begin work on document processing pipeline
+- Implement context controls backend functionality
+- Create memory feature with tiered retrieval
+
+● Devlog Entry: May 15, 2025
+
+  File Management System Implementation
+
+  Today I completed the frontend-backend integration for the file management system. This is a significant
+  milestone as it enables the project containment features that are central to the Assistant's architecture.
+
+  File Service API Layer
+
+  Created a comprehensive service layer to handle all file operations:
+
+  - Designed TypeScript interfaces for all file data structures (File, FileUploadRequest, FileSearchResult, etc.)       
+  - Implemented RESTful methods for file operations:
+    - Retrieval with filtering and sorting
+    - Uploading with metadata and tagging
+    - Processing status monitoring
+    - Search with content-based relevance
+    - Project linking/unlinking
+    - Deletion and bulk operations
+  - Added proper error handling and type safety throughout
+
+  UI Components Integration
+
+  Updated three key file management components to use the new API services:
+
+  1. MainFileManager: Completely refactored to use live data instead of mocks
+    - Added loading states, error handling, and progress indicators
+    - Implemented real-time processing status monitoring with GPU usage display
+    - Created proper file preview, download, and deletion functionality
+    - Enhanced search with content-based relevance
+  2. ProjectFileManager: Connected to project-specific endpoints
+    - Implemented file activation toggles with proper state management
+    - Added file detachment with error handling
+    - Created project-specific file upload modal
+  3. SearchFilesResults: Enhanced with backend search capabilities
+    - Added support for content snippets in search results
+    - Implemented relevance-based sorting
+    - Improved the project attachment workflow
+
+  Technical Notes
+
+  - All components follow optimistic UI update patterns for better perceived performance
+  - Added consistent error handling with user-friendly messages
+  - Implemented proper loading states throughout the interface
+  - Applied consistent data mapping between API and UI structures
+  - File type visualization and iconography standardized across components
+
+  This implementation is an important step toward the project's "containment by default, expansion by choice"
+  philosophy. The file management system now allows for project-specific file management while still providing
+  access to the global file repository when needed.
+
+  Next Steps
+
+  - Complete the chat view integration with backend API
+  - Implement the document preview and chunking visualization
+  - Add context controls for fine-tuning retrieval
+  - Develop the memory feature with tiered retrieval
+
+## Items saved for later, insert udpates above this line.
+How to Address These Issues with Claude Code
+1. Version Downgrade Warnings
+You can generally ignore these as they're not critical errors. However, if you want to address them in Claude Code, you could:
+/ask I notice my requirements.txt is downgrading packages (SQLAlchemy from 2.0.40 to 2.0.23, FastAPI from 0.115.12 to 0.104.1). Should I update the requirements.txt to use the newer versions?
+Claude will likely advise whether it's safe to update or if there are specific reasons for using those versions.
+2. Temporary Directory Warnings
+These are Windows-specific and generally harmless. In Claude Code, you can:
+/ask How can I fix the temporary directory removal warnings on Windows during pip install?
+Claude might suggest solutions like:
+
+Closing any applications that might be using those packages
+Running the command with administrator privileges
+Simply ignoring them as they don't affect functionality
+
+3. Pydantic Warning
+This is a deprecation warning that should be addressed in your code. Ask Claude:
+/ask How do I update my code to use 'from_attributes' instead of 'orm_mode' in Pydantic V2?
+Claude will likely provide specific code changes to update your models.
+
+
+## Where to continue
+
+● Based on my code review, here's the current status and consistency check:
+
+  Frontend Logic
+
+  The frontend implementation is well-structured and consistent:
+
+  1. Service Layer:
+    - fileService.ts, projectService.ts, and userPromptService.ts all follow the same pattern and API structure
+    - All services properly use the shared api.ts axios instance
+    - Type definitions are consistent and comprehensive across all services
+    - Export patterns in index.ts are consistent for all services
+  2. Component Implementation:
+    - All file-related components (MainFileManager, ProjectFileManager, SearchFilesResults) use a consistent
+  LocalFile interface
+    - All components properly import and use the service layer
+    - Error handling and loading states are implemented consistently
+    - All components use similar approach to mapping API data to local format
+  3. Potential Issues:
+    - The ProjectFileManager uses active field but the file service uses is_active
+    - All components use projectId (camelCase) while the API expects project_id (snake_case)
+
+  Backend Implementation
+
+  The backend implementation is partially complete:
+
+  1. Models:
+    - The document model exists and has fields for most of the data needed
+    - Database relationships are properly defined with cascades
+  2. Missing Components:
+    - No API endpoints for file operations
+    - No Pydantic schemas for request/response validation
+    - No repositories for database operations
+  3. Compatibility Issues:
+    - Frontend expects File but backend has Document model
+    - Field naming inconsistency: is_processed vs processed
+    - Frontend expects active field which is missing in backend model
+    - Backend uses filename, filepath, and filetype while frontend uses just name and type
+
+  Integration Consistency
+
+  For the frontend and backend to work together seamlessly, we'll need to:
+
+  1. Create API Endpoints:
+    - Implement all endpoints expected by the frontend service layer
+    - Ensure proper error handling and response formats
+  2. Create Schemas:
+    - Implement Pydantic schemas that match the frontend types
+    - Provide field mapping/alias for snake_case to camelCase conversion
+  3. Field Mapping:
+    - Either update frontend to match backend field names
+    - Or add field aliases/mapping in backend Pydantic models
+  4. Add Missing Fields:
+    - Add is_active field to the Document model
+    - Add processing_failed field to the Document model
+    - Add handling for file size in bytes
+
+  The foundation is solid, but the backend implementation needs to be completed to match the frontend expectations.     
+   The most critical task would be creating the API endpoints and Pydantic schemas that match the frontend service      
+  layer expectations.
+
+  ● AI Assistant Dev Log - May 15, 2025 Update
+
+  Key Initiative: Implementing Complete File Management Backend
+
+  Action Items Completed
+
+  1. Document Schema & API Creation
+    - Designed comprehensive document schemas matching frontend requirements
+    - Implemented document model with pgvector integration capabilities
+    - Created robust file repository pattern with filtering and search
+  2. File API Endpoint Implementation
+    - Developed complete RESTful API endpoints for all file operations:
+        - File upload with metadata and project linking
+      - File retrieval with filtering and sorting
+      - File processing with background tasks
+      - File preview and downloading
+      - Search with keyword and content-based matching
+      - Project attachment/detachment functionality
+      - Bulk operations for multiple files
+  3. Document Processing Pipeline
+    - Created document processor component for chunking and extraction
+    - Implemented background processing with progress tracking
+    - Added support for various file types with appropriate extractors
+    - Set up directory structure for uploads and processed files
+  4. Vector Database Integration
+    - Implemented pgvector interface for semantic search
+    - Created embeddings generation system (mock for future real models)
+    - Added semantic search endpoints with project-aware retrieval
+    - Implemented chat context retrieval for RAG capabilities
+  5. Processing Status Tracking
+    - Developed sophisticated processing status tracking system
+    - Added real-time progress monitoring and ETA estimation
+    - Implemented status persistence with file-based storage
+    - Created API endpoint for monitoring processing status
+  6. System Setup & Documentation
+    - Enhanced startup scripts with automatic directory creation
+    - Added pgvector extension installation and verification
+    - Created database initialization with sample data
+    - Improved stop_services script for cleaner shutdown
+    - Updated README with detailed setup instructions and status
+
+  Technical Decisions
+
+  1. Repository Pattern for Data Access
+    - Used SQLAlchemy ORM with repository pattern for better separation of concerns
+    - Implemented filtering, sorting, and specialized queries in repositories
+    - Created consistent error handling throughout the system
+  2. Background Processing with Status Tracking
+    - Used FastAPI background tasks for asynchronous document processing
+    - Added progress tracking with detailed status information
+    - Implemented file-based persistence for status between restarts
+  3. Vector Database with pgvector
+    - Used PostgreSQL with pgvector for efficient similarity search
+    - Created mock embedding generation for development with future real model integration
+    - Implemented project-aware relevance ranking with configurable thresholds
+  4. Project-Centered Containment
+    - Maintained project boundaries in database design and API endpoints
+    - Added project-specific querying and boosted relevance for project documents
+    - Implemented clear separation between global and project-specific endpoints
+
+  Challenges Encountered
+
+  1. File Processing Workflow
+    - Needed to create a robust background processing system
+    - Added progress tracking with persistent status information
+    - Implemented proper error handling for various file types
+  2. Vector Database Integration
+    - Required special handling for pgvector extension
+    - Created automatic installation and verification
+    - Implemented fallback mechanisms for development without pgvector
+  3. API-Frontend Alignment
+    - Ensured API endpoints matched frontend service expectations exactly
+    - Aligned data structures and naming conventions
+    - Converted between snake_case and camelCase where needed
+
+  Next Steps
+
+  1. Chat Backend Implementation
+    - Create chat message storage and retrieval
+    - Implement conversation history with project boundaries
+    - Connect chat system to RAG for context-aware responses
+  2. Real Embedding Model Integration
+    - Replace mock embeddings with actual NeMo-based embeddings
+    - Optimize vector operations for performance
+    - Implement proper dimensionality and normalization
+  3. Reasoning System Development
+    - Implement different reasoning modes (standard, comprehensive, expert)
+    - Create backend support for context depth adjustment
+    - Add performance optimization based on reasoning mode
+  4. Memory Tiering System
+    - Implement project-only vs. expanded memory modes
+    - Create proper weighting for project vs. global documents
+    - Add API endpoints for memory scope configuration
+
+  This implementation provides a complete backend for the file management system with all the required API
+  endpoints matching the frontend expectations, plus vector database integration for semantic search capabilities.      
+                                                                                                                      

@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import AddChatModal from '../modals/AddChatModal';
+import { projectService, userPromptService } from '../../services';
+import { Project, UserPrompt } from '../../services';
 
 type Tab = 'overview' | 'chats' | 'files' | 'settings';
 
-// Mock types for our data
-type Project = {
-  id: string;
-  name: string;
-  prompt: string;
-};
-
+// Local types for UI
 type Chat = {
   id: string;
   name: string;
@@ -23,34 +19,11 @@ type File = {
   type: string;
   size: string;
   active: boolean;
-  projectId: string; // Added projectId to associate files with projects
+  projectId: string;
   addedAt: string;
 };
 
-// Mock data
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    name: 'Research Paper',
-    prompt: 'You are helping with academic research paper writing. Focus on clarity, structure, and academic style.',
-  },
-  {
-    id: '2',
-    name: 'Website Redesign',
-    prompt: 'You are a web design consultant helping with a website redesign project.',
-  },
-  {
-    id: '3',
-    name: 'Marketing Campaign',
-    prompt: 'You are a marketing specialist helping to develop effective campaign strategies.',
-  },
-  {
-    id: '4',
-    name: 'Product Launch',
-    prompt: 'You are assisting with a new product launch, focusing on go-to-market strategy.',
-  },
-];
-
+// Mock data for chats and files until we implement their APIs
 const mockChats: Chat[] = [
   { id: '1', name: 'Research Question #1', projectId: '1', createdAt: '2025-05-10' },
   { id: '2', name: 'Literature Review', projectId: '1', createdAt: '2025-05-09' },
@@ -71,7 +44,7 @@ const mockFiles: File[] = [
 type ProjectManagerViewProps = {
   projectId: string;
   onOpenChat?: (chatId: string) => void;
-  onOpenFiles?: () => void; // Added for file manager navigation
+  onOpenFiles?: () => void;
 };
 
 const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOpenChat, onOpenFiles }) => {
@@ -79,22 +52,46 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
   const [project, setProject] = useState<Project | null>(null);
   const [projectChats, setProjectChats] = useState<Chat[]>([]);
   const [projectFiles, setProjectFiles] = useState<File[]>([]);
+  const [projectPrompts, setProjectPrompts] = useState<UserPrompt[]>([]);
   const [isAddChatModalOpen, setIsAddChatModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Effect to update the current project and related data when projectId changes
+  // Effect to load project data when projectId changes
   useEffect(() => {
-    // Find the current project based on projectId
-    const currentProject = mockProjects.find(p => p.id === projectId);
-    if (currentProject) {
-      setProject(currentProject);
-      
-      // Filter chats that belong to this project
-      const chats = mockChats.filter(chat => chat.projectId === projectId);
-      setProjectChats(chats);
-      
-      // Filter files that belong to this project
-      const files = mockFiles.filter(file => file.projectId === projectId);
-      setProjectFiles(files);
+    const fetchProjectData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch project details
+        const projectData = await projectService.getProject(projectId);
+        setProject(projectData);
+        setProjectName(projectData.name);
+        setProjectDescription(projectData.description || '');
+        
+        // Fetch project prompts
+        const prompts = await userPromptService.getUserPromptsForProject(projectId);
+        setProjectPrompts(prompts);
+        
+        // Use mock data for chats and files for now
+        const chats = mockChats.filter(chat => chat.projectId === projectId);
+        setProjectChats(chats);
+        
+        const files = mockFiles.filter(file => file.projectId === projectId);
+        setProjectFiles(files);
+      } catch (err) {
+        console.error("Error fetching project data:", err);
+        setError("Failed to load project. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projectId) {
+      fetchProjectData();
     }
   }, [projectId]);
 
@@ -102,7 +99,7 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
     if (!project) return;
     
     const newChat: Chat = {
-      id: (mockChats.length + 1).toString(),
+      id: (projectChats.length + 1).toString(),
       name,
       projectId: project.id,
       createdAt: new Date().toISOString().split('T')[0],
@@ -111,7 +108,7 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
     // Update local state
     setProjectChats([...projectChats, newChat]);
     
-    // In a real app, this would be an API call to update the backend
+    // TODO: In the future, implement API call to create a chat
   };
 
   // Handler for opening a chat
@@ -128,9 +125,48 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
     }
   };
 
-  if (!project) {
-    return <div className="p-4">Loading project...</div>;
+  // Handler for saving project settings
+  const handleSaveSettings = async () => {
+    if (!project) return;
+    
+    setIsSaving(true);
+    try {
+      // Only update if something has changed
+      if (projectName !== project.name || projectDescription !== (project.description || '')) {
+        await projectService.updateProject(project.id, {
+          name: projectName,
+          description: projectDescription
+        });
+        
+        // Update the local project state with the new values
+        setProject({
+          ...project,
+          name: projectName,
+          description: projectDescription
+        });
+      }
+    } catch (err) {
+      console.error("Error updating project:", err);
+      setError("Failed to update project. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-4 text-center">Loading project...</div>;
   }
+
+  if (error) {
+    return <div className="p-4 text-center text-red-500">{error}</div>;
+  }
+
+  if (!project) {
+    return <div className="p-4 text-center">Project not found</div>;
+  }
+
+  // Find active prompt for this project
+  const activePrompt = projectPrompts.find(prompt => prompt.is_active);
 
   return (
     <div className="h-full flex flex-col">
@@ -147,10 +183,10 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
           </div>
         </div>
         
-        {project.prompt && (
+        {activePrompt && (
           <div className="text-gray-300 text-sm bg-navy p-3 rounded mb-3">
-            <div className="text-xs text-gray-400 mb-1">Project Prompt:</div>
-            <p>{project.prompt}</p>
+            <div className="text-xs text-gray-400 mb-1">Active Prompt: {activePrompt.name}</div>
+            <p>{activePrompt.content}</p>
           </div>
         )}
         
@@ -367,28 +403,80 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
                 </label>
                 <input
                   type="text"
-                  value={project.name}
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
                   className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-gold"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Project Prompt
+                  Project Description
                 </label>
                 <textarea
-                  value={project.prompt}
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
                   className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-gold min-h-[100px]"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Custom prompt that will be used for all chats in this project.
+                  Describe the purpose and scope of this project.
                 </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Project Prompts
+                </label>
+                <div className="bg-navy p-3 rounded">
+                  {projectPrompts.length > 0 ? (
+                    <div className="space-y-2">
+                      {projectPrompts.map(prompt => (
+                        <div key={prompt.id} className="flex items-center">
+                          <input
+                            type="radio"
+                            id={`prompt-${prompt.id}`}
+                            name="activePrompt"
+                            checked={prompt.is_active}
+                            onChange={async () => {
+                              try {
+                                await userPromptService.activateUserPrompt(prompt.id);
+                                // Update local state
+                                setProjectPrompts(prevPrompts => 
+                                  prevPrompts.map(p => ({
+                                    ...p,
+                                    is_active: p.id === prompt.id
+                                  }))
+                                );
+                              } catch (err) {
+                                console.error("Error activating prompt:", err);
+                              }
+                            }}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`prompt-${prompt.id}`} className="cursor-pointer">
+                            {prompt.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 text-sm">
+                      No custom prompts created for this project yet.
+                    </div>
+                  )}
+                  <button className="mt-3 text-xs px-2 py-1 bg-navy-light hover:bg-navy-lighter rounded">
+                    Manage Prompts
+                  </button>
+                </div>
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button className="px-4 py-2 bg-navy hover:bg-navy-lighter rounded">
                   Cancel
                 </button>
-                <button className="px-4 py-2 bg-gold text-navy font-medium rounded hover:bg-gold/90">
-                  Save Changes
+                <button 
+                  className={`px-4 py-2 bg-gold text-navy font-medium rounded hover:bg-gold/90 ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  onClick={handleSaveSettings}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>

@@ -71,11 +71,15 @@ The application is optimized for the following hardware configuration:
 | **File Management System** | ✅ Completed | Project and global file management |
 | **User Prompts System** | ✅ Completed | Custom prompts creation and management |
 | **Context Controls UI** | ✅ Completed | Context toggle controls and settings panel |
-| **Backend Foundation** | 🟡 In Progress | API structure defined, mock implementation |
+| **Backend Foundation** | ✅ Completed | API endpoints for all main features implemented |
+| **Database Integration** | ✅ Completed | PostgreSQL with SQLAlchemy ORM, models created |
+| **Document Processing** | ✅ Completed | File upload, chunking, and processing system |
+| **File Search & Retrieval** | ✅ Completed | Keyword and content-based search functionality |
+| **Vector Database** | ✅ Completed | pgvector integration for semantic search |
 | **NeMo Integration** | 🟡 In Progress | Mock implementation for development |
 | **TensorRT Optimization** | 🟡 Pending | Architecture defined |
-| **RAG Implementation** | 🟡 Pending | Architecture defined |
-| **Reasoning Modes** | 🟡 Pending | UI designs created |
+| **Chat Backend** | 🟡 Pending | API structure defined, implementation pending |
+| **Reasoning Modes** | 🟡 Pending | UI designs created, backend pending |
 
 ## Key Features
 
@@ -122,36 +126,50 @@ The application is optimized for the following hardware configuration:
 
 ### Prerequisites
 1. PostgreSQL 17 with pgvector extension
-2. Ollama with Llama-3 models (recommend 34B for optimal reasoning/performance balance)
-3. Python 3.10 or higher
-4. Node.js 18+ and npm
-5. Visual Studio 2022 with C++ workload (for building pgvector)
-6. CUDA Toolkit 12.0+ for GPU acceleration
-7. Docker Desktop (optional, for NeMo Document AI on Windows)
+2. Python 3.10 or higher
+3. Node.js 18+ and npm
+4. Visual Studio 2022 with C++ workload (for building pgvector)
+5. CUDA Toolkit 12.0+ for GPU acceleration (optional)
 
-### Backend Setup
-1. Clone this repository
-2. Navigate to backend directory: `cd backend`
-3. Create Python virtual environment:
+### Quick Start
+The easiest way to start the application is using the provided batch file:
+
+1. Make sure PostgreSQL service is running
+2. Run `start_services.bat` - this will:
+   - Check and initialize the PostgreSQL database
+   - Attempt to set up the pgvector extension if needed
+   - Create required data directories
+   - Start the FastAPI backend server
+   - Start the React frontend development server
+
+Once started, you can access:
+- Frontend UI: http://localhost:5173
+- Backend API docs: http://localhost:8000/docs
+
+### Manual Setup
+
+#### Backend Setup
+1. Navigate to backend directory: `cd backend`
+2. Create Python virtual environment:
 ```
 python -m venv venv
 venv\Scripts\activate
 ```
-4. Install dependencies:
+3. Install dependencies:
 ```
 pip install -r requirements.txt
 ```
-5. Set up environment variables (copy .env.example to .env and edit)
-6. Initialize database:
+4. Set up environment variables (copy .env.example to .env and edit)
+5. Initialize database:
 ```
-python -m scripts.setup_database
+python -m app.db.init_db
 ```
-7. Start the backend server:
+6. Start the backend server:
 ```
 uvicorn app.main:app --reload
 ```
 
-### Frontend Setup
+#### Frontend Setup
 1. Navigate to frontend directory: `cd frontend`
 2. Install dependencies:
 ```
@@ -160,6 +178,16 @@ npm install
 3. Start the development server:
 ```
 npm run dev
+```
+
+### pgvector Setup
+The pgvector extension is required for vector search capabilities. If `start_services.bat` cannot automatically install it:
+
+1. Download pgvector from https://github.com/pgvector/pgvector
+2. Build and install following the repository instructions
+3. Enable the extension in your database:
+```sql
+CREATE EXTENSION vector;
 ```
 
 ## Usage
