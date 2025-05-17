@@ -11,7 +11,7 @@ import MainFileManager from './components/file/MainFileManager';
 import SearchFilesResults from './components/file/SearchFilesResults';
 import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
 import { projectService } from './services';
-import { ProjectProvider } from './context/ProjectContext';
+import { ProjectProvider, useProjects } from './context/ProjectContext';
 
 // Define the possible view types
 type View = 'project' | 'chat' | 'document' | 'projectFiles' | 'mainFiles' | 'searchResults';
@@ -40,34 +40,41 @@ function App() {
   
   // Initial empty search results
   const initialSearchResults: any[] = [];
-
-  // Use project context to maintain reactive UI
-  const { projects } = useProjects();
   
-  // Effect to update project names and set active project when projects change
+  // Effect to load projects and update project names
   useEffect(() => {
-    if (projects.length > 0) {
-      const projectsMap: {[key: string]: string} = {};
-      projects.forEach(project => {
-        projectsMap[project.id] = project.name;
-      });
-      setProjectNames(projectsMap);
-      
-      // If we have no active project but projects exist, set the first one
-      if (!activeProjectId && projects.length > 0) {
-        setActiveProjectId(projects[0].id);
+    const loadProjects = async () => {
+      try {
+        const loadedProjects = await projectService.getAllProjects();
+        
+        if (loadedProjects.length > 0) {
+          const projectsMap: {[key: string]: string} = {};
+          loadedProjects.forEach(project => {
+            projectsMap[project.id] = project.name;
+          });
+          setProjectNames(projectsMap);
+          
+          // If we have no active project but projects exist, set the first one
+          if (!activeProjectId && loadedProjects.length > 0) {
+            setActiveProjectId(loadedProjects[0].id);
+          }
+          
+          // If active project was deleted, switch to first available
+          if (activeProjectId && !loadedProjects.find(p => p.id === activeProjectId) && loadedProjects.length > 0) {
+            setActiveProjectId(loadedProjects[0].id);
+          }
+        } else {
+          // No projects exist
+          setProjectNames({});
+          setActiveProjectId('');
+        }
+      } catch (error) {
+        console.error('Failed to load projects:', error);
       }
-      
-      // If active project was deleted, switch to first available
-      if (activeProjectId && !projects.find(p => p.id === activeProjectId) && projects.length > 0) {
-        setActiveProjectId(projects[0].id);
-      }
-    } else {
-      // No projects exist
-      setProjectNames({});
-      setActiveProjectId('');
-    }
-  }, [projects, activeProjectId]);
+    };
+    
+    loadProjects();
+  }, [activeProjectId]);
 
   // Helper functions to get project and chat names by ID
   const getProjectName = (projectId: string): string => {
@@ -228,8 +235,8 @@ function App() {
 
   return (
     <Provider store={store}>
-      <ProjectProvider>
-        <div className="App">
+      <div className="App">
+        <ProjectProvider>
           <MainLayout onProjectSelect={handleProjectSelect}>
             {renderView()}
           </MainLayout>
@@ -240,8 +247,8 @@ function App() {
             onClose={() => setIsTagAndAddModalOpen(false)}
             onProcessFiles={handleProcessFiles}
           />
-        </div>
-      </ProjectProvider>
+        </ProjectProvider>
+      </div>
     </Provider>
   );
 }
