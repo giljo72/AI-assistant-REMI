@@ -9,9 +9,10 @@ import { RootState } from '../../store';
 type MainLayoutProps = {
   children: ReactNode;
   onProjectSelect: (projectId: string) => void;
+  onOpenMainFiles?: () => void; // Add prop for opening main file manager
 };
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children, onProjectSelect }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ children, onProjectSelect, onOpenMainFiles }) => {
   const [isContextControlsOpen, setIsContextControlsOpen] = useState(false);
   const dispatch = useDispatch();
   const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled } = useSelector(
@@ -24,7 +25,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onProjectSelect }) =>
       <div className="w-64 bg-navy-light border-r border-gold overflow-y-auto flex flex-col">
         {/* Project sidebar takes the top portion */}
         <div className="flex-1 overflow-y-auto">
-          <ProjectSidebar onProjectSelect={onProjectSelect} />
+          <ProjectSidebar 
+            onProjectSelect={onProjectSelect} 
+            onOpenMainFiles={onOpenMainFiles} 
+          />
         </div>
         
         {/* User Prompts and Context Controls in the bottom portion */}

@@ -5,9 +5,10 @@ import { useProjects } from '../../context/ProjectContext';
 // Props type for the sidebar
 type ProjectSidebarProps = {
   onProjectSelect: (projectId: string) => void;
+  onOpenMainFiles?: () => void; // Add prop for opening main file manager
 };
 
-const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect }) => {
+const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpenMainFiles }) => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
@@ -53,7 +54,11 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect }) => {
         </div>
         
         <div className="mb-4 flex items-center space-x-1">
-          <button className="p-2 hover:bg-navy-lighter rounded-full">
+          <button 
+            className="p-2 hover:bg-navy-lighter rounded-full" 
+            onClick={onOpenMainFiles}
+            title="File Manager"
+          >
             <span className="text-gold">📄</span>
           </button>
           <button className="p-2 hover:bg-navy-lighter rounded-full">

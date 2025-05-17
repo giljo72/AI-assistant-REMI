@@ -278,9 +278,29 @@ function App() {
   };
 
   // Handle file upload and processing
-  const handleProcessFiles = (files: any[]) => {
+  const handleProcessFiles = async (files: any[]) => {
     console.log(`Processing ${files.length} files`);
-    // In a real app, this would make an API call
+    
+    try {
+      // Process each file individually
+      for (const fileData of files) {
+        // Create a file upload request
+        const uploadRequest = {
+          file: fileData.file,
+          name: fileData.file.name,
+          description: fileData.description,
+          project_id: fileData.projectId || activeProjectId || undefined
+        };
+        
+        // Upload the file
+        await fileService.uploadFile(uploadRequest);
+      }
+      
+      // Success message
+      console.log(`Successfully uploaded ${files.length} files`);
+    } catch (error) {
+      console.error('Error uploading files:', error);
+    }
     
     // Return to main files view after processing
     setActiveView('mainFiles');
@@ -355,7 +375,10 @@ function App() {
     <Provider store={store}>
       <div className="App">
         <ProjectProvider>
-          <MainLayout onProjectSelect={handleProjectSelect}>
+          <MainLayout 
+            onProjectSelect={handleProjectSelect}
+            onOpenMainFiles={handleOpenMainFiles}
+          >
             {renderView()}
           </MainLayout>
           
@@ -364,6 +387,7 @@ function App() {
             isOpen={isTagAndAddModalOpen}
             onClose={() => setIsTagAndAddModalOpen(false)}
             onProcessFiles={handleProcessFiles}
+            currentProjectId={activeProjectId}
           />
         </ProjectProvider>
       </div>

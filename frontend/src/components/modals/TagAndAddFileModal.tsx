@@ -1,24 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { projectService } from '../../services';
 
 // Define types for our selected files
 type SelectedFile = {
   id: string; // Temporary ID for UI purposes
   file: File; // Actual File object
   description: string; // User-provided description
+  projectId?: string; // Optional project ID to link to
 };
+
+interface Project {
+  id: string;
+  name: string;
+}
 
 type TagAndAddFileModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onProcessFiles: (files: SelectedFile[]) => void;
+  currentProjectId?: string; // Optional current project ID
 };
 
 const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({ 
   isOpen, 
   onClose, 
-  onProcessFiles 
+  onProcessFiles,
+  currentProjectId
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(currentProjectId);
+  
+  // Load projects when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchProjects = async () => {
+        try {
+          const projectsData = await projectService.getAllProjects();
+          console.log("TagAndAddFileModal - Loaded projects:", projectsData);
+          setProjects(projectsData);
+        } catch (error) {
+          console.error('Error fetching projects:', error);
+        }
+      };
+      
+      fetchProjects();
+    }
+  }, [isOpen]);
 
   // Handle file selection from the file input
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +78,13 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
 
   // Handle form submission
   const handleSubmit = () => {
-    onProcessFiles(selectedFiles);
+    // Add the project ID to all selected files
+    const filesWithProject = selectedFiles.map(file => ({
+      ...file,
+      projectId: selectedProjectId
+    }));
+    
+    onProcessFiles(filesWithProject);
     setSelectedFiles([]);
     onClose();
   };
@@ -73,7 +107,7 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-navy-light rounded-lg p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
-        <h3 className="text-xl font-bold text-gold mb-4">Tag and Add Files</h3>
+        <h3 className="text-xl font-bold text-gold mb-4">Add Files</h3>
         
         {/* File input area - only show if no files are selected yet */}
         {selectedFiles.length === 0 && (
@@ -99,6 +133,34 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
             </label>
           </div>
         )}
+        
+        {/* Project selection */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-1">Link to Project (Optional)</label>
+          <select 
+            className="w-full bg-navy p-2 rounded text-gray-300"
+            value={selectedProjectId || ""}
+            onChange={(e) => {
+              console.log("Selected project ID changed to:", e.target.value);
+              setSelectedProjectId(e.target.value || undefined);
+            }}
+          >
+            <option value="">None (Keep in Global Knowledge)</option>
+            {projects.length > 0 ? 
+              projects.map(project => (
+                <option 
+                  key={project.id} 
+                  value={project.id}
+                >
+                  {project.name}
+                </option>
+              ))
+              : 
+              <option value="" disabled>Loading projects...</option>
+            }
+          </select>
+          <div className="text-xs text-gray-500 mt-1">Available projects: {projects.length} {projects.length > 0 ? `(${projects.map(p => p.name).join(', ')})` : ''}</div>
+        </div>
         
         {/* Selected files list */}
         {selectedFiles.length > 0 && (
