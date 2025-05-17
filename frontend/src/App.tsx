@@ -10,19 +10,23 @@ import ProjectFileManager from './components/file/ProjectFileManager';
 import MainFileManager from './components/file/MainFileManager';
 import SearchFilesResults from './components/file/SearchFilesResults';
 import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
-import { projectService } from './services';
+import { projectService, chatService } from './services';
+import type { Chat as ChatType, ChatMessage } from './services';
 import { ProjectProvider, useProjects } from './context/ProjectContext';
 
 // Define the possible view types
 type View = 'project' | 'chat' | 'document' | 'projectFiles' | 'mainFiles' | 'searchResults';
 
-// Initial empty state for chat messages
-const initialMessages: {
+// Adapted chat message type to match UI needs
+interface UIMessage {
   id: string;
   content: string;
   sender: 'user' | 'assistant';
   timestamp: string;
-}[] = [];
+}
+
+// Initial empty state for chat messages
+const initialMessages: UIMessage[] = [];
 
 function App() {
   // State for active project and view
@@ -33,6 +37,7 @@ function App() {
   const [chatMessages, setChatMessages] = useState(initialMessages);
   const [projectNames, setProjectNames] = useState<{[key: string]: string}>({});
   const [chatNames, setChatNames] = useState<{[key: string]: string}>({});
+  const [chats, setChats] = useState<ChatType[]>([]);
   
   // State for file search and upload
   const [isTagAndAddModalOpen, setIsTagAndAddModalOpen] = useState(false);
@@ -75,6 +80,65 @@ function App() {
     
     loadProjects();
   }, [activeProjectId]);
+  
+  // Effect to load chats when the active project changes
+  useEffect(() => {
+    const loadChats = async () => {
+      if (!activeProjectId) return;
+      
+      try {
+        const loadedChats = await chatService.getChats(activeProjectId);
+        setChats(loadedChats || []);
+        
+        // Create a map of chat names
+        const chatsMap: {[key: string]: string} = {};
+        if (Array.isArray(loadedChats)) {
+          loadedChats.forEach(chat => {
+            if (chat && chat.id && chat.name) {
+              chatsMap[chat.id] = chat.name;
+            }
+          });
+        }
+        setChatNames(chatsMap);
+      } catch (error) {
+        console.error('Failed to load chats:', error);
+        setChats([]);
+        setChatNames({});
+      }
+    };
+    
+    loadChats();
+  }, [activeProjectId]);
+  
+  // Effect to load chat messages when the active chat changes
+  useEffect(() => {
+    const loadChatMessages = async () => {
+      if (!activeChatId) {
+        setChatMessages([]);
+        return;
+      }
+      
+      try {
+        const chat = await chatService.getChat(activeChatId);
+        
+        // Convert API messages to UI format, ensuring messages is an array
+        const messages = Array.isArray(chat.messages) ? chat.messages : [];
+        const uiMessages: UIMessage[] = messages.map((msg: ChatMessage) => ({
+          id: msg.id || String(Date.now() + Math.random()),
+          content: msg.content || '',
+          sender: msg.is_user ? 'user' : 'assistant',
+          timestamp: new Date().toLocaleString() // Safer date handling
+        }));
+        
+        setChatMessages(uiMessages);
+      } catch (error) {
+        console.error('Failed to load chat messages:', error);
+        setChatMessages([]);
+      }
+    };
+    
+    loadChatMessages();
+  }, [activeChatId]);
 
   // Helper functions to get project and chat names by ID
   const getProjectName = (projectId: string): string => {
@@ -87,31 +151,54 @@ function App() {
   };
 
   // Handle message sending
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
+    if (!activeChatId) return;
+    
     setIsProcessing(true);
     
-    // Add user message
-    const userMessage = {
-      id: Date.now().toString(),
-      content,
-      sender: 'user' as const,
-      timestamp: new Date().toLocaleString()
-    };
-    
-    setChatMessages(prev => [...prev, userMessage]);
-    
-    // Simulate assistant response after delay
-    setTimeout(() => {
-      const assistantMessage = {
-        id: (Date.now() + 1).toString(),
-        content: `I received your message: "${content}". This is a mock response.`,
-        sender: 'assistant' as const,
+    try {
+      // Send message to API
+      await chatService.sendMessage(activeChatId, content);
+      
+      // Reload messages
+      const chat = await chatService.getChat(activeChatId);
+      
+      // Convert API messages to UI format
+      const uiMessages: UIMessage[] = chat.messages.map((msg: ChatMessage) => ({
+        id: msg.id,
+        content: msg.content,
+        sender: msg.is_user ? 'user' : 'assistant',
+        timestamp: new Date(msg.created_at).toLocaleString()
+      }));
+      
+      setChatMessages(uiMessages);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      
+      // Fallback to local message display if API fails
+      const userMessage: UIMessage = {
+        id: Date.now().toString(),
+        content,
+        sender: 'user',
         timestamp: new Date().toLocaleString()
       };
       
-      setChatMessages(prev => [...prev, assistantMessage]);
+      setChatMessages(prev => [...prev, userMessage]);
+      
+      // Simulate assistant response
+      setTimeout(() => {
+        const assistantMessage: UIMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `Error communicating with server. This is a fallback response.`,
+          sender: 'assistant',
+          timestamp: new Date().toLocaleString()
+        };
+        
+        setChatMessages(prev => [...prev, assistantMessage]);
+      }, 1000);
+    } finally {
       setIsProcessing(false);
-    }, 1000);
+    }
   };
 
   // Handle project selection from sidebar
@@ -122,9 +209,40 @@ function App() {
   };
 
   // Handle opening a chat
-  const handleOpenChat = (chatId: string) => {
+  const handleOpenChat = async (chatId: string) => {
     setActiveChatId(chatId);
     setActiveView('chat');
+  };
+  
+  // Handle creating a new chat
+  const handleCreateChat = async (name: string) => {
+    if (!activeProjectId) return;
+    
+    try {
+      const newChat = await chatService.createChat({
+        name,
+        project_id: activeProjectId
+      });
+      
+      // Update chats list
+      const updatedChats = await chatService.getChats(activeProjectId);
+      setChats(updatedChats);
+      
+      // Update chat names map
+      setChatNames(prev => ({
+        ...prev,
+        [newChat.id]: newChat.name
+      }));
+      
+      // Set this as the active chat
+      setActiveChatId(newChat.id);
+      setActiveView('chat');
+      
+      return newChat;
+    } catch (error) {
+      console.error('Failed to create chat:', error);
+      return null;
+    }
   };
 
   // Handle navigating to document view

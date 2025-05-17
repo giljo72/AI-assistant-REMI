@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AddChatModal from '../modals/AddChatModal';
 import DeleteProjectModal from '../modals/DeleteProjectModal';
-import { projectService, userPromptService } from '../../services';
-import { Project, UserPrompt } from '../../services';
+import { projectService, userPromptService, chatService } from '../../services';
+import { Project, UserPrompt, Chat as ChatType } from '../../services';
 import { useProjects } from '../../context/ProjectContext';
 
 type Tab = 'overview' | 'chats' | 'files' | 'settings';
@@ -66,9 +66,24 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
         const prompts = await userPromptService.getUserPromptsForProject(projectId);
         setProjectPrompts(prompts);
         
-        // TODO: Replace with actual API calls to fetch chats and files
-        // For now, use empty arrays
-        setProjectChats([]);
+        // Fetch project chats
+        try {
+          const chats = await chatService.getChats(projectId);
+          // Convert API chats to UI format - ensure chats is an array
+          const uiChats: Chat[] = Array.isArray(chats) ? chats.map(chat => ({
+            id: chat.id,
+            name: chat.name,
+            projectId: chat.project_id,
+            createdAt: new Date().toLocaleDateString() // Use safer date format
+          })) : [];
+          setProjectChats(uiChats);
+        } catch (chatError) {
+          console.error("Error fetching chats:", chatError);
+          setProjectChats([]);
+        }
+        
+        // TODO: Replace with actual API call to fetch files
+        // For now, use empty array
         setProjectFiles([]);
       } catch (err) {
         console.error("Error fetching project data:", err);
@@ -83,24 +98,35 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
     }
   }, [projectId]);
 
-  const handleAddChat = (name: string) => {
+  const handleAddChat = async (name: string) => {
     if (!project) return;
     
-    // Generate a unique ID (should be replaced with server-generated ID in the future)
-    const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2);
-    
-    const newChat: Chat = {
-      id: uniqueId,
-      name,
-      projectId: project.id,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    
-    // Update local state
-    setProjectChats([...projectChats, newChat]);
-    
-    // TODO: Implement API call to create a chat
-    console.log('Creating chat:', newChat);
+    try {
+      // Create chat using the API
+      const newChat = await chatService.createChat({
+        name,
+        project_id: project.id
+      });
+      
+      // Convert API chat to local format
+      const localChat: Chat = {
+        id: newChat.id,
+        name: newChat.name,
+        projectId: newChat.project_id,
+        createdAt: new Date().toLocaleDateString(), // Use safer date format
+      };
+      
+      // Update local state
+      setProjectChats([...projectChats, localChat]);
+      
+      // Open the chat if a handler was provided
+      if (onOpenChat) {
+        onOpenChat(newChat.id);
+      }
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      setError('Failed to create chat. Please try again.');
+    }
   };
 
   // Handler for opening a chat
