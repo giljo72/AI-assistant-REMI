@@ -774,11 +774,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       }
                     }
                   }}
-                  className="flex items-center px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
-                  title="Download selected files"
+                  className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
                 >
-                  <span className="mr-1">⬇️</span>
-                  <span className="text-xs">Download {selectedFiles.length}</span>
+                  Download Selected ({selectedFiles.length})
                 </button>
                 
                 <button 
@@ -789,11 +787,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       dropdown.classList.toggle('hidden');
                     }
                   }}
-                  className="flex items-center px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
-                  title="Assign selected files to project"
+                  className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
                 >
-                  <span className="mr-1">🔗</span>
-                  <span className="text-xs">Assign {selectedFiles.length}</span>
+                  Assign Selected ({selectedFiles.length})
                 </button>
                 
                 <button 
@@ -817,11 +813,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       }
                     }
                   }}
-                  className="flex items-center px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
-                  title="Delete selected files"
+                  className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
                 >
-                  <span className="mr-1">🗑️</span>
-                  <span className="text-xs">Delete {selectedFiles.length}</span>
+                  Delete Selected ({selectedFiles.length})
                 </button>
                 
                 {/* Relative positioned container for dropdown */}
@@ -1061,6 +1055,19 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                           </>
                         )}
                       </div>
+                      
+                      {/* File Description Box - Hidden by default */}
+                      <div id={`file-description-box-${file.id}`} className="w-full mt-2 hidden">
+                        <div className="bg-navy-lighter p-3 rounded">
+                          <h5 className="text-sm font-medium text-gold mb-1">Description:</h5>
+                          <div className="text-xs text-gray-300">
+                            {file.description ? 
+                              file.description : 
+                              <span className="italic text-gray-500">No description provided</span>
+                            }
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -1076,6 +1083,21 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                         🔄
                       </button>
                     )}
+                    
+                    {/* View Button - Using 👁️ as placeholder for eye/view icon */}
+                    <button 
+                      onClick={() => {
+                        // Toggle description visibility by adding/removing class
+                        const descEl = document.getElementById(`file-description-box-${file.id}`);
+                        if (descEl) {
+                          descEl.classList.toggle('hidden');
+                        }
+                      }}
+                      className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                      title="View file description"
+                    >
+                      👁️
+                    </button>
                     
                     {/* Assign/Link Button - Using 🔗 as placeholder for link icon */}
                     <button 
