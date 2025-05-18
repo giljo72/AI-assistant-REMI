@@ -210,16 +210,75 @@ Implementing chat functionality with proper backend persistence
 - Modified `/backend/app/db/models/__init__.py` - Fixed model imports
 - Updated `/frontend/src/components/project/ProjectManagerView.tsx` - Chat creation
 
-## Next Steps
+## May 17, 2025 - Implementing File Management System with Mock Data Support
 
-1. Add document processing pipeline with proper status tracking
-2. Implement semantic search functionality
-3. Create context controls backend
-4. Develop reasoning modes for different retrieval strategies
-5. Implement user authentication and permissions
-6. Begin NeMo model integration to replace mock implementation
-7. Add automated testing for critical workflows
-8. Improve error handling and user feedback
+### Key Initiative
+Implementing a fully functional file management system with mock data support for development
+
+### Action Items Completed
+1. **Paper Icon File Manager Navigation**
+   - Connected the paper icon in the sidebar to the MainFileManager
+   - Added appropriate navigation between Main and Project file managers
+   - Ensured proper project context preservation during navigation
+
+2. **Mock File Upload Implementation**
+   - Added mock file handling for file uploads when API endpoints are not available
+   - Implemented localStorage-based persistence for mock files
+   - Created seamless fallback from real API to mock implementation
+   - Added project linking/unlinking functionality for mock files
+
+3. **Project Integration**
+   - Fixed the project dropdown in file upload modals
+   - Added "None (Keep in Global Knowledge)" option for files
+   - Implemented proper project selection during file uploads
+   - Fixed file visibility between project and global views
+
+4. **Error Handling and Debugging**
+   - Added extensive debug logging throughout the file system
+   - Improved error handling for 404 endpoints
+   - Created graceful fallbacks for API failures
+   - Added processing status error handling
+
+### Technical Decisions
+- Used a "real-first, mock-fallback" approach for all API calls
+- Implemented localStorage for stateful mock persistence
+- Added conditional rendering for UI elements based on API availability
+- Ensured smooth transition path from mock to real implementation
+- Used console logging strategically for debugging file operations
+- Created consistent error handling patterns across components
+
+### Challenges Encountered
+- Files not showing in project view after navigating away and back
+- API endpoints returning 404 for file uploads and processing status
+- Project selection in MainFileManager not being properly applied
+- Projects not appearing in dropdown selections
+
+### Next Steps
+
+1. **Test and Fix Delete Functionality**
+   - Verify file deletion works properly in both file managers
+   - Implement proper cleanup of mock data when files are deleted
+   - Add confirmation dialogs for critical deletion actions
+   - Test that deleted files are properly removed from both views
+
+2. **Verify File Display and Visibility**
+   - Test that files appear correctly in both MainFileManager and ProjectFileManager
+   - Verify project linking/unlinking works bidirectionally
+   - Ensure file status indicators reflect correct state
+   - Test file filtering and sorting capabilities
+
+3. **Add Document Processing Pipeline**
+   - Implement proper status tracking for uploaded files
+   - Add processing status endpoint for monitoring progress
+   - Create mock processing simulation for development
+   - Connect processing indicators to real or mock status
+
+4. **Other Priority Items**
+   - Implement semantic search functionality
+   - Create context controls backend
+   - Develop reasoning modes for different retrieval strategies
+   - Implement user authentication and permissions
+   - Begin NeMo model integration to replace mock implementation
 
 ## Notes for Future Implementation
 
