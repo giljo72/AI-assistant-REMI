@@ -267,6 +267,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       return;
     }
     
+    console.log("[MAINFILEMANAGER] Starting search for:", searchTerm);
     setIsSearching(true);
     setIsLoading(true);
     
@@ -279,26 +280,70 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       };
       
       // Call API for search
+      console.log("[MAINFILEMANAGER] Sending search request:", searchRequest);
       const results = await fileService.searchFileContents(searchRequest);
-      setSearchResults(results.map(mapApiFileToLocal));
-    } catch (err) {
-      console.error('Error searching files:', err);
-      setError('Search failed. Please try again.');
-      // Fall back to local search if API fails
-      const results = files
-        .filter(file => 
-          file.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-          (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-        .map(file => ({
-          ...file,
-          relevance: 70 // Default relevance for local search
-        }));
+      console.log("[MAINFILEMANAGER] Received search results:", results);
       
-      setSearchResults(results);
+      // Always ensure we have results - if no results came back, show all files
+      if (!results || results.length === 0) {
+        console.log("[MAINFILEMANAGER] No search results found, showing all files");
+        // As a fallback, show all current files sorted by relevance
+        const fallbackResults = files.map(file => ({
+          ...file,
+          // Calculate a relevance score based on similarity
+          relevance: 50 - (levenshteinDistance(file.name.toLowerCase(), searchTerm.toLowerCase()) / 
+                         Math.max(file.name.length, searchTerm.length)) * 50,
+          content_snippets: [`No exact matches found - showing all files`]
+        }));
+        
+        setSearchResults(fallbackResults);
+      } else {
+        // Map API results to local format
+        const mappedResults = results.map(mapApiFileToLocal);
+        console.log("[MAINFILEMANAGER] Mapped search results:", mappedResults);
+        setSearchResults(mappedResults);
+      }
+    } catch (err) {
+      console.error('[MAINFILEMANAGER] Error searching files:', err);
+      setError('Search failed. Showing all files as fallback.');
+      
+      // Show all files as fallback
+      const fallbackResults = files.map(file => ({
+        ...file,
+        relevance: 30 // Low relevance for fallback results
+      }));
+      
+      setSearchResults(fallbackResults);
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Helper function to calculate string similarity
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const track = Array(str2.length + 1).fill(null).map(() => 
+      Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i += 1) {
+      track[0][i] = i;
+    }
+    
+    for (let j = 0; j <= str2.length; j += 1) {
+      track[j][0] = j;
+    }
+    
+    for (let j = 1; j <= str2.length; j += 1) {
+      for (let i = 1; i <= str1.length; i += 1) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        track[j][i] = Math.min(
+          track[j][i - 1] + 1, // deletion
+          track[j - 1][i] + 1, // insertion
+          track[j - 1][i - 1] + indicator, // substitution
+        );
+      }
+    }
+    
+    return track[str2.length][str1.length];
   };
 
   // Handle file selection for bulk operations
@@ -583,20 +628,43 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       {/* Search and Controls */}
       <div className="bg-navy-light p-4 mb-4 rounded-lg flex flex-wrap gap-2 justify-between items-center">
         <div className="flex space-x-2 items-center">
-          <input
-            type="text"
-            placeholder="Search files..."
-            className="bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-gold"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-          />
-          <button 
-            className="p-2 bg-navy hover:bg-navy-lighter rounded"
-            onClick={handleSearch}
-          >
-            <span className="text-gold">🔍</span>
-          </button>
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              placeholder="Search file names & contents..."
+              className="bg-navy p-2 pl-9 rounded-l focus:outline-none focus:ring-1 focus:ring-gold min-w-[300px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <span className="absolute left-3 text-gold">
+              {isLoading && isSearching ? 
+                <span className="animate-spin inline-block h-4 w-4 border-2 border-gold border-r-transparent rounded-full"/> : 
+                "🔍"
+              }
+            </span>
+            <button 
+              className={`px-3 py-2 ${!searchTerm.trim() ? 'bg-gold/10 text-gray-400' : 'bg-gold/20 hover:bg-gold/30 text-gold'} font-medium rounded-r border-l border-navy-lighter`}
+              onClick={handleSearch}
+              disabled={!searchTerm.trim() || (isLoading && isSearching)}
+            >
+              {isLoading && isSearching ? 'Searching...' : 'Search'}
+            </button>
+            {searchTerm && (
+              <button 
+                className="absolute right-[85px] text-sm text-gray-400 hover:text-gray-200"
+                onClick={() => {
+                  setSearchTerm('');
+                  if (isSearching) {
+                    setIsSearching(false);
+                    setSearchResults([]);
+                  }
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
         
         <div className="flex space-x-3">
@@ -659,10 +727,24 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       {/* Files List */}
       <div className="flex-1 bg-navy-light p-4 rounded-lg overflow-y-auto">
         <h3 className="text-lg font-medium text-gold mb-3 pb-2 border-b border-navy flex justify-between items-center">
-          <span>
-            {isSearching ? 'Search Results' : 'All Files'} 
-            {isSearching && ` (${searchResults.length})`}
-          </span>
+          <div className="flex items-center">
+            {isSearching ? (
+              <div className="flex flex-col">
+                <div className="flex items-center">
+                  <span className="text-lg">Search Results</span>
+                  <span className="ml-2 px-2 py-0.5 bg-gold/20 text-gold rounded text-sm">
+                    {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'}
+                  </span>
+                </div>
+                <div className="text-sm mt-1">
+                  <span className="text-gray-400">Query: </span>
+                  <span className="text-gold font-bold italic">"{searchTerm}"</span>
+                </div>
+              </div>
+            ) : (
+              <span>All Files</span>
+            )}
+          </div>
           <div className="flex items-center space-x-2">
             {/* Batch action buttons - only show when files are selected */}
             {selectedFiles.length > 0 && (
@@ -849,10 +931,12 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                 onClick={() => {
                   setIsSearching(false);
                   setSearchTerm('');
+                  setSearchResults([]);
+                  fetchFiles(); // Reload original file list
                 }}
-                className="text-xs px-2 py-1 bg-navy hover:bg-navy-lighter rounded"
+                className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded flex items-center"
               >
-                Clear Search
+                <span className="mr-1">✕</span> Clear Search
               </button>
             )}
           </div>
@@ -901,13 +985,13 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     </div>
                     
                     {/* File info */}
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h4 className="font-medium flex items-center">
                         {file.name}
                         {/* Search relevance if available */}
-                        {file.relevance !== undefined && (
+                        {isSearching && file.relevance !== undefined && (
                           <span className="ml-2 text-xs px-1.5 py-0.5 bg-gold/20 text-gold rounded">
-                            {file.relevance}%
+                            {Math.round(file.relevance)}%
                           </span>
                         )}
                       </h4>
@@ -915,6 +999,17 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                         <span>Added {file.addedAt}</span>
                         <span>•</span>
                         <span>{file.size}</span>
+                        
+                        {/* Display search snippets for search results */}
+                        {isSearching && (file as any).content_snippets && (file as any).content_snippets.length > 0 && (
+                          <div className="w-full mt-1.5 bg-navy/50 rounded p-1.5">
+                            {(file as any).content_snippets.map((snippet: string, index: number) => (
+                              <div key={index} className="text-blue-300 italic mb-1 last:mb-0 text-xs">
+                                "{snippet}"
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         
                         {/* Processing status */}
                         {file.processed ? (
@@ -1202,8 +1297,20 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             })}
           </div>
         ) : (
-          <div className="p-3 text-center text-gray-400">
-            {isSearching ? 'No files match your search criteria.' : 'No files have been added yet.'}
+          <div className="p-6 text-center">
+            {isSearching ? (
+              <div>
+                <div className="text-4xl mb-2">🔍</div>
+                <div className="text-gray-400 mb-2">No files match your search criteria.</div>
+                <div className="text-xs text-gray-500">Try using different keywords or uploading relevant documents.</div>
+              </div>
+            ) : (
+              <div>
+                <div className="text-4xl mb-2">📄</div>
+                <div className="text-gray-400 mb-2">No files have been added yet.</div>
+                <div className="text-xs text-gray-500">Upload files using the panel above to get started.</div>
+              </div>
+            )}
           </div>
         )}
       </div>
