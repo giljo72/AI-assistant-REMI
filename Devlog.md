@@ -289,3 +289,47 @@ Implementing a fully functional file management system with mock data support fo
 - Plan for multi-user support and permissions model
 - Research voice input integration possibilities
 - Consider export/import functionality for project migration
+
+## May 18, 2025 - Debugging File Management System
+
+### Key Initiative
+Fixing file display issues and navigation in the File Manager components
+
+### Action Items Completed
+1. **Fixed File Display in MainFileManager**
+   - Resolved issues with files not showing in file list after upload
+   - Fixed project ID handling for files (replaced "Standard" with actual UUIDs) 
+   - Implemented proper global file handling (null project_id)
+   - Added better error handling for processing status endpoint
+
+2. **Fixed File Upload & Delete Functionality**
+   - Implemented proper refresh of file list after uploads
+   - Added event-based refresh instead of polling
+   - Fixed file deletion and automatic refresh afterward
+   - Added more detailed logging for debugging
+
+3. **File Navigation & UI Improvements**
+   - Started debugging "disappearing" MainFileManager issue (in progress)
+   - Added force flag mechanism to keep MainFileManager view active
+   - Improved event handling to prevent unwanted navigation
+   - Enhanced the project ID handling in filter logic
+
+### Technical Notes
+- Removed automatic polling in favor of event-based refreshes
+- Improved error handling for missing API endpoints
+- Added conversion of "Standard" project IDs to null to fix filtering
+- Enhanced debugging with detailed logs for state transitions
+- Modified event propagation handling to prevent unwanted navigation
+
+### Next Steps
+1. **Complete MainFileManager Navigation Fix**
+   - Continue debugging the file icon navigation issue
+   - Test and ensure stable navigation between file managers
+
+2. **Implement File Preview**
+   - Add file content preview functionality
+   - Create modal view for file details
+
+3. **Connect Backend Processing**
+   - Complete integration with actual document processing pipeline
+   - Implement real-time processing status indicators

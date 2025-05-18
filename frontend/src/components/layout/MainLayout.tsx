@@ -22,7 +22,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onProjectSelect, onOp
   return (
     <div className="flex h-screen bg-navy text-white overflow-hidden">
       {/* Sidebar */}
-      <div className="w-64 bg-navy-light border-r border-gold overflow-y-auto flex flex-col">
+      <div className="w-64 bg-navy-light border-r border-gold overflow-y-auto flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Project sidebar takes the top portion */}
         <div className="flex-1 overflow-y-auto">
           <ProjectSidebar 

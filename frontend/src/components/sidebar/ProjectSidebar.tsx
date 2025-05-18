@@ -68,12 +68,12 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpen
                 setActiveProjectId('');
                 // Then call the onOpenMainFiles function
                 onOpenMainFiles();
-                
-                // Add a small delay to ensure the state updates properly
-                setTimeout(() => {
-                  console.log("[SIDEBAR] Confirming navigation to MainFileManager");
-                }, 100);
               }
+            }}
+            onMouseDown={(e) => {
+              // Also prevent mouse down events which might trigger other behavior
+              e.stopPropagation();
+              e.preventDefault();
             }}
             title="File Manager"
           >

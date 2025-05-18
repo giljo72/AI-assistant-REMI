@@ -82,21 +82,19 @@ function App() {
     loadProjects();
   }, [activeProjectId]);
   
-  // Effect to keep main file view active when force flag is set
+  // Single effect to handle forced main file view
   useEffect(() => {
-    if (forceMainFileView && activeView !== 'mainFiles') {
-      console.log("[APP] Force main file view is active but view changed to", activeView, "- resetting to mainFiles");
-      setActiveView('mainFiles');
+    // If force flag is set and view is not mainFiles, force it back
+    if (forceMainFileView) {
+      if (activeView !== 'mainFiles') {
+        console.log("[APP] Force flag active - keeping view on mainFiles");
+        // Set a short timeout to ensure other state updates complete first
+        setTimeout(() => {
+          setActiveView('mainFiles');
+        }, 50);
+      }
     }
   }, [activeView, forceMainFileView]);
-
-  // Effect to clear force flag when the user manually navigates away
-  useEffect(() => {
-    if (activeView !== 'mainFiles' && forceMainFileView) {
-      console.log("[APP] User navigated away from mainFiles, clearing force flag");
-      setForceMainFileView(false);
-    }
-  }, [activeView]);
   
   // Effect to load chats when the active project changes
   useEffect(() => {
@@ -220,6 +218,12 @@ function App() {
 
   // Handle project selection from sidebar
   const handleProjectSelect = (projectId: string) => {
+    // Clear force flag if user intentionally navigates to a project
+    if (forceMainFileView) {
+      console.log("[APP] User selected a project, clearing force main file view flag");
+      setForceMainFileView(false);
+    }
+    
     setActiveProjectId(projectId);
     setActiveChatId(null);
     setActiveView('project');
