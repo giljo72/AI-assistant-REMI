@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fileService, projectService } from '../../services';
 import { File, FileFilterOptions, FileSortOptions, ProcessingStats, FileSearchResult } from '../../services/fileService';
-import { useNavigation } from '../../hooks/useNavigation';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -80,29 +79,16 @@ const mapApiFileToLocal = (apiFile: File): LocalFile => ({
 });
 
 type MainFileManagerProps = {
-  // No props needed since we use the navigation system
+  onReturn: () => void; // Function to return to previous view
+  onSelectProject?: (projectId: string) => void; // Function to navigate to a project
+  projectId?: string | null; // Current project ID if coming from a project
 };
 
-const MainFileManager: React.FC<MainFileManagerProps> = () => {
-  // Use our navigation hook
-  const navigation = useNavigation();
-  
-  // Helper function to handle return to previous view
-  const handleReturn = () => {
-    if (navigation.activeProjectId) {
-      navigation.navigateToView('projectFiles');
-    } else {
-      navigation.navigateToView('project');
-    }
-  };
-  
-  // Helper function to navigate to a project
-  const handleSelectProject = (projectId: string) => {
-    navigation.navigateToProject(projectId);
-  };
-  
-  // Determine the current project ID
-  const projectId = navigation.activeProjectId;
+const MainFileManager: React.FC<MainFileManagerProps> = ({ 
+  onReturn, 
+  onSelectProject,
+  projectId 
+}) => {
   // Files state
   const [files, setFiles] = useState<LocalFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -430,7 +416,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
         </div>
         <div className="flex space-x-2">
           <button 
-            onClick={handleReturn}
+            onClick={onReturn}
             className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm"
           >
             Return
@@ -700,7 +686,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                             <span>•</span>
                             <button 
                               className="text-blue-400 hover:underline"
-                              onClick={() => handleSelectProject(linkedProject.id)}
+                              onClick={() => onSelectProject && onSelectProject(linkedProject.id)}
                             >
                               {linkedProject.name}
                             </button>

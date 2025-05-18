@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useEffect } from 'react';
-import { Provider } from 'react-redux';
-import { store } from './store';
+import { Provider } from 'react-redux'; // Add this import
+import { store } from './store'; // Add this import
 import MainLayout from './components/layout/MainLayout';
 import ProjectManagerView from './components/project/ProjectManagerView';
 import ChatView from './components/chat/ChatView';
@@ -12,8 +12,10 @@ import SearchFilesResults from './components/file/SearchFilesResults';
 import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
 import { projectService, chatService, fileService } from './services';
 import type { Chat as ChatType, ChatMessage } from './services';
-import { ProjectProvider } from './context/ProjectContext';
-import { useNavigation } from './hooks/useNavigation';
+import { ProjectProvider, useProjects } from './context/ProjectContext';
+
+// Define the possible view types
+type View = 'project' | 'chat' | 'document' | 'projectFiles' | 'mainFiles' | 'searchResults';
 
 // Adapted chat message type to match UI needs
 interface UIMessage {
@@ -26,12 +28,12 @@ interface UIMessage {
 // Initial empty state for chat messages
 const initialMessages: UIMessage[] = [];
 
-// The main application without Redux provider (for hooks usage)
-function AppContent() {
-  // Use the navigation hook for state management
-  const navigation = useNavigation();
-  
-  // Local component state
+function App() {
+  // State for active project and view
+  const [activeProjectId, setActiveProjectId] = useState<string>('');
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<View>('project');
+  const [forceMainFileView, setForceMainFileView] = useState(false); // New state for forcing main file view
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatMessages, setChatMessages] = useState(initialMessages);
   const [projectNames, setProjectNames] = useState<{[key: string]: string}>({});
@@ -41,6 +43,9 @@ function AppContent() {
   // State for file search and upload
   const [isTagAndAddModalOpen, setIsTagAndAddModalOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  
+  // Initial empty search results
+  const initialSearchResults: any[] = [];
   
   // Effect to load projects and update project names
   useEffect(() => {
@@ -55,20 +60,19 @@ function AppContent() {
           });
           setProjectNames(projectsMap);
           
-          // Only auto-select first project if we're not in mainFiles view and no project is selected
-          if (!navigation.activeProjectId && loadedProjects.length > 0 && navigation.activeView !== 'mainFiles') {
-            navigation.navigateToProject(loadedProjects[0].id);
+          // Only auto-select first project if we're not in mainFiles view
+          if (!activeProjectId && loadedProjects.length > 0 && activeView !== 'mainFiles' && !forceMainFileView) {
+            setActiveProjectId(loadedProjects[0].id);
           }
           
           // If active project was deleted, switch to first available
-          if (navigation.activeProjectId && 
-              !loadedProjects.find(p => p.id === navigation.activeProjectId) && 
-              loadedProjects.length > 0) {
-            navigation.navigateToProject(loadedProjects[0].id);
+          if (activeProjectId && !loadedProjects.find(p => p.id === activeProjectId) && loadedProjects.length > 0) {
+            setActiveProjectId(loadedProjects[0].id);
           }
         } else {
           // No projects exist
           setProjectNames({});
+          setActiveProjectId('');
         }
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -76,15 +80,34 @@ function AppContent() {
     };
     
     loadProjects();
-  }, [navigation.activeProjectId, navigation.activeView]);
+  }, [activeProjectId, activeView, forceMainFileView]);
+  
+  // Effect to handle forced main file view
+  useEffect(() => {
+    if (forceMainFileView) {
+      console.log("[APP] Force flag active - ensuring MainFileManager view persists");
+      
+      // Ensure view is set to mainFiles
+      if (activeView !== 'mainFiles') {
+        console.log("[APP] Forcing view to mainFiles");
+        setActiveView('mainFiles');
+      }
+      
+      // Always clear active project ID when in MainFileManager view
+      if (activeProjectId !== '') {
+        console.log("[APP] Clearing active project ID while in MainFileManager");
+        setActiveProjectId('');
+      }
+    }
+  }, [forceMainFileView, activeView, activeProjectId]);
   
   // Effect to load chats when the active project changes
   useEffect(() => {
     const loadChats = async () => {
-      if (!navigation.activeProjectId) return;
+      if (!activeProjectId) return;
       
       try {
-        const loadedChats = await chatService.getChats(navigation.activeProjectId);
+        const loadedChats = await chatService.getChats(activeProjectId);
         setChats(loadedChats || []);
         
         // Create a map of chat names
@@ -105,18 +128,18 @@ function AppContent() {
     };
     
     loadChats();
-  }, [navigation.activeProjectId]);
+  }, [activeProjectId]);
   
   // Effect to load chat messages when the active chat changes
   useEffect(() => {
     const loadChatMessages = async () => {
-      if (!navigation.activeChatId) {
+      if (!activeChatId) {
         setChatMessages([]);
         return;
       }
       
       try {
-        const chat = await chatService.getChat(navigation.activeChatId);
+        const chat = await chatService.getChat(activeChatId);
         
         // Convert API messages to UI format, ensuring messages is an array
         const messages = Array.isArray(chat.messages) ? chat.messages : [];
@@ -135,7 +158,7 @@ function AppContent() {
     };
     
     loadChatMessages();
-  }, [navigation.activeChatId]);
+  }, [activeChatId]);
 
   // Helper functions to get project and chat names by ID
   const getProjectName = (projectId: string): string => {
@@ -149,16 +172,16 @@ function AppContent() {
 
   // Handle message sending
   const handleSendMessage = async (content: string) => {
-    if (!navigation.activeChatId) return;
+    if (!activeChatId) return;
     
     setIsProcessing(true);
     
     try {
       // Send message to API
-      await chatService.sendMessage(navigation.activeChatId, content);
+      await chatService.sendMessage(activeChatId, content);
       
       // Reload messages
-      const chat = await chatService.getChat(navigation.activeChatId);
+      const chat = await chatService.getChat(activeChatId);
       
       // Convert API messages to UI format
       const uiMessages: UIMessage[] = chat.messages.map((msg: ChatMessage) => ({
@@ -198,18 +221,52 @@ function AppContent() {
     }
   };
 
+  // Handle project selection from sidebar
+  const handleProjectSelect = (projectId: string) => {
+    // Only handle project selection if not in force MainFileManager mode
+    if (forceMainFileView) {
+      console.log("[APP] User selected a project while in forced MainFileManager view");
+      console.log("[APP] Clearing force flag and allowing project selection");
+      
+      // Do state updates in specific order to prevent race conditions
+      
+      // 1. First clear the force flag
+      setForceMainFileView(false);
+      
+      // 2. Set project after a tiny delay
+      setTimeout(() => {
+        console.log("[APP] Now setting project ID and view");
+        setActiveProjectId(projectId);
+        setActiveChatId(null);
+        setActiveView('project');
+      }, 10);
+    } else {
+      // Normal project selection behavior
+      console.log("[APP] Normal project selection:", projectId);
+      setActiveProjectId(projectId);
+      setActiveChatId(null);
+      setActiveView('project');
+    }
+  };
+
+  // Handle opening a chat
+  const handleOpenChat = async (chatId: string) => {
+    setActiveChatId(chatId);
+    setActiveView('chat');
+  };
+  
   // Handle creating a new chat
   const handleCreateChat = async (name: string) => {
-    if (!navigation.activeProjectId) return;
+    if (!activeProjectId) return;
     
     try {
       const newChat = await chatService.createChat({
         name,
-        project_id: navigation.activeProjectId
+        project_id: activeProjectId
       });
       
       // Update chats list
-      const updatedChats = await chatService.getChats(navigation.activeProjectId);
+      const updatedChats = await chatService.getChats(activeProjectId);
       setChats(updatedChats);
       
       // Update chat names map
@@ -219,7 +276,8 @@ function AppContent() {
       }));
       
       // Set this as the active chat
-      navigation.navigateToChat(newChat.id);
+      setActiveChatId(newChat.id);
+      setActiveView('chat');
       
       return newChat;
     } catch (error) {
@@ -228,13 +286,54 @@ function AppContent() {
     }
   };
 
+  // Handle navigating to document view
+  const handleOpenDocuments = () => {
+    setActiveView('document');
+  };
+
+  // Handle navigating to project file manager
+  const handleOpenProjectFiles = () => {
+    setActiveView('projectFiles');
+  };
+
+  // Handle navigating to main file manager
+  const handleOpenMainFiles = () => {
+    console.log("[APP] Navigating to MainFileManager");
+    
+    // Perform state updates in order and ensure they don't conflict
+    
+    // 1. First set the force flag to true
+    setForceMainFileView(true);
+    
+    // 2. Clear active project ID
+    setActiveProjectId('');
+    
+    // 3. Finally set the view state
+    // Use a minimal delay to ensure the previous state updates have time to be processed
+    // This helps prevent race conditions in React's state batching
+    setTimeout(() => {
+      console.log("[APP] Setting view to mainFiles");
+      setActiveView('mainFiles');
+    }, 10);
+    
+    console.log("[APP] Navigation to MainFileManager initiated");
+  };
+
+  // Handle navigating to search results
+  const handleShowSearchResults = () => {
+    // TODO: Implement real search functionality
+    // For now, just use empty results
+    setSearchResults(initialSearchResults);
+    setActiveView('searchResults');
+  };
+
   // Handle attaching files from search results
   const handleAttachFiles = (fileIds: string[]) => {
-    console.log(`Attaching files: ${fileIds.join(', ')} to project ${navigation.activeProjectId}`);
+    console.log(`Attaching files: ${fileIds.join(', ')} to project ${activeProjectId}`);
     // In a real app, this would make an API call
     
     // Return to project files view after attaching
-    navigation.navigateToView('projectFiles');
+    setActiveView('projectFiles');
   };
 
   // Handle file upload and processing
@@ -249,7 +348,7 @@ function AppContent() {
           file: fileData.file,
           name: fileData.file.name,
           description: fileData.description,
-          project_id: fileData.projectId || navigation.activeProjectId || undefined
+          project_id: fileData.projectId || activeProjectId || undefined
         };
         
         // Upload the file
@@ -263,31 +362,32 @@ function AppContent() {
     }
     
     // Return to main files view after processing
-    navigation.navigateToView('mainFiles');
+    setActiveView('mainFiles');
   };
 
   // Render the appropriate view based on activeView state
   const renderView = () => {
-    switch (navigation.activeView) {
+    switch (activeView) {
       case 'project':
         return (
           <ProjectManagerView 
-            projectId={navigation.activeProjectId || ''} 
-            onOpenChat={(chatId) => navigation.navigateToChat(chatId)}
-            onOpenFiles={() => navigation.navigateToView('projectFiles')}
+            projectId={activeProjectId} 
+            onOpenChat={handleOpenChat}
+            onOpenFiles={handleOpenProjectFiles}
             onProjectDeleted={() => {
               // Reset to project view
-              navigation.navigateToProject('');
+              setActiveProjectId('');
+              setActiveView('project');
             }}
           />
         );
       case 'chat':
         return (
           <ChatView 
-            projectId={navigation.activeProjectId || ''} 
-            chatId={navigation.activeChatId}
-            projectName={getProjectName(navigation.activeProjectId || '')}
-            chatName={getChatName(navigation.activeChatId)}
+            projectId={activeProjectId} 
+            chatId={activeChatId}
+            projectName={getProjectName(activeProjectId)}
+            chatName={getChatName(activeChatId)}
             messages={chatMessages}
             isProcessing={isProcessing}
             onSendMessage={handleSendMessage}
@@ -297,33 +397,31 @@ function AppContent() {
       case 'document':
         return (
           <DocumentView 
-            projectId={navigation.activeProjectId || ''} 
+            projectId={activeProjectId} 
           />
         );
       case 'projectFiles':
         return (
           <ProjectFileManager 
-            projectId={navigation.activeProjectId || ''} 
-            onReturn={() => navigation.navigateToView('project')} 
-            onOpenMainFileManager={() => navigation.openMainFileManager()} 
+            projectId={activeProjectId} 
+            onReturn={() => setActiveView('project')} 
+            onOpenMainFileManager={handleOpenMainFiles} 
           />
         );
       case 'mainFiles':
         return (
           <MainFileManager 
-            onReturn={() => navigation.activeProjectId 
-              ? navigation.navigateToView('projectFiles') 
-              : navigation.navigateToView('project')}
-            onSelectProject={(projectId) => navigation.navigateToProject(projectId)}
-            projectId={navigation.activeProjectId || ''}
+            onReturn={() => activeProjectId ? setActiveView('projectFiles') : setActiveView('project')}
+            onSelectProject={handleProjectSelect}
+            projectId={activeProjectId}
           />
         );
       case 'searchResults':
         return (
           <SearchFilesResults 
             searchResults={searchResults}
-            projectId={navigation.activeProjectId || ''}
-            onClose={() => navigation.navigateToView('projectFiles')}
+            projectId={activeProjectId}
+            onClose={() => setActiveView('projectFiles')}
             onAttachFiles={handleAttachFiles}
           />
         );
@@ -333,29 +431,28 @@ function AppContent() {
   };
 
   return (
-    <div className="App">
-      <ProjectProvider>
-        <MainLayout>
-          {renderView()}
-        </MainLayout>
-        
-        {/* Modals */}
-        <TagAndAddFileModal 
-          isOpen={isTagAndAddModalOpen}
-          onClose={() => setIsTagAndAddModalOpen(false)}
-          onProcessFiles={handleProcessFiles}
-          currentProjectId={navigation.activeProjectId || ''}
-        />
-      </ProjectProvider>
-    </div>
-  );
-}
-
-// Wrapper component with Redux Provider
-function App() {
-  return (
     <Provider store={store}>
-      <AppContent />
+      <div className="App">
+        <ProjectProvider>
+          <MainLayout 
+            onProjectSelect={handleProjectSelect}
+            onOpenMainFiles={handleOpenMainFiles} // No need for boolean parameter anymore
+            currentView={activeView} // Pass current view for sidebar highlighting
+            forceMainFileView={forceMainFileView}
+            setForceMainFileView={setForceMainFileView}
+          >
+            {renderView()}
+          </MainLayout>
+          
+          {/* Modals */}
+          <TagAndAddFileModal 
+            isOpen={isTagAndAddModalOpen}
+            onClose={() => setIsTagAndAddModalOpen(false)}
+            onProcessFiles={handleProcessFiles}
+            currentProjectId={activeProjectId}
+          />
+        </ProjectProvider>
+      </div>
     </Provider>
   );
 }

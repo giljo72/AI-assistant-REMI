@@ -1,13 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import userPromptsReducer from './userPromptsSlice';
 import projectSettingsReducer from './projectSettingsSlice';
-import navigationReducer from './navigationSlice';
+// Import other reducers as needed
 
 export const store = configureStore({
   reducer: {
     userPrompts: userPromptsReducer,
     projectSettings: projectSettingsReducer,
-    navigation: navigationReducer,
+    // Add other reducers here
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

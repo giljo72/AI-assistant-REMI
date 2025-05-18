@@ -5,21 +5,29 @@ import ProjectSidebar from '../sidebar/ProjectSidebar';
 import UserPromptsPanel from '../chat/UserPromptsPanel';
 import ContextControlsPanel from '../modals/ContextControlsPanel';
 import { RootState } from '../../store';
-import { useNavigation } from '../../hooks/useNavigation';
 
 type MainLayoutProps = {
   children: ReactNode;
+  onProjectSelect: (projectId: string) => void;
+  onOpenMainFiles?: () => void; // Add prop for opening main file manager
+  currentView?: string; // Add current view for sidebar highlighting
+  forceMainFileView?: boolean; // Flag to force main file view
+  setForceMainFileView?: (force: boolean) => void; // Function to set force flag
 };
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ 
+  children, 
+  onProjectSelect, 
+  onOpenMainFiles, 
+  currentView,
+  forceMainFileView,
+  setForceMainFileView
+}) => {
   const [isContextControlsOpen, setIsContextControlsOpen] = useState(false);
   const dispatch = useDispatch();
   const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled } = useSelector(
     (state: RootState) => state.projectSettings
   );
-  
-  // Get navigation state using our custom hook
-  const { activeView } = useNavigation();
 
   return (
     <div className="flex h-screen bg-navy text-white overflow-hidden">
@@ -27,7 +35,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <div className="w-64 bg-navy-light border-r border-gold overflow-y-auto flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Project sidebar takes the top portion */}
         <div className="flex-1 overflow-y-auto">
-          <ProjectSidebar />
+          <ProjectSidebar 
+            onProjectSelect={onProjectSelect} 
+            onOpenMainFiles={onOpenMainFiles}
+            currentView={currentView}
+            forceMainFileView={forceMainFileView}
+            setForceMainFileView={setForceMainFileView}
+          />
         </div>
         
         {/* User Prompts and Context Controls in the bottom portion */}
@@ -50,23 +64,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <header className="bg-navy-light p-4 border-b border-gold flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gold">AI Assistant</h1>
           
-          {/* View indicator showing current view */}
-          <div className="flex items-center">
-            <span className="text-sm text-gold mr-2">
-              View: <span className="font-bold">{activeView.charAt(0).toUpperCase() + activeView.slice(1)}</span>
-            </span>
-            
-            {/* Mode dropdown - simplified version */}
-            <div className="flex items-center bg-navy px-3 py-1.5 rounded ml-4">
-              <span className="text-sm text-gray-400 mr-2">Mode:</span>
-              <select className="bg-navy text-white text-sm focus:outline-none focus:ring-1 focus:ring-gold rounded">
-                <option>Standard</option>
-                <option>Project Focus</option>
-                <option>Deep Research</option>
-                <option>Quick Response</option>
-                <option>Custom</option>
-              </select>
-            </div>
+          {/* Mode dropdown - simplified version */}
+          <div className="flex items-center bg-navy px-3 py-1.5 rounded">
+            <span className="text-sm text-gray-400 mr-2">Mode:</span>
+            <select className="bg-navy text-white text-sm focus:outline-none focus:ring-1 focus:ring-gold rounded">
+              <option>Standard</option>
+              <option>Project Focus</option>
+              <option>Deep Research</option>
+              <option>Quick Response</option>
+              <option>Custom</option>
+            </select>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4">

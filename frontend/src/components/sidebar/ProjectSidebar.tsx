@@ -1,32 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddProjectModal from '../modals/AddProjectModal';
 import { useProjects } from '../../context/ProjectContext';
+import { useNavigation } from '../../hooks/useNavigation';
 
-// Props type for the sidebar
-type ProjectSidebarProps = {
-  onProjectSelect: (projectId: string) => void;
-  onOpenMainFiles?: () => void; // Add prop for opening main file manager
-};
-
-const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpenMainFiles }) => {
+const ProjectSidebar: React.FC = () => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
-  const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
   
   // Use the shared project context
   const { projects, loading, error, addProject } = useProjects();
   
+  // Use our navigation hook
+  const navigation = useNavigation();
+  
   // Effect to set active project when projects change
-  React.useEffect(() => {
-    // Set active project ID to first project if we have projects and no active project
-    if (projects.length > 0 && !activeProjectId) {
-      setActiveProjectId(projects[0].id);
-      onProjectSelect(projects[0].id);
-    } else if (projects.length === 0) {
-      // If no projects, clear active project
-      setActiveProjectId('');
+  useEffect(() => {
+    // Only auto-select first project if we're not in mainFiles view and no project is selected
+    if (navigation.activeView !== 'mainFiles' && 
+        !navigation.activeProjectId && 
+        projects.length > 0) {
+      console.log("[SIDEBAR] Auto-selecting first project");
+      navigation.navigateToProject(projects[0].id);
     }
-  }, [projects, activeProjectId, onProjectSelect]);
+  }, [projects, navigation.activeProjectId, navigation.activeView]);
 
   const handleAddProject = async (name: string, prompt: string) => {
     try {
@@ -34,16 +30,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpen
       const newProject = await addProject(name, prompt || undefined);
       
       // Set this as the active project
-      setActiveProjectId(newProject.id);
-      onProjectSelect(newProject.id);
+      navigation.navigateToProject(newProject.id);
     } catch (err) {
       console.error("Error creating project:", err);
     }
-  };
-
-  const handleProjectSelect = (projectId: string) => {
-    setActiveProjectId(projectId);
-    onProjectSelect(projectId); // Notify parent component
   };
 
   return (
@@ -55,37 +45,23 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpen
         
         <div className="mb-4 flex items-center space-x-1">
           <button 
-            className="p-2 hover:bg-navy-lighter rounded-full" 
-            onClick={(e) => {
-              // Prevent event bubbling
-              e.stopPropagation();
-              e.preventDefault();
-              
-              // Open main files but also clear the active project to ensure global file upload works correctly
-              if (onOpenMainFiles) {
-                console.log("[SIDEBAR] File icon clicked - clearing active project and navigating to MainFileManager");
-                // We need to clear the active project in ProjectSidebar
-                setActiveProjectId('');
-                // Then call the onOpenMainFiles function
-                onOpenMainFiles();
-              }
-            }}
-            onMouseDown={(e) => {
-              // Also prevent mouse down events which might trigger other behavior
-              e.stopPropagation();
-              e.preventDefault();
-            }}
+            className={`p-2 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            onClick={() => navigation.openMainFileManager()}
             title="File Manager"
           >
-            <span className="text-gold">📄</span>
+            <span className={`${navigation.activeView === 'mainFiles' ? 'text-gold font-bold' : 'text-gold'}`}>📄</span>
           </button>
-          <button className="p-2 hover:bg-navy-lighter rounded-full">
+          <button 
+            className={`p-2 ${navigation.isSearchActive ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            onClick={() => navigation.setSearchActive(true)}
+            title="Search Files"
+          >
             <span className="text-gold">🔍</span>
           </button>
-          <button className="p-2 hover:bg-navy-lighter rounded-full">
+          <button className="p-2 hover:bg-navy-lighter rounded-full" title="Help">
             <span className="text-gold">❓</span>
           </button>
-          <button className="p-2 hover:bg-navy-lighter rounded-full">
+          <button className="p-2 hover:bg-navy-lighter rounded-full" title="Settings">
             <span className="text-gold">⚙️</span>
           </button>
         </div>
@@ -132,8 +108,12 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpen
                 projects.map((project) => (
                   <div 
                     key={project.id} 
-                    onClick={() => handleProjectSelect(project.id)}
-                    className={`p-3 rounded cursor-pointer ${activeProjectId === project.id ? 'bg-navy text-gold font-bold' : 'hover:bg-navy-lighter'}`}
+                    onClick={() => navigation.navigateToProject(project.id)}
+                    className={`p-3 rounded cursor-pointer ${
+                      navigation.activeProjectId === project.id && navigation.activeView !== 'mainFiles' 
+                        ? 'bg-navy text-gold font-bold' 
+                        : 'hover:bg-navy-lighter'
+                    }`}
                   >
                     {project.name}
                   </div>

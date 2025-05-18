@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { fileService, projectService } from '../../services';
 import { File, FileFilterOptions, ProcessingStats } from '../../services/fileService';
 import { Project } from '../../services/projectService';
-import { useNavigation } from '../../hooks/useNavigation';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -72,25 +71,16 @@ const mapApiFileToLocal = (apiFile: File): LocalFile => ({
 });
 
 type ProjectFileManagerProps = {
-  // No props needed since we use the navigation system
+  projectId: string;
+  onReturn: () => void; // Function to return to project view
+  onOpenMainFileManager: () => void; // Function to open the main file manager
 };
 
-const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
-  // Use our navigation hook
-  const navigation = useNavigation();
-  
-  // Get the current project ID from navigation state
-  const projectId = navigation.activeProjectId || '';
-  
-  // Helper function to return to project view
-  const handleReturn = () => {
-    navigation.navigateToView('project');
-  };
-  
-  // Helper function to open the main file manager
-  const handleOpenMainFileManager = () => {
-    navigation.openMainFileManager();
-  };
+const ProjectFileManager: React.FC<ProjectFileManagerProps> = ({ 
+  projectId, 
+  onReturn, 
+  onOpenMainFileManager 
+}) => {
   // Files state
   const [projectFiles, setProjectFiles] = useState<LocalFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -195,7 +185,7 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
         </div>
         <div className="flex space-x-2">
           <button 
-            onClick={handleReturn}
+            onClick={onReturn}
             className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm"
           >
             Return to Project
@@ -226,7 +216,7 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
       {/* Browse Global Files button */}
       <div className="bg-navy-light p-4 mb-4 rounded-lg flex justify-center">
         <button 
-          onClick={handleOpenMainFileManager}
+          onClick={onOpenMainFileManager}
           className="px-4 py-2 bg-gold/20 hover:bg-gold/30 text-gold rounded"
         >
           Browse Global Files

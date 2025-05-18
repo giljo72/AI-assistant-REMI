@@ -1,5 +1,40 @@
 # AI Assistant Dev Log
 
+## May 18, 2025 - Complete Refactor of Navigation System
+
+### Key Initiative
+Complete refactoring of the application's navigation system to address fundamental architectural issues causing MainFileManager and project navigation conflicts.
+
+### Action Items and Activities
+- Created Redux-based navigation state management system
+- Implemented centralized navigation slice to manage all view transitions
+- Created custom navigation hook for consistent state access
+- Refactored App, MainLayout, ProjectSidebar, MainFileManager, and ProjectFileManager components
+- Eliminated all setTimeout-based state updates and race conditions
+- Implemented stateless sidebar that accurately reflects current navigation state
+
+### Technical Decisions
+- Created navigationSlice.ts with Redux Toolkit for centralized state management
+- Implemented useNavigation custom hook to abstract state access and actions
+- Used compound navigation actions (navigateToMainFiles, navigateToProject) for complex transitions
+- Split App component into stateful AppContent and a simple Redux provider wrapper
+- Made MainLayout and ProjectSidebar stateless with all navigation driven by Redux
+- Added clear visual indicators for each navigation state in the UI
+- Eliminated all force flags and manual state synchronization
+
+### Challenges Addressed
+- Solved race conditions caused by competing state updates
+- Eliminated flickering when navigating between views
+- Fixed issues with navigation state and UI not being in sync
+- Removed all timeout-based state updates that were trying to work around architectural issues
+- Implemented proper separation between global and project contexts
+- Created clean, predictable navigation patterns with unidirectional data flow
+
+### Next Steps
+- Further testing of new navigation system
+- Address any minor edge cases in navigation
+- Consider expanding this architectural pattern to other state management in the application
+
 ## Prior Development Summary (May 10-14, 2025)
 
 ### Environment Setup & Core Architecture
