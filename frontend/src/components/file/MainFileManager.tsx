@@ -857,6 +857,12 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                                   if (dropdown) {
                                     dropdown.classList.add('hidden');
                                   }
+                                  
+                                  // Clear selection after successful operation
+                                  setSelectedFiles([]);
+                                  
+                                  // Force refresh the file list to ensure it's up to date
+                                  await fetchFiles();
                                 } catch (err) {
                                   console.error('Error assigning files to project:', err);
                                   setError('Failed to assign files to project. Please try again.');
@@ -907,6 +913,12 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                                   : file
                               )
                             );
+                            
+                            // Clear selection after successful operation
+                            setSelectedFiles([]);
+                            
+                            // Force refresh the file list to ensure it's up to date
+                            await fetchFiles();
                           } catch (err) {
                             console.error('Error removing files from projects:', err);
                             setError('Failed to remove files from projects. Please try again.');
@@ -1247,6 +1259,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                                     if (dropdown) {
                                       dropdown.classList.add('hidden');
                                     }
+                                    
+                                    // Force refresh the file list to ensure it's up to date
+                                    await fetchFiles();
                                   } catch (err) {
                                     console.error('Error assigning file to project:', err);
                                     setError('Failed to assign file to project. Please try again.');
@@ -1278,6 +1293,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                                     : f
                                 )
                               );
+                              
+                              // Force refresh the file list to ensure it's up to date
+                              await fetchFiles();
                             } catch (err) {
                               console.error('Error removing file from project:', err);
                               setError('Failed to remove file from project. Please try again.');

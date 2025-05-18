@@ -216,10 +216,17 @@ const fileService = {
         const foundFile = mockFiles.find(f => f.id === lastUploadedId);
         if (foundFile) {
           console.log(`[FILES] Found last uploaded file in localStorage:`, foundFile);
+          console.log(`[FILES] File project_id: ${foundFile.project_id}, type: ${typeof foundFile.project_id}`);
         } else {
           console.log(`[FILES] Last uploaded file NOT found in localStorage`);
         }
       }
+      
+      // Additional debugging to see all file-project associations
+      console.log(`[FILES] Current file-project associations:`);
+      mockFiles.forEach(file => {
+        console.log(`- File: ${file.id} (${file.name}), Project: ${file.project_id || 'none'}`);
+      });
       
       // Try to get API files
       try {
@@ -670,9 +677,14 @@ const fileService = {
         return file;
       });
       
-      // Save updated files
+      // Save updated files to both localStorage and window.mockFiles
       localStorage.setItem('mockFiles', JSON.stringify(updatedMockFiles));
+      window.mockFiles = updatedMockFiles;
       console.log("Mock files after linking:", updatedMockFiles);
+      
+      // Dispatch a custom event to notify components about the change
+      const refreshEvent = new CustomEvent('mockFileAdded', { detail: { type: 'link', files: linkRequest.file_ids } });
+      window.dispatchEvent(refreshEvent);
       
       // Return mock result
       return {
@@ -712,9 +724,14 @@ const fileService = {
         return file;
       });
       
-      // Save updated files
+      // Save updated files to both localStorage and window.mockFiles
       localStorage.setItem('mockFiles', JSON.stringify(updatedMockFiles));
+      window.mockFiles = updatedMockFiles;
       console.log("Mock files after unlinking:", updatedMockFiles);
+      
+      // Dispatch a custom event to notify components about the change
+      const refreshEvent = new CustomEvent('mockFileAdded', { detail: { type: 'unlink', files: fileIds } });
+      window.dispatchEvent(refreshEvent);
       
       // Return mock result
       return {
