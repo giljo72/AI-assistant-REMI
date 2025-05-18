@@ -774,9 +774,11 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       }
                     }
                   }}
-                  className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                  className="flex items-center px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                  title="Download selected files"
                 >
-                  Download Selected
+                  <span className="mr-1">⬇️</span>
+                  <span className="text-xs">Download {selectedFiles.length}</span>
                 </button>
                 
                 <button 
@@ -787,9 +789,11 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       dropdown.classList.toggle('hidden');
                     }
                   }}
-                  className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
+                  className="flex items-center px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
+                  title="Assign selected files to project"
                 >
-                  Assign Selected
+                  <span className="mr-1">🔗</span>
+                  <span className="text-xs">Assign {selectedFiles.length}</span>
                 </button>
                 
                 <button 
@@ -813,9 +817,11 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       }
                     }
                   }}
-                  className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                  className="flex items-center px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                  title="Delete selected files"
                 >
-                  Delete Selected
+                  <span className="mr-1">🗑️</span>
+                  <span className="text-xs">Delete {selectedFiles.length}</span>
                 </button>
                 
                 {/* Relative positioned container for dropdown */}
@@ -934,9 +940,10 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                   setSearchResults([]);
                   fetchFiles(); // Reload original file list
                 }}
-                className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded flex items-center"
+                className="w-8 h-8 flex items-center justify-center bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                title="Clear search"
               >
-                <span className="mr-1">✕</span> Clear Search
+                ✕
               </button>
             )}
           </div>
@@ -1063,12 +1070,14 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     {file.processingFailed && (
                       <button 
                         onClick={() => handleRetryProcessing(file.id)}
-                        className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                        className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                        title="Retry processing"
                       >
-                        Retry
+                        🔄
                       </button>
                     )}
                     
+                    {/* Assign/Link Button - Using 🔗 as placeholder for link icon */}
                     <button 
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent clicking from bubbling up to the document
@@ -1078,11 +1087,13 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                           dropdown.classList.toggle('hidden');
                         }
                       }}
-                      className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
+                      className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
+                      title="Assign to project"
                     >
-                      Assign
+                      🔗
                     </button>
                     
+                    {/* Modify Button - Using ⚙️ as placeholder for gear/settings icon */}
                     <button 
                       onClick={() => {
                         // Show modify modal for this file
@@ -1171,10 +1182,13 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                           modal.classList.remove('hidden');
                         }
                       }}
-                      className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                      className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                      title="Modify file details"
                     >
-                      Modify
+                      ⚙️
                     </button>
+                    
+                    {/* Project assignment dropdown */}
                     <div 
                       id={`project-dropdown-${file.id}`}
                       className="absolute mt-8 bg-navy-light rounded shadow-lg z-10 hidden"
@@ -1260,6 +1274,8 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Download Button - Using ⬇️ as placeholder for download icon */}
                     <button 
                       onClick={async () => {
                         try {
@@ -1277,19 +1293,22 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                           setError('Failed to download file. Please try again.');
                         }
                       }}
-                      className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                      className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                      title="Download file"
                     >
-                      Download
+                      ⬇️
                     </button>
+                    {/* Delete Button - Using 🗑️ as placeholder for trash/delete icon */}
                     <button 
-                      className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                      className="w-8 h-8 flex items-center justify-center bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
                       onClick={() => {
                         if (window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
                           handleDeleteFile(file.id);
                         }
                       }}
+                      title="Delete file"
                     >
-                      Delete
+                      🗑️
                     </button>
                   </div>
                 </div>
