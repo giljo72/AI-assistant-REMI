@@ -10,7 +10,7 @@ import ProjectFileManager from './components/file/ProjectFileManager';
 import MainFileManager from './components/file/MainFileManager';
 import SearchFilesResults from './components/file/SearchFilesResults';
 import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
-import { projectService, chatService } from './services';
+import { projectService, chatService, fileService } from './services';
 import type { Chat as ChatType, ChatMessage } from './services';
 import { ProjectProvider, useProjects } from './context/ProjectContext';
 
@@ -33,6 +33,7 @@ function App() {
   const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('project');
+  const [forceMainFileView, setForceMainFileView] = useState(false); // New state for forcing main file view
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatMessages, setChatMessages] = useState(initialMessages);
   const [projectNames, setProjectNames] = useState<{[key: string]: string}>({});
@@ -80,6 +81,22 @@ function App() {
     
     loadProjects();
   }, [activeProjectId]);
+  
+  // Effect to keep main file view active when force flag is set
+  useEffect(() => {
+    if (forceMainFileView && activeView !== 'mainFiles') {
+      console.log("[APP] Force main file view is active but view changed to", activeView, "- resetting to mainFiles");
+      setActiveView('mainFiles');
+    }
+  }, [activeView, forceMainFileView]);
+
+  // Effect to clear force flag when the user manually navigates away
+  useEffect(() => {
+    if (activeView !== 'mainFiles' && forceMainFileView) {
+      console.log("[APP] User navigated away from mainFiles, clearing force flag");
+      setForceMainFileView(false);
+    }
+  }, [activeView]);
   
   // Effect to load chats when the active project changes
   useEffect(() => {
@@ -256,8 +273,24 @@ function App() {
   };
 
   // Handle navigating to main file manager
-  const handleOpenMainFiles = () => {
+  const handleOpenMainFiles = (clearActiveProject: boolean = false) => {
+    console.log("[APP] Navigating to MainFileManager, clearActiveProject:", clearActiveProject);
+    
+    // When navigating to main file manager from paper icon, always clear the project ID
+    // This prevents files from being attached to the last active project
+    setActiveProjectId('');
+    
+    // Set the view to mainFiles and force it to stay there
     setActiveView('mainFiles');
+    setForceMainFileView(true);
+    
+    console.log("[APP] Active project ID cleared, view set to mainFiles, force flag set");
+    
+    // Add a timeout to ensure React has time to update the UI
+    setTimeout(() => {
+      console.log("[APP] Verifying mainFiles view is active");
+      setActiveView('mainFiles');
+    }, 100);
   };
 
   // Handle navigating to search results
@@ -377,7 +410,7 @@ function App() {
         <ProjectProvider>
           <MainLayout 
             onProjectSelect={handleProjectSelect}
-            onOpenMainFiles={handleOpenMainFiles}
+            onOpenMainFiles={() => handleOpenMainFiles(true)} // Pass true to clear active project
           >
             {renderView()}
           </MainLayout>

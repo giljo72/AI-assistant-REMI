@@ -105,71 +105,123 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<LocalFile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   
   // Processing state
   const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Effect to load all files and projects
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Set up API filters
-        const filterOptions: FileFilterOptions = {};
-        if (projectId !== undefined) {
-          filterOptions.project_id = projectId;
-        }
-        
-        // Set up API sort
-        const sortOptions: FileSortOptions = {
-          field: sortField === 'date' ? 'created_at' : 
-                 sortField === 'status' ? 'project_id' : sortField,
-          direction: sortDirection
-        };
-        
-        // Fetch files
-        const apiFiles = await fileService.getAllFiles(filterOptions, sortOptions);
-        const localFiles = apiFiles.map(mapApiFileToLocal);
-        setFiles(localFiles);
-        
-        // Fetch projects for linking info
-        const projectsData = await projectService.getAllProjects();
-        setProjects(projectsData);
-        console.log("Loaded projects:", projectsData);
-        
-        // Try to fetch processing stats (may not be available)
-        try {
-          const stats = await fileService.getProcessingStatus();
-          setProcessingStats(stats);
-        } catch (err) {
-          console.log('Processing status endpoint not available - skipping');
-        }
-      } catch (err) {
-        console.error('Error fetching files:', err);
-        setError('Failed to load files. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+  // Function to fetch files based on current filters
+  const fetchFiles = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    // Set up API filters
+    const filterOptions: FileFilterOptions = {};
+    if (projectId !== undefined) {
+      filterOptions.project_id = projectId;
+    }
+    
+    // Set up API sort
+    const sortOptions: FileSortOptions = {
+      field: sortField === 'date' ? 'created_at' : 
+             sortField === 'status' ? 'project_id' : sortField,
+      direction: sortDirection
     };
     
-    fetchData();
-    
-    // Set up polling for processing stats but handle failures gracefully
-    const statsInterval = setInterval(async () => {
+    try {
+      console.log("[MAINFILEMANAGER] Fetching files with options:", { filterOptions, sortOptions });
+      
+      // Force reload window.mockFiles from localStorage to ensure we have the latest data
+      try {
+        const storedFiles = localStorage.getItem('mockFiles');
+        if (storedFiles) {
+          window.mockFiles = JSON.parse(storedFiles);
+          console.log("[MAINFILEMANAGER] Refreshed mockFiles from localStorage:", window.mockFiles.length);
+        }
+      } catch (e) {
+        console.error('[MAINFILEMANAGER] Error refreshing mockFiles from localStorage', e);
+      }
+      
+      // Fetch files
+      const apiFiles = await fileService.getAllFiles(filterOptions, sortOptions);
+      console.log("[MAINFILEMANAGER] Received", apiFiles.length, "files from API/mock");
+      
+      const localFiles = apiFiles.map(mapApiFileToLocal);
+      console.log("[MAINFILEMANAGER] Mapped files:", localFiles.length);
+      
+      setFiles(localFiles);
+      
+      // Debug output for global mock files
+      console.log("[MAINFILEMANAGER] Current global mock files:", window.mockFiles?.length || 0, "files");
+      
+      return true;
+    } catch (err) {
+      console.error('[MAINFILEMANAGER] Error fetching files:', err);
+      setError('Failed to load files. Please try again.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Function to refresh additional data (projects, processing stats)
+  const fetchAdditionalData = async () => {
+    try {
+      // Fetch projects for linking info
+      const projectsData = await projectService.getAllProjects();
+      setProjects(projectsData);
+      console.log("[MAINFILEMANAGER] Loaded projects:", projectsData);
+      
+      // Try to fetch processing stats once (may not be available)
       try {
         const stats = await fileService.getProcessingStatus();
         setProcessingStats(stats);
       } catch (err) {
-        // Silently ignore these errors as the endpoint may not be available
-        // console.error('Error fetching processing stats:', err);
+        console.log('[MAINFILEMANAGER] Processing status endpoint not available - skipping');
       }
-    }, 5000); // Poll every 5 seconds
+    } catch (err) {
+      console.error('[MAINFILEMANAGER] Error fetching additional data:', err);
+    }
+  };
+  
+  // Function to handle after a file is uploaded
+  const handleUploadSuccess = async () => {
+    console.log("[MAINFILEMANAGER] Manually refreshing files after upload");
+    await fetchFiles();
+  };
+  
+  // Effect to load all files and projects on component mount and when filters change
+  useEffect(() => {
+    // Load initial data
+    const loadInitialData = async () => {
+      await fetchFiles();
+      await fetchAdditionalData();
+    };
     
-    return () => clearInterval(statsInterval);
-  }, [projectId, sortField, sortDirection]);
+    loadInitialData();
+    
+    // Define event handlers for our custom events
+    const handleFileAdded = async () => {
+      console.log("[MAINFILEMANAGER] File added event detected, refreshing file list");
+      await fetchFiles();
+    };
+    
+    const handleFileDeleted = async () => {
+      console.log("[MAINFILEMANAGER] File deleted event detected, refreshing file list");
+      await fetchFiles();
+    };
+    
+    // Add event listeners for our custom events
+    window.addEventListener('mockFileAdded', handleFileAdded);
+    window.addEventListener('mockFileDeleted', handleFileDeleted);
+    
+    // Clean up event listeners when component unmounts
+    return () => {
+      window.removeEventListener('mockFileAdded', handleFileAdded);
+      window.removeEventListener('mockFileDeleted', handleFileDeleted);
+    };
+  }, [projectId, sortField, sortDirection]); // Dependencies trigger re-fetch when they change
 
   // Handle search
   const handleSearch = async () => {
@@ -374,7 +426,37 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
       
       {/* File Upload Area */}
       <div className="bg-navy-light p-4 mb-4 rounded-lg">
-        <div className="border-2 border-dashed border-navy-lighter rounded-lg p-6 text-center">
+        <div 
+          className="border-2 border-dashed border-navy-lighter rounded-lg p-6 text-center"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.add('border-gold');
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('border-gold');
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('border-gold');
+            
+            // Get dropped files
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              // Handle file upload with the files
+              const filesToUpload = Array.from(e.dataTransfer.files);
+              console.log('Files dropped:', filesToUpload);
+              
+              // Store files in state
+              setDroppedFiles(filesToUpload);
+              
+              // Open tagging modal with the dropped files
+              setShowAddTagModal(true);
+            }
+          }}
+        >
           <div className="mb-4">
             <div className="mx-auto w-12 h-12 bg-navy-lighter rounded-full flex items-center justify-center">
               <span className="text-gold text-2xl">+</span>
@@ -679,15 +761,29 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
             
             <div className="mb-4">
               <label className="block text-sm text-gray-400 mb-1">Files</label>
-              <input 
-                type="file" 
-                multiple
-                className="w-full bg-navy p-2 rounded text-gray-300"
-                onChange={(e) => {
-                  // In a real implementation, we'd capture these files for upload
-                  console.log('Selected files:', e.target.files);
-                }}
-              />
+              {droppedFiles.length > 0 ? (
+                <div className="w-full bg-navy p-2 rounded text-gray-300">
+                  <div className="text-sm text-gold mb-2">Dropped files:</div>
+                  <ul className="max-h-24 overflow-y-auto">
+                    {droppedFiles.map((file, index) => (
+                      <li key={index} className="text-sm text-gray-300 mb-1">
+                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <input 
+                  type="file" 
+                  multiple
+                  className="w-full bg-navy p-2 rounded text-gray-300"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      setDroppedFiles(Array.from(e.target.files));
+                    }
+                  }}
+                />
+              )}
             </div>
             
             <div className="mb-4">
@@ -731,7 +827,10 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
             
             <div className="flex justify-end">
               <button 
-                onClick={() => setShowAddTagModal(false)}
+                onClick={() => {
+                  setShowAddTagModal(false);
+                  setDroppedFiles([]);
+                }}
                 className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm mr-2"
               >
                 Cancel
@@ -740,29 +839,56 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                 onClick={async () => {
                   console.log("Upload button clicked");
                   try {
-                    // Get the file input and description
-                    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+                    // Get the description and project
                     const descriptionInput = document.querySelector('textarea') as HTMLTextAreaElement;
                     const projectSelect = document.querySelector('select') as HTMLSelectElement;
                     
-                    console.log("Selected files:", fileInput?.files);
+                    // Determine which files to use - either dropped files or from file input
+                    let filesToProcess: File[] = [];
                     
-                    if (fileInput?.files?.length) {
+                    if (droppedFiles.length > 0) {
+                      // Use dropped files
+                      filesToProcess = droppedFiles;
+                    } else {
+                      // Check for files from input
+                      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+                      if (fileInput?.files?.length) {
+                        filesToProcess = Array.from(fileInput.files);
+                      }
+                    }
+                    
+                    console.log("Files to process:", filesToProcess);
+                    
+                    if (filesToProcess.length > 0) {
                       setShowAddTagModal(false);
                       setIsUploading(true);
                       
                       // Process each file
-                      for (let i = 0; i < fileInput.files.length; i++) {
-                        const file = fileInput.files[i];
+                      for (let i = 0; i < filesToProcess.length; i++) {
+                        const file = filesToProcess[i];
                         // Get the selected project ID from the dropdown
                         const selectedProjectId = projectSelect?.value;
-                        const storedProjectId = window.localStorage.getItem('selectedProjectId');
-                        const finalProjectId = selectedProjectId || storedProjectId || undefined;
+                        
+                        // Handle empty selection ("None")
+                        if (selectedProjectId === "") {
+                          console.log("None (Keep in Global Knowledge) selected - setting project_id to null");
+                          // Use null specifically for "None" selection
+                          var finalProjectId = null;
+                        }
+                        // Important: Check if selectedProjectId is "Standard" and replace with actual projectId
+                        else if (selectedProjectId === "Standard") {
+                          console.log("Replacing 'Standard' with actual project ID:", projectId);
+                          var finalProjectId = projectId;
+                        } else {
+                          const storedProjectId = window.localStorage.getItem('selectedProjectId');
+                          var finalProjectId = selectedProjectId || storedProjectId || projectId || undefined;
+                        }
                         
                         console.log("File upload details:", {
                           filename: file.name,
                           dropdown_project_id: selectedProjectId,
-                          localStorage_project_id: storedProjectId,
+                          current_prop_projectId: projectId,
+                          localStorage_project_id: window.localStorage.getItem('selectedProjectId'),
                           final_project_id: finalProjectId
                         });
                         
@@ -776,7 +902,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                         try {
                           // Try to upload the file
                           await fileService.uploadFile(uploadRequest);
-                          console.log(`Successfully uploaded file: ${file.name}`);
+                          console.log(`Successfully uploaded file: ${file.name} with project_id: ${finalProjectId || 'null'}`);
                         } catch (uploadError) {
                           console.error(`Error uploading file ${file.name}:`, uploadError);
                           // If the API endpoint doesn't exist yet, show a mock success message
@@ -784,35 +910,29 @@ const MainFileManager: React.FC<MainFileManagerProps> = ({
                         }
                       }
                       
-                      // Refresh file list
-                      try {
-                        const filterOptions: FileFilterOptions = {};
-                        if (projectId !== undefined) {
-                          filterOptions.project_id = projectId;
-                        }
-                        
-                        const sortOptions: FileSortOptions = {
-                          field: sortField === 'date' ? 'created_at' : 
-                                 sortField === 'status' ? 'project_id' : sortField,
-                          direction: sortDirection
-                        };
-                        
-                        const apiFiles = await fileService.getAllFiles(filterOptions, sortOptions);
-                        const localFiles = apiFiles.map(mapApiFileToLocal);
-                        setFiles(localFiles);
-                      } catch (refreshError) {
-                        console.error('Error refreshing file list:', refreshError);
-                      }
+                      // Clear dropped files first
+                      setDroppedFiles([]);
+                      
+                      console.log("[MAINFILEMANAGER] Upload complete");
+                      
+                      // Check global mock files after upload
+                      console.log(`[MAINFILEMANAGER] Mock files in global variable after upload: ${window.mockFiles?.length || 0}`);
+                      
+                      // Reset UI state
+                      setShowAddTagModal(false); 
+                      setIsUploading(false);
+                      
+                      // Manually trigger a refresh of the file list after upload
+                      await handleUploadSuccess();
                     }
                   } catch (err) {
                     console.error('Error uploading files:', err);
                     setError('Failed to upload files. Please try again.');
-                  } finally {
                     setIsUploading(false);
                   }
                 }}
                 className="px-3 py-1 bg-gold text-navy font-medium rounded hover:bg-gold/90"
-                disabled={isUploading}
+                disabled={isUploading || (droppedFiles.length === 0 && !document.querySelector('input[type="file"]')?.files?.length)}
               >
                 {isUploading ? 'Uploading...' : 'Upload & Process Files'}
               </button>

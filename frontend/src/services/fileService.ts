@@ -1,5 +1,27 @@
 import api from './api';
 
+// Add a global mock files array to window
+declare global {
+  interface Window {
+    mockFiles?: any[];
+  }
+}
+
+// Initialize global mock files if not existing
+if (typeof window !== 'undefined') {
+  if (!window.mockFiles) {
+    // Try to load from localStorage first if available
+    try {
+      const storedFiles = localStorage.getItem('mockFiles');
+      window.mockFiles = storedFiles ? JSON.parse(storedFiles) : [];
+      console.log('[GLOBAL] Initialized window.mockFiles from localStorage:', window.mockFiles.length);
+    } catch (e) {
+      window.mockFiles = [];
+      console.log('[GLOBAL] Initialized empty window.mockFiles array');
+    }
+  }
+}
+
 export interface File {
   id: string;
   name: string;
@@ -108,7 +130,8 @@ const fileService = {
     filterOptions?: FileFilterOptions,
     sortOptions?: FileSortOptions
   ): Promise<File[]> => {
-    console.log("Getting all files with options:", { filterOptions, sortOptions });
+    console.log("[FILES] Getting all files with options:", { filterOptions, sortOptions });
+    console.log("[FILES] Caller:", new Error().stack?.split('\n')[2]?.trim());
     
     try {
       // Build query parameters
@@ -157,16 +180,137 @@ const fileService = {
         params.append('sort_direction', sortOptions.direction);
       }
       
-      const response = await api.get('/files', { params });
+      // ALWAYS refresh mockFiles from localStorage to ensure we have the most up-to-date data
+      const mockFilesStr = localStorage.getItem('mockFiles');
+      let mockFiles: File[] = [];
       
-      // Check if we have mock files in localStorage to merge with the results
-      const mockFiles: File[] = JSON.parse(localStorage.getItem('mockFiles') || '[]');
+      if (mockFilesStr) {
+        try {
+          const storedFiles = JSON.parse(mockFilesStr);
+          if (storedFiles && Array.isArray(storedFiles)) {
+            mockFiles = storedFiles;
+            // Always update the global variable to ensure consistency
+            window.mockFiles = storedFiles;
+            console.log(`[FILES] Refreshed mockFiles from localStorage: ${mockFiles.length}`);
+          }
+        } catch (e) {
+          console.error('[FILES] Error parsing mockFiles from localStorage', e);
+          // Fall back to global variable if localStorage parsing fails
+          mockFiles = window.mockFiles || [];
+        }
+      } else {
+        // If nothing in localStorage, use global variable
+        mockFiles = window.mockFiles || [];
+        console.log(`[FILES] No mockFiles in localStorage, using global variable: ${mockFiles.length}`);
+      }
       
-      if (mockFiles.length > 0) {
-        console.log("Found mock files to include:", mockFiles.length);
+      // Ensure global variable is always in sync
+      if (window.mockFiles !== mockFiles) {
+        window.mockFiles = mockFiles;
+      }
+      
+      // Check for last uploaded file ID for debugging
+      const lastUploadedId = window.localStorage.getItem('lastUploadedFileId');
+      if (lastUploadedId) {
+        console.log(`[FILES] Checking for last uploaded file ID: ${lastUploadedId}`);
+        const foundFile = mockFiles.find(f => f.id === lastUploadedId);
+        if (foundFile) {
+          console.log(`[FILES] Found last uploaded file in localStorage:`, foundFile);
+        } else {
+          console.log(`[FILES] Last uploaded file NOT found in localStorage`);
+        }
+      }
+      
+      // Try to get API files
+      try {
+        const response = await api.get('/files', { params });
         
         // Filter mock files based on options
         let filteredMockFiles = [...mockFiles];
+        
+        console.log(`[FILES] PROJECT ID FILTER: ${filterOptions?.project_id}`);
+        if (filterOptions?.project_id !== undefined) {
+          // Filter to include only files for this project (or no project if project_id is null)
+          console.log(`[FILES] Filtering files with project_id filter=${filterOptions.project_id}, typeof=${typeof filterOptions.project_id}`);
+          console.log(`[FILES] File project_ids before filtering:`, filteredMockFiles.map(f => f.project_id));
+          
+          // Special handling for empty string in filter - treat as null (global files)
+          if (filterOptions.project_id === "") {
+            console.log("[FILES] Empty string project_id in filter - treating as null (global files)");
+            filterOptions.project_id = null;
+          }
+          
+          filteredMockFiles = filteredMockFiles.filter(file => {
+            // Handle empty strings in file project_id as null
+            if (file.project_id === "") {
+              file.project_id = null;
+              console.log(`[FILES] Converting empty project_id to null for file ${file.id}`);
+            }
+            
+            // Handle the "Standard" issue - replace with null for global files
+            if (file.project_id === "Standard") {
+              file.project_id = null;
+              console.log(`[FILES] Converting "Standard" project_id to null for file ${file.id}`);
+            }
+            
+            if (filterOptions.project_id === null) {
+              const isUnlinked = file.project_id === null;
+              console.log(`[FILES] File ${file.id} project_id=${file.project_id}, is unlinked=${isUnlinked}`);
+              return isUnlinked;
+            }
+            const isLinked = file.project_id === filterOptions.project_id;
+            console.log(`[FILES] File ${file.id} project_id=${file.project_id} (type: ${typeof file.project_id}), comparing to filter=${filterOptions.project_id} (type: ${typeof filterOptions.project_id}), matches=${isLinked}`);
+            return isLinked;
+          });
+        } else {
+          // If no project filter, get all files (Main File Manager)
+          console.log(`[FILES] No project filter, getting all files`);
+        }
+        
+        // If we're getting all files and have mock files, log them
+        if (!filterOptions?.project_id && mockFiles.length > 0) {
+          console.log(`[FILES] All mock files being returned:`, mockFiles);
+        }
+        
+        const combinedFiles = [...response.data, ...filteredMockFiles];
+        console.log(`[FILES] Combined ${response.data.length} API files with ${filteredMockFiles.length} mock files`);
+        
+        // Apply sorting if needed
+        if (sortOptions) {
+          // Sort by the appropriate field
+          return combinedFiles.sort((a, b) => {
+            let aValue = a[sortOptions.field];
+            let bValue = b[sortOptions.field];
+            
+            // Special case for date fields
+            if (sortOptions.field === 'created_at' || sortOptions.field === 'updated_at') {
+              aValue = new Date(aValue || 0).getTime();
+              bValue = new Date(bValue || 0).getTime();
+            }
+            
+            // Compare values
+            if (aValue < bValue) {
+              return sortOptions.direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+              return sortOptions.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+          });
+        }
+        
+        return combinedFiles;
+      } catch (apiError) {
+        console.warn("[FILES] API call failed, using only mock files", apiError);
+        
+        // CRITICAL: Reload mock files from localStorage
+        // This ensures we always get the latest mock files, even if the original mockFiles variable
+        // was loaded before new files were added
+        const freshMockFiles = JSON.parse(localStorage.getItem('mockFiles') || '[]');
+        console.log(`[FILES] Reloaded fresh mock files: ${freshMockFiles.length}`);
+        
+        // Filter mock files based on options
+        let filteredMockFiles = [...freshMockFiles];
         
         if (filterOptions?.project_id !== undefined) {
           // Filter to include only files for this project (or no project if project_id is null)
@@ -178,19 +322,48 @@ const fileService = {
           });
         }
         
-        // Merge the API results with our mock files
-        return [...response.data, ...filteredMockFiles];
+        console.log(`[FILES-FALLBACK] Filtered to ${filteredMockFiles.length} mock files`);
+        
+        // If we're returning all files (Main File Manager), log them
+        if (!filterOptions?.project_id && filteredMockFiles.length > 0) {
+          console.log(`[FILES-FALLBACK] All mock files:`, filteredMockFiles);
+        }
+        
+        // Apply sorting if needed
+        if (sortOptions) {
+          // Sort by the appropriate field
+          return filteredMockFiles.sort((a, b) => {
+            let aValue = a[sortOptions.field];
+            let bValue = b[sortOptions.field];
+            
+            // Special case for date fields
+            if (sortOptions.field === 'created_at' || sortOptions.field === 'updated_at') {
+              aValue = new Date(aValue || 0).getTime();
+              bValue = new Date(bValue || 0).getTime();
+            }
+            
+            // Compare values
+            if (aValue < bValue) {
+              return sortOptions.direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+              return sortOptions.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+          });
+        }
+        
+        return filteredMockFiles;
       }
-      
-      return response.data;
     } catch (error) {
-      console.error("Error fetching files:", error);
+      console.error("[FILES] Error in getAllFiles:", error);
       
-      // If API fails, just return mock files
-      const mockFiles: File[] = JSON.parse(localStorage.getItem('mockFiles') || '[]');
+      // In case of any error, reload fresh mock files from localStorage
+      const freshMockFiles: File[] = JSON.parse(localStorage.getItem('mockFiles') || '[]');
+      console.log(`[FILES-ERROR] Loaded ${freshMockFiles.length} mock files as last resort`);
       
       // Filter mock files based on options
-      let filteredMockFiles = [...mockFiles];
+      let filteredMockFiles = [...freshMockFiles];
       
       if (filterOptions?.project_id !== undefined) {
         // Filter to include only files for this project (or no project if project_id is null)
@@ -202,6 +375,7 @@ const fileService = {
         });
       }
       
+      console.log(`[FILES-ERROR] Returning ${filteredMockFiles.length} mock files after error`);
       return filteredMockFiles;
     }
   },
@@ -218,7 +392,13 @@ const fileService = {
    * Upload a new file with optional metadata
    */
   uploadFile: async (fileData: FileUploadRequest): Promise<File> => {
-    console.log("Attempting to upload file:", fileData.name);
+    console.log("[UPLOAD] Attempting to upload file:", fileData.name);
+    console.log("[UPLOAD] File details:", {
+      name: fileData.name,
+      size: (fileData.file as any).size,
+      type: (fileData.file as any).type,
+      project_id: fileData.project_id
+    });
     
     try {
       // Use FormData for file uploads
@@ -245,19 +425,51 @@ const fileService = {
           },
         });
         
+        console.log("[UPLOAD] API upload successful, response:", response.data);
         return response.data;
       } catch (apiError) {
-        console.warn("API endpoint not available, using mock implementation", apiError);
+        console.warn("[UPLOAD] API endpoint not available, using mock implementation", apiError);
         
         // MOCK IMPLEMENTATION
+        // Add detailed debugging to verify project ID and check if it's "Standard"
+        console.log("[UPLOAD] Creating mock file with project_id:", fileData.project_id, 
+                   "type:", typeof fileData.project_id, 
+                   "isStandard:", fileData.project_id === "Standard",
+                   "isNull:", fileData.project_id === null,
+                   "isEmptyString:", fileData.project_id === "");
+        
+        // Fix for empty string project ID - should be null
+        if (fileData.project_id === "") {
+          console.log("[UPLOAD] Empty string project_id found - setting to null for 'None' selection");
+          fileData.project_id = null;
+        }
+        // Fix for "Standard" project ID - this should never happen, but just in case
+        else if (fileData.project_id === "Standard") {
+          console.warn("[UPLOAD] WARNING: 'Standard' found as project_id - this is likely incorrect!");
+          // Try to get the stored project ID from localStorage as a fallback
+          const storedProjectId = localStorage.getItem('selectedProjectId');
+          if (storedProjectId && storedProjectId !== "Standard") {
+            console.log("[UPLOAD] Using storedProjectId from localStorage instead:", storedProjectId);
+            fileData.project_id = storedProjectId;
+          }
+        }
+        
+        // Ensure we explicitly log if this is a global file (no project)
+        if (fileData.project_id === null) {
+          console.log("[UPLOAD] Creating a global file (no project attachment)");
+        }
+        
         // Create a mock file response
+        const fileExtension = (fileData.file as any).name?.split('.').pop()?.toLowerCase() || 'pdf';
+        const mockId = `mock-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        
         const mockFile: File = {
-          id: `mock-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          id: mockId,
           name: fileData.name || (fileData.file as any).name || 'Unknown file',
-          type: (fileData.file as any).type?.split('/')[1]?.toUpperCase() || 'PDF',
+          type: fileExtension.toUpperCase(),
           size: (fileData.file as any).size || 1024,
           description: fileData.description || '',
-          project_id: fileData.project_id || null,
+          project_id: fileData.project_id || null, // Uses the exact project ID passed in
           created_at: new Date().toISOString(),
           filepath: '/mock/path/to/file',
           processed: true,
@@ -265,14 +477,44 @@ const fileService = {
           active: true
         };
         
-        // Save to localStorage for persistence
-        const storedFiles = JSON.parse(localStorage.getItem('mockFiles') || '[]');
-        storedFiles.push(mockFile);
-        localStorage.setItem('mockFiles', JSON.stringify(storedFiles));
+        // Save to both global variable and localStorage for persistence
+        console.log("[UPLOAD] Current mockFiles count before adding:", window.mockFiles?.length || 0);
         
-        console.log("All mock files after adding new one:", JSON.parse(localStorage.getItem('mockFiles') || '[]'));
+        // First, ALWAYS reload from localStorage to make sure we have the most recent data
+        let currentFiles: File[] = [];
+        try {
+          const storedFiles = localStorage.getItem('mockFiles');
+          if (storedFiles) {
+            currentFiles = JSON.parse(storedFiles);
+            console.log("[UPLOAD] Loaded existing files from localStorage:", currentFiles.length);
+          }
+        } catch (e) {
+          console.error("[UPLOAD] Error loading existing files from localStorage:", e);
+          // Fall back to window.mockFiles
+          currentFiles = window.mockFiles || [];
+        }
         
-        console.log("Mock file created:", mockFile);
+        // Add the new file
+        currentFiles.push(mockFile);
+        
+        // Update both global and localStorage
+        window.mockFiles = currentFiles;
+        localStorage.setItem('mockFiles', JSON.stringify(currentFiles));
+        
+        // Direct verification of global variable
+        console.log("[UPLOAD] New mockFiles count:", window.mockFiles.length);
+        console.log("[UPLOAD] Latest mock file in global array:", 
+                   window.mockFiles[window.mockFiles.length - 1]);
+        
+        console.log("[UPLOAD] Mock file created with ID:", mockId);
+        window.localStorage.setItem('lastUploadedFileId', mockId);
+        
+        // Show alert
+        alert(`File ${mockFile.name} has been uploaded (MOCK)`);
+        
+        // Force a refresh to ensure UI updates
+        const refreshEvent = new CustomEvent('mockFileAdded', { detail: mockFile });
+        window.dispatchEvent(refreshEvent);
         
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -324,16 +566,82 @@ const fileService = {
    * Delete a file
    */
   deleteFile: async (id: string): Promise<{ success: boolean }> => {
-    const response = await api.delete(`/files/${id}`);
-    return response.data;
+    try {
+      // Attempt real API call first
+      const response = await api.delete(`/files/${id}`);
+      return response.data;
+    } catch (error) {
+      console.warn("API endpoint for deletion not available, using mock implementation");
+      
+      // MOCK IMPLEMENTATION
+      console.log(`[DELETE] Deleting mock file with ID: ${id}`);
+      
+      // Remove from global variable
+      if (window.mockFiles) {
+        const fileToDelete = window.mockFiles.find(file => file.id === id);
+        window.mockFiles = window.mockFiles.filter(file => file.id !== id);
+        console.log(`[DELETE] Removed file from global variable. Remaining: ${window.mockFiles.length}`);
+        
+        if (fileToDelete) {
+          console.log(`[DELETE] Deleted file: ${fileToDelete.name}`);
+        }
+      }
+      
+      // Also update localStorage for persistence
+      localStorage.setItem('mockFiles', JSON.stringify(window.mockFiles || []));
+      
+      // Force a refresh to ensure UI updates
+      const refreshEvent = new CustomEvent('mockFileDeleted', { detail: { id } });
+      window.dispatchEvent(refreshEvent);
+      
+      // Return mock success response
+      return { success: true };
+    }
   },
 
   /**
    * Delete multiple files
    */
   bulkDeleteFiles: async (ids: string[]): Promise<FileBulkOperationResult> => {
-    const response = await api.post('/files/bulk-delete', { file_ids: ids });
-    return response.data;
+    try {
+      // Attempt real API call first
+      const response = await api.post('/files/bulk-delete', { file_ids: ids });
+      return response.data;
+    } catch (error) {
+      console.warn("API endpoint for bulk deletion not available, using mock implementation");
+      
+      // MOCK IMPLEMENTATION
+      const success: string[] = [];
+      const failed: { id: string; error: string }[] = [];
+      
+      // Find and remove each file from localStorage
+      const mockFiles: File[] = JSON.parse(localStorage.getItem('mockFiles') || '[]');
+      
+      for (const id of ids) {
+        try {
+          // Check if file exists
+          const fileExists = mockFiles.some(file => file.id === id);
+          
+          if (fileExists) {
+            // Remove from mock files
+            success.push(id);
+          } else {
+            failed.push({ id, error: 'File not found' });
+          }
+        } catch (err) {
+          failed.push({ id, error: String(err) });
+        }
+      }
+      
+      // Update localStorage with remaining files
+      const updatedMockFiles = mockFiles.filter(file => !ids.includes(file.id));
+      localStorage.setItem('mockFiles', JSON.stringify(updatedMockFiles));
+      
+      console.log(`Mock bulk delete: ${success.length} files deleted, ${failed.length} failed`);
+      
+      // Return mock result
+      return { success, failed };
+    }
   },
 
   /**
@@ -442,8 +750,22 @@ const fileService = {
    * Get current processing status for all files
    */
   getProcessingStatus: async (): Promise<ProcessingStats> => {
-    const response = await api.get('/files/processing-status');
-    return response.data;
+    try {
+      const response = await api.get('/files/processing-status');
+      return response.data;
+    } catch (error) {
+      // Return a default object instead of propagating the error
+      console.log('[PROCESSING] Processing status endpoint not available, using defaults');
+      return {
+        total_files: 0,
+        processed_files: 0,
+        failed_files: 0,
+        processing_files: 0,
+        total_chunks: 0,
+        gpu_usage: 0,
+        eta: 0
+      };
+    }
   },
 
   /**

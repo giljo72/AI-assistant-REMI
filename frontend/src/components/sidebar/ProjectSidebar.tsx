@@ -56,7 +56,25 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ onProjectSelect, onOpen
         <div className="mb-4 flex items-center space-x-1">
           <button 
             className="p-2 hover:bg-navy-lighter rounded-full" 
-            onClick={onOpenMainFiles}
+            onClick={(e) => {
+              // Prevent event bubbling
+              e.stopPropagation();
+              e.preventDefault();
+              
+              // Open main files but also clear the active project to ensure global file upload works correctly
+              if (onOpenMainFiles) {
+                console.log("[SIDEBAR] File icon clicked - clearing active project and navigating to MainFileManager");
+                // We need to clear the active project in ProjectSidebar
+                setActiveProjectId('');
+                // Then call the onOpenMainFiles function
+                onOpenMainFiles();
+                
+                // Add a small delay to ensure the state updates properly
+                setTimeout(() => {
+                  console.log("[SIDEBAR] Confirming navigation to MainFileManager");
+                }, 100);
+              }
+            }}
             title="File Manager"
           >
             <span className="text-gold">📄</span>

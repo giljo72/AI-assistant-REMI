@@ -403,7 +403,7 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = ({
                         try {
                           // Upload the file
                           await fileService.uploadFile(uploadRequest);
-                          console.log(`Successfully uploaded file: ${file.name}`);
+                          console.log(`Successfully uploaded file: ${file.name} with project_id: ${projectId}`);
                         } catch (uploadError) {
                           console.error(`Error uploading file ${file.name}:`, uploadError);
                           // If the API endpoint doesn't exist yet, show a mock success message
@@ -418,9 +418,18 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = ({
                           active_only: false
                         };
                         
+                        console.log("[PROJECTFILEMANAGER] Refreshing files after upload with options:", filterOptions);
                         const apiFiles = await fileService.getAllFiles(filterOptions);
+                        console.log("[PROJECTFILEMANAGER] Received", apiFiles.length, "files after upload");
+                        
                         const localFiles = apiFiles.map(mapApiFileToLocal);
+                        console.log("[PROJECTFILEMANAGER] Mapped files after upload:", localFiles.length);
+                        
                         setProjectFiles(localFiles);
+                        
+                        // Also dispatch a custom event to ensure MainFileManager is updated
+                        const refreshEvent = new CustomEvent('mockFileAdded');
+                        window.dispatchEvent(refreshEvent);
                       } catch (refreshError) {
                         console.error('Error refreshing file list:', refreshError);
                       }

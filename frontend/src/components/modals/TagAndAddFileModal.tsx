@@ -78,15 +78,36 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
 
   // Handle form submission
   const handleSubmit = () => {
+    console.log("TagAndAddFileModal - Selected project ID before submission:", selectedProjectId, "currentProjectId:", currentProjectId);
+    
+    // First handle empty selection ("None")
+    let finalProjectId;
+    if (selectedProjectId === "") {
+      console.log("TagAndAddFileModal - None (Keep in Global Knowledge) selected - setting project_id to null");
+      finalProjectId = null; // Use null specifically for "None" selection
+    }
+    // Then check if selectedProjectId is "Standard" and replace with currentProjectId
+    else if (selectedProjectId === "Standard") {
+      console.log("TagAndAddFileModal - Replacing 'Standard' with currentProjectId:", currentProjectId);
+      finalProjectId = currentProjectId;
+    } else {
+      finalProjectId = selectedProjectId;
+    }
+    
     // Add the project ID to all selected files
     const filesWithProject = selectedFiles.map(file => ({
       ...file,
-      projectId: selectedProjectId
+      projectId: finalProjectId
     }));
     
     onProcessFiles(filesWithProject);
     setSelectedFiles([]);
     onClose();
+    
+    // Dispatch a custom event to ensure file lists are refreshed across components
+    console.log("[TagAndAddFileModal] Dispatching mockFileAdded event");
+    const refreshEvent = new CustomEvent('mockFileAdded');
+    window.dispatchEvent(refreshEvent);
   };
 
   // Handle cancel
