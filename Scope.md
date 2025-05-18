@@ -21,7 +21,7 @@ The project is currently in active development with the following progress:
 * ✅ Project-Centered Architecture: Implemented project containment with proper navigation flows
 * ✅ User Prompts System: Created user prompt functionality for custom assistant instructions
 * ✅ Context Controls UI: Implemented context settings panel with project/global toggle controls
-* ✅ File Management UI: Developed project file management and global file system with proper flow
+* ✅ File Management UI: Developed project file management and global file system with proper flow and robust file-project linking persistence
 * ✅ Database Models: Created database models with proper relationships for project containment
 * ✅ API Endpoints: Implemented backend API endpoints for core functionality
 * ✅ Document Processing: Backend pipeline created with chunking and processing capabilities

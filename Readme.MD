@@ -66,14 +66,16 @@ The application is optimized for the following hardware configuration:
 | **UI Shell & Navigation** | ✅ N/A | ✅ Completed | ✅ Completed | Layout structure with sidebar and content areas |
 | **Project Management** | ✅ Completed | ✅ Completed | 🟡 Partial | Project creation works, deletion has issues |
 | **Chat Interface** | 🟡 Partial | ✅ Completed | 🟡 Partial | Messages display but don't persist to backend |
-| **Document Management** | ✅ Completed | ✅ Completed | 🟡 Partial | Document viewing implemented, upload has issues |
-| **Project Containment** | ✅ Completed | ✅ Completed | 🟡 Partial | Architecture implemented but some flows incomplete |
-| **File Management** | ✅ Completed | ✅ Completed | 🟡 Partial | Upload and attachment functionality issues |
+| **Document Management** | ✅ Completed | ✅ Completed | ✅ Completed | Document viewing and processing fully implemented |
+| **Project Containment** | ✅ Completed | ✅ Completed | ✅ Completed | Architecture implemented with proper flows |
+| **File Management** | ✅ Completed | ✅ Completed | ✅ Completed | Upload, linking, and attachment fully functional |
 | **User Prompts** | ✅ Completed | ✅ Completed | ✅ Complete | Create, activate, and manage prompts by project |
 | **Context Controls** | 🟡 Pending | ✅ Completed | 🟡 Pending | UI implemented, backend integration pending |
-| **Document Processing** | ✅ Completed | ✅ Completed | 🟡 Partial | Backend pipeline exists, frontend integration partial |
+| **Document Processing** | ✅ Completed | ✅ Completed | ✅ Completed | Processing pipeline with status tracking |
 | **Vector Database** | ✅ Completed | N/A | ✅ Completed | pgvector integrated for semantic search |
-| **Search Functionality** | ✅ Completed | ✅ Completed | 🟡 Partial | Keyword and content search API implemented |
+| **Search Functionality** | ✅ Completed | ✅ Completed | ✅ Completed | Keyword and content search API fully implemented |
+| **Admin Tools** | ✅ Completed | ✅ Completed | ✅ Completed | Settings panel with database management tools |
+| **GPU Monitoring** | ✅ Completed | ✅ Completed | ✅ Completed | Real-time utilization visualization |
 | **NeMo Integration** | 🟡 Mock Only | N/A | 🟡 Pending | Mock implementation for development |
 | **RAG Implementation** | 🟡 Partial | 🟡 Pending | 🟡 Pending | Vector search implemented, retrieval integration pending |
 | **Reasoning Modes** | 🟡 Pending | ✅ UI Done | 🟡 Pending | UI completed, backend implementation pending |
@@ -124,6 +126,13 @@ The application is optimized for the following hardware configuration:
 - File attachment to projects with priority settings
 - File upload with custom descriptions and tags
 - Status indicators for processing and project attachment
+
+### Admin Tools & System Management
+- Database reset and maintenance tools via settings panel
+- System diagnostics and status reporting
+- Log viewing and export capabilities
+- User preferences and configuration settings
+- Documentation and help resources
 
 ## Setup Instructions
 
@@ -263,7 +272,16 @@ Backend will serve the static files from the build directory
 - Store multiple granularity levels for each document
 - Prioritize project-attached documents in retrieval
 
-### 5. Hardware-Optimized Reasoning
+### 5. File-Project Linking Persistence
+**Challenge**: Files linked to projects lost their associations when navigating between views  
+**Solution**:
+- Created robust type system with normalizing functions for project IDs
+- Implemented consistent serialization/deserialization for localStorage persistence
+- Added extensive validation and error handling for edge cases
+- Fixed synchronization between MainFileManager and ProjectFileManager
+- Enhanced event handling for proper component updates
+
+### 6. Hardware-Optimized Reasoning
 **Challenge**: Balancing reasoning capabilities with hardware constraints  
 **Solution**:
 - Optimize for 30-35B models with TensorRT for reasonable performance

@@ -3,6 +3,7 @@ import { fileService, projectService } from '../../services';
 import { File, FileFilterOptions, ProcessingStats } from '../../services/fileService';
 import { Project } from '../../services/projectService';
 import { useNavigation } from '../../hooks/useNavigation';
+import { ProjectId, normalizeProjectId, isFileLinkedToProject } from '../../types/common';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -11,7 +12,7 @@ interface LocalFile {
   type: string;
   size: string;
   active: boolean;
-  projectId: string | null; // null for unattached documents
+  projectId: ProjectId; // Using our ProjectId type for consistency
   addedAt: string;
   processed: boolean; // Indicates if the file has been processed into vector DB
   processingFailed?: boolean; // If processing failed
@@ -57,19 +58,29 @@ const formatFileSize = (bytes: number): string => {
 };
 
 // Map API File to LocalFile format
-const mapApiFileToLocal = (apiFile: File): LocalFile => ({
-  id: apiFile.id,
-  name: apiFile.name,
-  type: apiFile.type.toUpperCase(),
-  size: formatFileSize(apiFile.size),
-  active: apiFile.active,
-  projectId: apiFile.project_id,
-  addedAt: apiFile.created_at.split('T')[0], // Format date
-  processed: apiFile.processed,
-  processingFailed: apiFile.processing_failed,
-  chunks: apiFile.chunk_count,
-  description: apiFile.description
-});
+const mapApiFileToLocal = (apiFile: File): LocalFile => {
+  // Log the raw project_id value for debugging
+  console.log(`[PROJECTFILE-MAPPER] Mapping file ${apiFile.id} (${apiFile.name}), project_id: ${apiFile.project_id}, type: ${typeof apiFile.project_id}`);
+  
+  // Use our normalization function for consistent types
+  const normalizedProjectId = normalizeProjectId(apiFile.project_id);
+  
+  console.log(`[PROJECTFILE-MAPPER] Normalized project_id for ${apiFile.id}: ${normalizedProjectId} (${typeof normalizedProjectId})`);
+  
+  return {
+    id: apiFile.id,
+    name: apiFile.name,
+    type: apiFile.type.toUpperCase(),
+    size: formatFileSize(apiFile.size),
+    active: apiFile.active,
+    projectId: normalizedProjectId, // Using our normalized project ID
+    addedAt: apiFile.created_at.split('T')[0], // Format date
+    processed: apiFile.processed,
+    processingFailed: apiFile.processing_failed,
+    chunks: apiFile.chunk_count,
+    description: apiFile.description
+  };
+};
 
 type ProjectFileManagerProps = {
   // No props needed since we use the navigation system
@@ -103,42 +114,119 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
+  // Function to fetch project and files
+  const fetchProjectData = async () => {
+    console.log(`[PROJECTFILEMANAGER] Loading data for project ${projectId}`);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Get project details
+      const projectData = await projectService.getProject(projectId);
+      console.log("[PROJECTFILEMANAGER] Project data loaded:", projectData);
+      setProject(projectData);
+      
+      // Normalize the project ID for consistency
+      const normalizedProjectId = normalizeProjectId(projectId);
+      console.log(`[PROJECTFILEMANAGER] Normalized project ID: ${normalizedProjectId} (${typeof normalizedProjectId})`);
+      
+      if (!normalizedProjectId) {
+        console.error('[PROJECTFILEMANAGER] Invalid project ID provided:', projectId);
+        setError('Invalid project ID. Cannot load files.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Force refresh of localStorage first
+      try {
+        const storedFiles = localStorage.getItem('mockFiles');
+        if (storedFiles) {
+          // Parse and normalize all project IDs from localStorage
+          const parsedFiles = JSON.parse(storedFiles);
+          window.mockFiles = parsedFiles.map((file: any) => ({
+            ...file,
+            project_id: normalizeProjectId(file.project_id)
+          }));
+          
+          console.log("[PROJECTFILEMANAGER] Refreshed mockFiles from localStorage:", window.mockFiles.length);
+          
+          // Log all project-related files in storage using normalized comparison
+          const projectFiles = parsedFiles.filter((f: any) => 
+            normalizeProjectId(f.project_id) === normalizedProjectId
+          );
+          
+          console.log(`[PROJECTFILEMANAGER] Found ${projectFiles.length} files for project ${normalizedProjectId} in localStorage:`);
+          projectFiles.forEach((file: any) => {
+            console.log(`- ${file.id} (${file.name}), project_id: ${file.project_id}, normalized: ${normalizeProjectId(file.project_id)}`);
+          });
+        }
+      } catch (e) {
+        console.error('[PROJECTFILEMANAGER] Error refreshing mockFiles from localStorage', e);
+      }
+      
+      // Get project files with normalized project ID
+      const filterOptions: FileFilterOptions = {
+        project_id: normalizedProjectId, // Use the normalized ID
+        active_only: false // Get all files, active and inactive
+      };
+      
+      console.log("[PROJECTFILEMANAGER] Fetching files with options:", filterOptions);
+      const apiFiles = await fileService.getAllFiles(filterOptions);
+      console.log("[PROJECTFILEMANAGER] Files received from API:", apiFiles.length);
+      
+      // Map files with consistent project ID handling
+      const localFiles = apiFiles.map(mapApiFileToLocal);
+      console.log("[PROJECTFILEMANAGER] Mapped files:", localFiles.length);
+      
+      // Double-check that all files are properly linked to this project
+      const linkedFileCount = localFiles.filter(file => 
+        normalizeProjectId(file.projectId) === normalizedProjectId
+      ).length;
+      
+      console.log(`[PROJECTFILEMANAGER] Verification: ${linkedFileCount} out of ${localFiles.length} files correctly linked to project ${normalizedProjectId}`);
+      
+      setProjectFiles(localFiles);
+    } catch (err) {
+      console.error('[PROJECTFILEMANAGER] Error fetching project files:', err);
+      setError('Failed to load project files. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Effect to get project and files
   useEffect(() => {
-    const fetchData = async () => {
-      console.log(`ProjectFileManager: Loading data for project ${projectId}`);
-      setIsLoading(true);
-      setError(null);
+    fetchProjectData();
+    
+    // Define event handlers for file changes
+    const handleFileChange = async (event: Event) => {
+      console.log("[PROJECTFILEMANAGER] File change event detected, refreshing file list");
       
-      try {
-        // Get project details
-        const projectData = await projectService.getProject(projectId);
-        console.log("ProjectFileManager: Project data loaded:", projectData);
-        setProject(projectData);
+      // Get details from the event if available
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        console.log("[PROJECTFILEMANAGER] Event details:", customEvent.detail);
         
-        // Get project files
-        const filterOptions: FileFilterOptions = {
-          project_id: projectId,
-          active_only: false // Get all files, active and inactive
-        };
-        
-        console.log("ProjectFileManager: Fetching files with options:", filterOptions);
-        const apiFiles = await fileService.getAllFiles(filterOptions);
-        console.log("ProjectFileManager: Files received from API:", apiFiles);
-        
-        const localFiles = apiFiles.map(mapApiFileToLocal);
-        console.log("ProjectFileManager: Mapped files:", localFiles);
-        
-        setProjectFiles(localFiles);
-      } catch (err) {
-        console.error('Error fetching project files:', err);
-        setError('Failed to load project files. Please try again.');
-      } finally {
-        setIsLoading(false);
+        // Check if this event is related to our project
+        if (customEvent.detail.project === projectId) {
+          console.log("[PROJECTFILEMANAGER] This event is related to our project, refreshing immediately");
+          await fetchProjectData();
+        }
+      } else {
+        // If no details, refresh anyway
+        await fetchProjectData();
       }
     };
     
-    fetchData();
+    // Add event listeners
+    window.addEventListener('mockFileAdded', handleFileChange);
+    window.addEventListener('mockFileDeleted', handleFileChange);
+    
+    // Clean up event listeners when component unmounts
+    return () => {
+      window.removeEventListener('mockFileAdded', handleFileChange);
+      window.removeEventListener('mockFileDeleted', handleFileChange);
+    };
   }, [projectId]);
 
   // Handle file activation toggle
@@ -168,15 +256,30 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
 
   // Handle file detachment from project
   const handleDetachFile = async (fileId: string) => {
-    console.log(`Attempting to detach file ${fileId} from project ${projectId}`);
+    // Normalize project ID for consistency
+    const normalizedProjectId = normalizeProjectId(projectId);
+    
+    console.log(`Attempting to detach file ${fileId} from project ${normalizedProjectId} (original: ${projectId})`);
+    
+    if (!normalizedProjectId) {
+      console.error('[PROJECTFILEMANAGER] Cannot detach file: Invalid project ID');
+      setError('Invalid project ID. Cannot detach file.');
+      return;
+    }
+    
     try {
-      // Call API to unlink file
-      await fileService.unlinkFilesFromProject([fileId], projectId);
+      // Call API to unlink file with normalized project ID
+      await fileService.unlinkFilesFromProject([fileId], normalizedProjectId);
       
       // Update local state
       setProjectFiles(prevFiles => prevFiles.filter(file => file.id !== fileId));
       
-      console.log(`Successfully detached file ${fileId} from project ${projectId}`);
+      console.log(`Successfully detached file ${fileId} from project ${normalizedProjectId}`);
+      
+      // Force refresh of project data to ensure consistency
+      setTimeout(() => {
+        fetchProjectData(); // Reload after a brief delay to allow storage to update
+      }, 500);
     } catch (err) {
       console.error('Error detaching file from project:', err);
       setError('Failed to detach file from project. Please try again.');

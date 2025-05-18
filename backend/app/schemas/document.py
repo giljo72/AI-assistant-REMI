@@ -6,7 +6,7 @@ import uuid
 # Document schemas
 class DocumentBase(BaseModel):
     """Base document schema with common attributes."""
-    name: str
+    filename: str  # Changed from name to filename to match Document model
     description: Optional[str] = None
     project_id: Optional[str] = None  # null for unattached documents
 
@@ -20,7 +20,7 @@ class DocumentCreate(DocumentBase):
 
 class DocumentUpdate(BaseModel):
     """Schema for updating an existing document."""
-    name: Optional[str] = None
+    filename: Optional[str] = None  # Changed from name to filename to match Document model
     description: Optional[str] = None
     active: Optional[bool] = None
     project_id: Optional[str] = None

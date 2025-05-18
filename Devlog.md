@@ -355,10 +355,11 @@ Implementing a fully functional file management system with mock data support fo
 - Research voice input integration possibilities
 - Consider export/import functionality for project migration
 
-## May 18, 2025 - Debugging File Management System
+## May 18, 2025 - Debugging File Management System and Fixing File-Project Linking
 
 ### Key Initiative
-Fixing file display issues and navigation in the File Manager components
+1. Fixing file display issues and navigation in the File Manager components
+2. Resolving issues with file-project linking persistence
 
 ### Action Items Completed
 1. **Fixed File Display in MainFileManager**
@@ -379,12 +380,70 @@ Fixing file display issues and navigation in the File Manager components
    - Improved event handling to prevent unwanted navigation
    - Enhanced the project ID handling in filter logic
 
+4. **Fixed File-Project Linking Persistence**
+   - Implemented consistent ProjectId type handling with robust normalization functions
+   - Created centralized type definitions in new common.ts file
+   - Fixed JSON serialization/deserialization issues in localStorage persistence
+   - Added robust validation and error handling for project ID operations
+   - Fixed synchronization between MainFileManager and ProjectFileManager
+   - Enhanced type safety with custom type guards and normalization functions
+
 ### Technical Notes
 - Removed automatic polling in favor of event-based refreshes
 - Improved error handling for missing API endpoints
 - Added conversion of "Standard" project IDs to null to fix filtering
 - Enhanced debugging with detailed logs for state transitions
 - Modified event propagation handling to prevent unwanted navigation
+- Created new types/common.ts file with type definitions and helper functions:
+  ```typescript
+  export type ProjectId = string | null;
+
+  export function normalizeProjectId(value: unknown): ProjectId {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    // For object type nulls (caused by JSON parsing)
+    if (value && typeof value === 'object') {
+      return null;
+    }
+    
+    return null;
+  }
+
+  export function isFileLinkedToProject(fileProjectId: unknown): boolean {
+    const normalizedId = normalizeProjectId(fileProjectId);
+    return normalizedId !== null;
+  }
+  ```
+- Implemented file service helpers to ensure consistent project ID handling:
+  ```typescript
+  function normalizeFileProjectIds(files: any[]): any[] {
+    return files.map(file => {
+      const normalizedFile = { ...file };
+      normalizedFile.project_id = normalizeProjectId(file.project_id);
+      return normalizedFile;
+    });
+  }
+  ```
+- Added extensive validation and debugging to track project ID changes
+
+### Files Modified
+- Created `/frontend/src/types/common.ts` - New file with type definitions and helpers
+- Updated `/frontend/src/services/fileService.ts` - Enhanced with type normalization
+- Modified `/frontend/src/components/file/MainFileManager.tsx` - Fixed project ID handling
+- Updated `/frontend/src/components/file/ProjectFileManager.tsx` - Improved file filtering
+
+### Root Cause Analysis
+The file-project linking persistence issue was caused by inconsistent type handling during JSON serialization/deserialization, resulting in:
+- `project_id` values being deserialized as objects instead of primitive types 
+- Type comparisons failing with strict equality (`===`) between different representations of null
+- Mock implementation not properly syncing between components
+- localStorage persistence not maintaining proper type information
 
 ### Next Steps
 1. **Complete MainFileManager Navigation Fix**
@@ -398,3 +457,103 @@ Fixing file display issues and navigation in the File Manager components
 3. **Connect Backend Processing**
    - Complete integration with actual document processing pipeline
    - Implement real-time processing status indicators
+
+4. **Additional Type Safety Improvements**
+   - Extend type normalization pattern to other areas of the application
+   - Consider implementing runtime type validation for API responses
+   - Add comprehensive error boundary components for graceful degradation
+
+## May 19, 2025 - Complete Backend Integration and Admin Tools
+
+### Key Initiative
+1. Implementing full backend integration for file management
+2. Adding admin tools and database management capabilities
+3. Creating processing status tracking and GPU utilization monitoring
+4. Building migration tools for transitioning from mock to real implementation
+
+### Action Items Completed
+
+1. **Backend-Frontend Integration**
+   - Created clean implementation of fileService.ts with proper API integration
+   - Implemented consistent API error handling utility
+   - Added real-time file processing status tracking
+   - Connected file-project linking to backend API endpoints
+   - Fixed issues with project ID handling in file associations
+
+2. **Admin Tools Implementation**
+   - Created comprehensive admin settings panel accessible via gear icon
+   - Implemented database reset functionality with granular options
+   - Added system information dashboard with real-time metrics
+   - Created API endpoints for database management operations
+   - Implemented file system cleanup functionality
+
+3. **GPU Utilization and Processing Status**
+   - Designed GPU utilization visualization component
+   - Added processing status tracking with detailed metrics
+   - Implemented real-time progress indicators for document processing
+   - Created collapsible processing status panel for file manager
+
+4. **Migration Tools**
+   - Developed migration script for transitioning from mock to real implementation
+   - Added backup functionality to preserve mock implementations
+   - Implemented automatic code transformation for component updates
+   - Created detailed migration and testing process documentation
+
+### Technical Decisions
+
+1. **Backend Implementation**
+   - Created dedicated admin.py API endpoint module for system management
+   - Used background tasks for long-running operations like database resets
+   - Implemented detailed error handling and reporting for all API endpoints
+   - Added comprehensive type safety through normalizeProjectId utility
+
+2. **Admin Panel Architecture**
+   - Designed tab-based interface for separating functions and information
+   - Created confirmation flow for destructive operations
+   - Implemented real-time system metrics with auto-refresh
+   - Used consistent color coding for status indicators
+
+3. **Processing Status Implementation**
+   - Used interval-based polling for real-time updates
+   - Created conditional display that only shows when relevant
+   - Implemented auto-expanding panel on active processing
+   - Used animation effects to show progress changes
+
+4. **Error Handling Approach**
+   - Created centralized API error handler with detailed error mapping
+   - Implemented standardized error message format
+   - Added HTTP status code specific messaging
+   - Used consistent error display patterns throughout the application
+
+### Files Created/Modified
+
+1. **Backend**
+   - Created `/backend/app/api/endpoints/admin.py` - Admin API endpoints
+   - Updated `/backend/app/api/api.py` - Added admin router integration
+
+2. **Frontend Services**
+   - Created `/frontend/src/services/fileService.new.ts` - Real implementation
+   - Created `/frontend/src/services/adminService.ts` - Admin API service
+   - Created `/frontend/src/utils/apiErrorHandler.ts` - Error handling utility
+
+3. **Frontend Components**
+   - Created `/frontend/src/components/modals/AdminSettingsPanel.tsx` - Admin settings
+   - Created `/frontend/src/components/common/GPUUtilizationDisplay.tsx` - GPU monitor
+   - Created `/frontend/src/components/file/ProcessingStatusPanel.tsx` - Status panel
+   - Updated `/frontend/src/components/sidebar/ProjectSidebar.tsx` - Added admin tools
+
+4. **Scripts**
+   - Created `/scripts/migrate_to_real_backend.py` - Migration tool
+
+### Challenges Addressed
+- Resolved file-project linking persistence issues with proper API integration
+- Fixed type inconsistencies in project ID handling across the application
+- Addressed synchronization issues between MainFileManager and ProjectFileManager
+- Created robust error handling for API failures and edge cases
+- Implemented migration strategy to minimize disruption during transition
+
+### Next Steps
+- Test the complete backend integration in real-world scenarios
+- Complete the integration of ProjectManager with the backend
+- Implement chat functionality with proper backend persistence
+- Enhance context controls with backend state management

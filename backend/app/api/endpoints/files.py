@@ -171,7 +171,7 @@ def get_files(
         # Map to response schema
         doc_dict = {
             "id": doc.id,
-            "name": doc.filename,
+            "name": doc.filename,  # Keep 'name' in response for frontend compatibility
             "description": doc.description,
             "type": doc.filetype,
             "size": doc.filesize,
@@ -206,7 +206,7 @@ def get_file(
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,
+        "name": document.filename,  # Keep 'name' in response for frontend compatibility
         "description": document.description,
         "type": document.filetype,
         "size": document.filesize,
@@ -273,7 +273,7 @@ async def upload_file(
     
     # Create document record
     document_in = DocumentCreate(
-        name=name or original_filename,
+        filename=name or original_filename,  # Changed from name to filename to match schema
         description=description,
         project_id=project_id,
         type=filetype,
@@ -392,7 +392,7 @@ def process_file(
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,
+        "name": document.filename,  # Keep 'name' in response for frontend compatibility
         "description": document.description,
         "type": document.filetype,
         "size": document.filesize,
@@ -442,7 +442,7 @@ def retry_processing(
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,
+        "name": document.filename,  # Keep 'name' in response for frontend compatibility
         "description": document.description,
         "type": document.filetype,
         "size": document.filesize,
@@ -475,8 +475,8 @@ def update_file(
         raise HTTPException(status_code=404, detail="File not found")
     
     # Update document fields
-    if update_data.name is not None:
-        document.filename = update_data.name
+    if update_data.filename is not None:
+        document.filename = update_data.filename
     
     if update_data.description is not None:
         document.description = update_data.description
@@ -526,7 +526,7 @@ def update_file(
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,
+        "name": document.filename,  # Keep 'name' in response for frontend compatibility
         "description": document.description,
         "type": document.filetype,
         "size": document.filesize,

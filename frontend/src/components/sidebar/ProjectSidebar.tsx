@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import AddProjectModal from '../modals/AddProjectModal';
+import AdminSettingsPanel from '../modals/AdminSettingsPanel';
 import { useProjects } from '../../context/ProjectContext';
 import { useNavigation } from '../../hooks/useNavigation';
 
 const ProjectSidebar: React.FC = () => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   
   // Use the shared project context
   const { projects, loading, error, addProject } = useProjects();
@@ -61,7 +63,11 @@ const ProjectSidebar: React.FC = () => {
           <button className="p-2 hover:bg-navy-lighter rounded-full" title="Help">
             <span className="text-gold">❓</span>
           </button>
-          <button className="p-2 hover:bg-navy-lighter rounded-full" title="Settings">
+          <button 
+            className="p-2 hover:bg-navy-lighter rounded-full" 
+            title="Admin Settings"
+            onClick={() => setIsSettingsPanelOpen(true)}
+          >
             <span className="text-gold">⚙️</span>
           </button>
         </div>
@@ -129,6 +135,12 @@ const ProjectSidebar: React.FC = () => {
         isOpen={isAddProjectModalOpen}
         onClose={() => setIsAddProjectModalOpen(false)}
         onAddProject={handleAddProject}
+      />
+      
+      {/* Admin Settings Panel */}
+      <AdminSettingsPanel
+        isOpen={isSettingsPanelOpen}
+        onClose={() => setIsSettingsPanelOpen(false)}
       />
     </div>
   );
