@@ -226,14 +226,36 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       await fetchFiles();
     };
     
+    // Handler to close project dropdowns when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close individual file project dropdowns
+      const fileDropdowns = document.querySelectorAll('[id^="project-dropdown-"]');
+      fileDropdowns.forEach(dropdown => {
+        if (!dropdown.contains(event.target as Node) && 
+            !(event.target as Element).classList.contains('project-dropdown-toggle')) {
+          (dropdown as HTMLElement).classList.add('hidden');
+        }
+      });
+      
+      // Close batch project dropdown
+      const batchDropdown = document.getElementById('batch-project-dropdown');
+      if (batchDropdown && 
+          !batchDropdown.contains(event.target as Node) && 
+          !(event.target as Element).classList.contains('project-dropdown-toggle')) {
+        batchDropdown.classList.add('hidden');
+      }
+    };
+    
     // Add event listeners for our custom events
     window.addEventListener('mockFileAdded', handleFileAdded);
     window.addEventListener('mockFileDeleted', handleFileDeleted);
+    document.body.addEventListener('click', handleClickOutside);
     
     // Clean up event listeners when component unmounts
     return () => {
       window.removeEventListener('mockFileAdded', handleFileAdded);
       window.removeEventListener('mockFileDeleted', handleFileDeleted);
+      document.body.removeEventListener('click', handleClickOutside);
     };
   }, [projectId, sortField, sortDirection]); // Dependencies trigger re-fetch when they change
 
@@ -383,10 +405,30 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
           ? a.addedAt.localeCompare(b.addedAt) 
           : b.addedAt.localeCompare(a.addedAt);
       } else if (sortField === 'size') {
-        // Simple implementation - in reality would parse the size properly
+        // Parse sizes correctly for numerical comparison
+        const parseSizeToBytes = (sizeStr: string): number => {
+          const match = sizeStr.match(/^([\d.]+)\s*([KMGT]?B)$/i);
+          if (!match) return 0;
+          
+          const value = parseFloat(match[1]);
+          const unit = match[2].toUpperCase();
+          
+          switch (unit) {
+            case 'B': return value;
+            case 'KB': return value * 1024;
+            case 'MB': return value * 1024 * 1024;
+            case 'GB': return value * 1024 * 1024 * 1024;
+            case 'TB': return value * 1024 * 1024 * 1024 * 1024;
+            default: return value;
+          }
+        };
+        
+        const aBytes = parseSizeToBytes(a.size);
+        const bBytes = parseSizeToBytes(b.size);
+        
         return sortDirection === 'asc' 
-          ? a.size.localeCompare(b.size) 
-          : b.size.localeCompare(a.size);
+          ? aBytes - bBytes 
+          : bBytes - aBytes;
       } else if (sortField === 'status') {
         // Sort by projectId (linked status)
         if (sortDirection === 'asc') {
@@ -412,11 +454,26 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
 
   // Handle sort field change
   const handleSortChange = (field: 'name' | 'date' | 'size' | 'status' | 'processed') => {
+    // Update sort state
+    let newDirection: 'asc' | 'desc';
+    
     if (field === sortField) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      setSortDirection(newDirection);
     } else {
       setSortField(field);
-      setSortDirection('asc');
+      newDirection = 'asc';
+      setSortDirection(newDirection);
+    }
+    
+    // Log the change
+    console.log(`[MAINFILEMANAGER] Sort changed to ${field} ${newDirection}`);
+    
+    // Refresh data with new sort
+    if (!isSearching) {
+      // Only trigger an API refetch if we're not in search mode
+      // For searches, we'll just resort the client-side data
+      fetchFiles();
     }
   };
 
@@ -544,32 +601,45 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
         
         <div className="flex space-x-3">
           {/* Sort Controls */}
+          <div className="flex items-center space-x-1 mr-2">
+            <span className="text-xs text-gray-400">Sort by:</span>
+          </div>
           <button 
-            className={`px-3 py-1 rounded text-sm ${sortField === 'name' ? 'bg-gold/20 text-gold' : 'bg-navy hover:bg-navy-lighter'}`}
+            className={`px-3 py-1 rounded text-sm font-medium border ${sortField === 'name' 
+              ? 'bg-gold/20 text-gold border-gold' 
+              : 'bg-navy hover:bg-navy-lighter border-transparent'}`}
             onClick={() => handleSortChange('name')}
           >
             Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
           </button>
           <button 
-            className={`px-3 py-1 rounded text-sm ${sortField === 'size' ? 'bg-gold/20 text-gold' : 'bg-navy hover:bg-navy-lighter'}`}
+            className={`px-3 py-1 rounded text-sm font-medium border ${sortField === 'size' 
+              ? 'bg-gold/20 text-gold border-gold' 
+              : 'bg-navy hover:bg-navy-lighter border-transparent'}`}
             onClick={() => handleSortChange('size')}
           >
             Size {sortField === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
           </button>
           <button 
-            className={`px-3 py-1 rounded text-sm ${sortField === 'date' ? 'bg-gold/20 text-gold' : 'bg-navy hover:bg-navy-lighter'}`}
+            className={`px-3 py-1 rounded text-sm font-medium border ${sortField === 'date' 
+              ? 'bg-gold/20 text-gold border-gold' 
+              : 'bg-navy hover:bg-navy-lighter border-transparent'}`}
             onClick={() => handleSortChange('date')}
           >
             Date {sortField === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}
           </button>
           <button 
-            className={`px-3 py-1 rounded text-sm ${sortField === 'status' ? 'bg-gold/20 text-gold' : 'bg-navy hover:bg-navy-lighter'}`}
+            className={`px-3 py-1 rounded text-sm font-medium border ${sortField === 'status' 
+              ? 'bg-gold/20 text-gold border-gold' 
+              : 'bg-navy hover:bg-navy-lighter border-transparent'}`}
             onClick={() => handleSortChange('status')}
           >
             Linked {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
           </button>
           <button 
-            className={`px-3 py-1 rounded text-sm ${sortField === 'processed' ? 'bg-gold/20 text-gold' : 'bg-navy hover:bg-navy-lighter'}`}
+            className={`px-3 py-1 rounded text-sm font-medium border ${sortField === 'processed' 
+              ? 'bg-gold/20 text-gold border-gold' 
+              : 'bg-navy hover:bg-navy-lighter border-transparent'}`}
             onClick={() => handleSortChange('processed')}
           >
             Processed {sortField === 'processed' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -593,17 +663,199 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             {isSearching ? 'Search Results' : 'All Files'} 
             {isSearching && ` (${searchResults.length})`}
           </span>
-          {isSearching && (
-            <button 
-              onClick={() => {
-                setIsSearching(false);
-                setSearchTerm('');
-              }}
-              className="text-xs px-2 py-1 bg-navy hover:bg-navy-lighter rounded"
-            >
-              Clear Search
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            {/* Batch action buttons - only show when files are selected */}
+            {selectedFiles.length > 0 && (
+              <>
+                <span className="text-xs text-gray-400 mr-1">
+                  {selectedFiles.length} selected
+                </span>
+                <button 
+                  onClick={async () => {
+                    // Implement batch download
+                    for (const fileId of selectedFiles) {
+                      try {
+                        const file = files.find(f => f.id === fileId);
+                        if (file) {
+                          const blob = await fileService.downloadFile(fileId);
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = file.name;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          a.remove();
+                        }
+                      } catch (err) {
+                        console.error(`Error downloading file ${fileId}:`, err);
+                      }
+                    }
+                  }}
+                  className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                >
+                  Download Selected
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    // Show project assignment dropdown for batch assignment
+                    const dropdown = document.getElementById('batch-project-dropdown');
+                    if (dropdown) {
+                      dropdown.classList.toggle('hidden');
+                    }
+                  }}
+                  className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
+                >
+                  Assign Selected
+                </button>
+                
+                <button 
+                  onClick={async () => {
+                    // Implement batch delete with confirmation
+                    if (window.confirm(`Are you sure you want to delete ${selectedFiles.length} files? This action cannot be undone.`)) {
+                      try {
+                        // Delete each file
+                        for (const fileId of selectedFiles) {
+                          await fileService.deleteFile(fileId);
+                        }
+                        
+                        // Update local state by removing deleted files
+                        setFiles(prev => prev.filter(file => !selectedFiles.includes(file.id)));
+                        
+                        // Clear selection
+                        setSelectedFiles([]);
+                      } catch (err) {
+                        console.error('Error deleting files:', err);
+                        setError('Failed to delete some files. Please try again.');
+                      }
+                    }
+                  }}
+                  className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                >
+                  Delete Selected
+                </button>
+                
+                {/* Relative positioned container for dropdown */}
+                <div className="relative">
+                  {/* Project selection dropdown for batch assignment */}
+                  <div 
+                    id="batch-project-dropdown"
+                    className="absolute right-0 mt-8 bg-navy-light rounded shadow-lg z-10 hidden"
+                    style={{ minWidth: '200px' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-2 border-b border-navy">
+                      <div className="text-xs text-gold font-medium mb-1">Assign to Project:</div>
+                      {projects.length > 0 ? (
+                        <div className="max-h-40 overflow-y-auto">
+                          {projects.map(project => (
+                            <div 
+                              key={project.id} 
+                              className="p-1.5 hover:bg-navy rounded text-sm cursor-pointer"
+                              onClick={async () => {
+                                try {
+                                  // Call API to link files to project
+                                  await fileService.linkFilesToProject({
+                                    file_ids: selectedFiles,
+                                    project_id: project.id
+                                  });
+                                  
+                                  // Update local state
+                                  setFiles(prev => 
+                                    prev.map(file => 
+                                      selectedFiles.includes(file.id) 
+                                        ? { ...file, projectId: project.id } 
+                                        : file
+                                    )
+                                  );
+                                  
+                                  // Hide dropdown
+                                  const dropdown = document.getElementById('batch-project-dropdown');
+                                  if (dropdown) {
+                                    dropdown.classList.add('hidden');
+                                  }
+                                } catch (err) {
+                                  console.error('Error assigning files to project:', err);
+                                  setError('Failed to assign files to project. Please try again.');
+                                }
+                              }}
+                            >
+                              {project.name}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-400 p-1.5">No projects available</div>
+                      )}
+                    </div>
+                    <div 
+                      className="p-2 text-xs hover:bg-red-700/30 text-red-400 rounded cursor-pointer"
+                      onClick={async () => {
+                        // For each selected file that has a project ID, remove it from that project
+                        const filesToProcess = files.filter(
+                          file => selectedFiles.includes(file.id) && file.projectId !== null
+                        );
+                        
+                        if (filesToProcess.length > 0 && 
+                            window.confirm(`Are you sure you want to remove ${filesToProcess.length} file(s) from their projects?`)) {
+                          try {
+                            // Group files by project for more efficient unlinking
+                            const filesByProject: {[key: string]: string[]} = {};
+                            
+                            filesToProcess.forEach(file => {
+                              if (file.projectId) {
+                                if (!filesByProject[file.projectId]) {
+                                  filesByProject[file.projectId] = [];
+                                }
+                                filesByProject[file.projectId].push(file.id);
+                              }
+                            });
+                            
+                            // Process each project group
+                            for (const [projectId, fileIds] of Object.entries(filesByProject)) {
+                              await fileService.unlinkFilesFromProject(fileIds, projectId);
+                            }
+                            
+                            // Update local state
+                            setFiles(prev => 
+                              prev.map(file => 
+                                selectedFiles.includes(file.id) && file.projectId !== null
+                                  ? { ...file, projectId: null }
+                                  : file
+                              )
+                            );
+                          } catch (err) {
+                            console.error('Error removing files from projects:', err);
+                            setError('Failed to remove files from projects. Please try again.');
+                          }
+                        }
+                        
+                        // Hide dropdown
+                        const dropdown = document.getElementById('batch-project-dropdown');
+                        if (dropdown) {
+                          dropdown.classList.add('hidden');
+                        }
+                      }}
+                    >
+                      <span className="text-red-400">Remove from Projects</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            {isSearching && (
+              <button 
+                onClick={() => {
+                  setIsSearching(false);
+                  setSearchTerm('');
+                }}
+                className="text-xs px-2 py-1 bg-navy hover:bg-navy-lighter rounded"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
         </h3>
         
         {isLoading ? (
@@ -711,23 +963,208 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                   </div>
                   
                   {/* Action buttons */}
-                  <div className="flex space-x-2 items-center">
+                  <div className="flex space-x-2 items-center relative">
                     {/* Show retry processing button for failed files */}
                     {file.processingFailed && (
                       <button 
                         onClick={() => handleRetryProcessing(file.id)}
-                        className="text-xs px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded"
+                        className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
                       >
                         Retry
                       </button>
                     )}
                     
                     <button 
-                      onClick={() => window.open(`/api/files/${file.id}/preview`, '_blank')}
-                      className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent clicking from bubbling up to the document
+                        // Show project selection dropdown for assignment
+                        const dropdown = document.getElementById(`project-dropdown-${file.id}`);
+                        if (dropdown) {
+                          dropdown.classList.toggle('hidden');
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
                     >
-                      View
+                      Assign
                     </button>
+                    
+                    <button 
+                      onClick={() => {
+                        // Show modify modal for this file
+                        // Create a modal if it doesn't exist
+                        let modal = document.getElementById(`modify-modal-${file.id}`);
+                        if (!modal) {
+                          modal = document.createElement('div');
+                          modal.id = `modify-modal-${file.id}`;
+                          modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+                          modal.innerHTML = `
+                            <div class="bg-navy-light rounded-lg p-6 max-w-md w-full">
+                              <h3 class="text-lg font-medium text-gold mb-4">Modify File Details</h3>
+                              <div class="mb-4">
+                                <label class="block text-sm text-gray-400 mb-1">File Name</label>
+                                <input type="text" value="${file.name}" 
+                                  class="w-full bg-navy p-2 rounded text-gray-300" id="file-name-${file.id}">
+                              </div>
+                              <div class="mb-4">
+                                <label class="block text-sm text-gray-400 mb-1">Description</label>
+                                <textarea class="w-full bg-navy p-2 rounded text-gray-300 h-20" 
+                                  id="file-description-${file.id}">${file.description || ''}</textarea>
+                              </div>
+                              <div class="flex justify-end">
+                                <button class="px-3 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded text-sm mr-2 cancel-btn">
+                                  Cancel
+                                </button>
+                                <button class="px-3 py-1 bg-gold text-navy font-medium rounded hover:bg-gold/90 save-btn">
+                                  Save Changes
+                                </button>
+                              </div>
+                            </div>
+                          `;
+                          
+                          document.body.appendChild(modal);
+                          
+                          // Add event listeners
+                          const saveBtn = modal.querySelector('.save-btn');
+                          const cancelBtn = modal.querySelector('.cancel-btn');
+                          const clickOutside = (e: MouseEvent) => {
+                            if (e.target === modal) {
+                              if (window.confirm("Are you sure you want to close? Any unsaved changes will be lost.")) {
+                                modal?.remove();
+                              }
+                            }
+                          };
+                          
+                          saveBtn?.addEventListener('click', async () => {
+                            try {
+                              const nameInput = document.getElementById(`file-name-${file.id}`) as HTMLInputElement;
+                              const descInput = document.getElementById(`file-description-${file.id}`) as HTMLTextAreaElement;
+                              
+                              if (nameInput && descInput) {
+                                // Call API to update file
+                                await fileService.updateFile(file.id, {
+                                  name: nameInput.value,
+                                  description: descInput.value
+                                });
+                                
+                                // Update local state
+                                setFiles(prev => 
+                                  prev.map(f => 
+                                    f.id === file.id 
+                                      ? { ...f, name: nameInput.value, description: descInput.value } 
+                                      : f
+                                  )
+                                );
+                              }
+                              
+                              // Remove modal
+                              modal?.remove();
+                            } catch (err) {
+                              console.error('Error updating file:', err);
+                              setError('Failed to update file. Please try again.');
+                            }
+                          });
+                          
+                          cancelBtn?.addEventListener('click', () => {
+                            if (window.confirm("Are you sure you want to cancel? Any unsaved changes will be lost.")) {
+                              modal?.remove();
+                            }
+                          });
+                          
+                          modal.addEventListener('click', clickOutside);
+                        } else {
+                          // If modal exists, just show it
+                          modal.classList.remove('hidden');
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
+                    >
+                      Modify
+                    </button>
+                    <div 
+                      id={`project-dropdown-${file.id}`}
+                      className="absolute mt-8 bg-navy-light rounded shadow-lg z-10 hidden"
+                      style={{ minWidth: '180px' }}
+                      onClick={(e) => e.stopPropagation()} // Prevent dropdown clicks from closing itself
+                    >
+                      <div className="p-2 border-b border-navy">
+                        <div className="text-xs text-gold font-medium mb-1">Assign to Project:</div>
+                        {projects.length > 0 ? (
+                          <div className="max-h-40 overflow-y-auto">
+                            {projects.map(project => (
+                              <div 
+                                key={project.id} 
+                                className="p-1.5 hover:bg-navy rounded text-sm cursor-pointer"
+                                onClick={async () => {
+                                  try {
+                                    // Call API to link file to project
+                                    await fileService.linkFilesToProject({
+                                      file_ids: [file.id],
+                                      project_id: project.id
+                                    });
+                                    
+                                    // Update local state
+                                    setFiles(prev => 
+                                      prev.map(f => 
+                                        f.id === file.id 
+                                          ? { ...f, projectId: project.id } 
+                                          : f
+                                      )
+                                    );
+                                    
+                                    // Hide dropdown
+                                    const dropdown = document.getElementById(`project-dropdown-${file.id}`);
+                                    if (dropdown) {
+                                      dropdown.classList.add('hidden');
+                                    }
+                                  } catch (err) {
+                                    console.error('Error assigning file to project:', err);
+                                    setError('Failed to assign file to project. Please try again.');
+                                  }
+                                }}
+                              >
+                                {project.name}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400 p-1.5">No projects available</div>
+                        )}
+                      </div>
+                      <div 
+                        className="p-2 text-xs hover:bg-red-700/30 text-red-400 rounded cursor-pointer"
+                        onClick={async () => {
+                          // Only attempt to unlink if currently attached to a project
+                          if (file.projectId && window.confirm(`Are you sure you want to remove "${file.name}" from its project?`)) {
+                            try {
+                              // Call API to unlink file
+                              await fileService.unlinkFilesFromProject([file.id], file.projectId);
+                              
+                              // Update local state
+                              setFiles(prev => 
+                                prev.map(f => 
+                                  f.id === file.id 
+                                    ? { ...f, projectId: null } 
+                                    : f
+                                )
+                              );
+                            } catch (err) {
+                              console.error('Error removing file from project:', err);
+                              setError('Failed to remove file from project. Please try again.');
+                            }
+                          }
+                          
+                          // Hide dropdown
+                          const dropdown = document.getElementById(`project-dropdown-${file.id}`);
+                          if (dropdown) {
+                            dropdown.classList.add('hidden');
+                          }
+                        }}
+                      >
+                        <span className={file.projectId ? "text-red-400" : "text-gray-500"}>
+                          {file.projectId ? "Remove from Project" : "Not Assigned"}
+                        </span>
+                      </div>
+                    </div>
                     <button 
                       onClick={async () => {
                         try {
@@ -745,13 +1182,17 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                           setError('Failed to download file. Please try again.');
                         }
                       }}
-                      className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded"
+                      className="text-xs px-2 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded"
                     >
                       Download
                     </button>
                     <button 
                       className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
-                      onClick={() => handleDeleteFile(file.id)}
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
+                          handleDeleteFile(file.id);
+                        }
+                      }}
                     >
                       Delete
                     </button>
