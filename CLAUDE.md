@@ -1,3 +1,18 @@
+*IMPORTANT* Behaviour exepectations
+- ALWAYS Read the project documentation to be familiar with the scope, implementation and intended workflows and framework.  ASK questions if something is unclear.
+- AVOID creating cascading changes without also changing other scripts and code, always make sure a change flows through the project files
+- AVOID creating new files to solve a problem/diagnosis, unless absolutely neccesary, in order to prevent a cascading list of diagnostics programs to solve an issue.  I prefer one diagnistics application which we can add too over time with various test but must ALWAYS delete and revise if a function is no longer applicable.
+- ALWAYS update scope.md and Implementation.MD and REadme.MD if we are adding folders, files or maching other achitectural changes.
+- ALWYS recommend to rewrite a complete file if it benefits the project for effciency, isntead of appending to existing files and then creating fix after fix making the file monolithic.
+- ALWAYS think modal of monolithic file structures.
+- REMEMBER When testing you must remember you are running in a terminal mode within Visual Studio Code on Ubuntu.
+- REMEMBER The application is running in Windows 11, consider this when doing tests or executing scripts
+- Update the Devlog for every MAJOR step automatically by abbending to it with todays date
+- I am a novice developer so I am relying heavily on logic and reasoning of the AI assistant when resolving issues.
+- When giving me steps to try or execute, like instructions, give me one step at a time and ask to continue.
+- Summarize my requests so I can ensure you understand my instructions as I will be very VERBOSE, and then ask to execute the code changes.
+
+
 # AI Assistant Development Guide
 
 ## Project Overview
@@ -5,10 +20,6 @@
 This AI Assistant is a FastAPI + React application providing a local AI assistant with project-centered containment, prioritized document retrieval, and adaptive reasoning capabilities.
 
 ## Development Workflow
-**IMPORTANT** The development environment is in UBUNTU WSL running in a windows version of Visual Studo code. While the APPLICATION runs in a windows python Venv environment (venv_nemo)
-** IMPORTANT ** read the scope.md / Implementation.md / readme.md / devlog.md for project instructions **
-
-### Setup & Installation
 
 #### Prerequisites
 - PostgreSQL 17 with pgvector extension

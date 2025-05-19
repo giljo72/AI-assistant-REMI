@@ -1,4 +1,4 @@
-# AI Assistant: FastAPI + React Implementation
+# AI Assistant: FastAPI + React Implementation!
 
 A private, local AI assistant with project-centered containment, prioritized document retrieval, and adaptive reasoning capabilities optimized for high-performance hardware.
 
