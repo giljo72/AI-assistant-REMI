@@ -3,9 +3,29 @@ import api from './api';
 export interface ChatMessage {
   id: string;
   content: string;
-  is_user: boolean;
+  role: 'user' | 'assistant' | 'system';
   chat_id: string;
   created_at: string;
+}
+
+export interface ChatGenerateRequest {
+  message: string;
+  max_length?: number;
+  temperature?: number;
+  include_context?: boolean;
+}
+
+export interface ChatGenerateResponse {
+  response: string;
+  user_message_id: string;
+  assistant_message_id: string;
+  model_info: {
+    model_name: string;
+    device: string;
+    is_initialized: boolean;
+    nemo_available: boolean;
+    model_type: string;
+  };
 }
 
 export interface Chat {
@@ -28,7 +48,7 @@ export interface ChatUpdate {
 
 export interface ChatMessageCreate {
   content: string;
-  is_user: boolean;
+  role: 'user' | 'assistant' | 'system';
   chat_id: string;
 }
 
@@ -129,27 +149,64 @@ class ChatService {
   }
 
   /**
-   * Send a user message and get the assistant's response
-   * This is a convenience method that creates a user message and then gets the response
+   * Generate AI response using NeMo LLM
    */
-  async sendMessage(chatId: string, content: string): Promise<ChatMessage[]> {
-    // Create the user message
-    await this.createMessage({
-      chat_id: chatId,
-      content,
-      is_user: true
-    });
-    
-    // TODO: In a real app, this would call the LLM backend to generate a response
-    // For now, we'll just create a mock assistant message
-    const assistantMessage = await this.createMessage({
-      chat_id: chatId,
-      content: `I received your message: "${content}". This is a mock response.`,
-      is_user: false
-    });
-    
-    // Return all messages for the chat
-    return this.getChatMessages(chatId);
+  async generateResponse(chatId: string, request: ChatGenerateRequest): Promise<ChatGenerateResponse> {
+    try {
+      const response = await api.post(`/chats/${chatId}/generate`, request);
+      return response.data;
+    } catch (error) {
+      console.error("Error generating response:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a user message and get the assistant's response using NeMo LLM
+   */
+  async sendMessage(chatId: string, content: string, options?: {
+    max_length?: number;
+    temperature?: number;
+    include_context?: boolean;
+  }): Promise<ChatGenerateResponse> {
+    try {
+      const request: ChatGenerateRequest = {
+        message: content,
+        max_length: options?.max_length || 150,
+        temperature: options?.temperature || 0.7,
+        include_context: options?.include_context !== false, // Default to true
+      };
+      
+      return await this.generateResponse(chatId, request);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Fallback response for error cases
+      return {
+        response: "I apologize, but I'm having trouble generating a response right now. Please try again.",
+        user_message_id: "",
+        assistant_message_id: "",
+        model_info: {
+          model_name: "Error Fallback",
+          device: "unknown",
+          is_initialized: false,
+          nemo_available: false,
+          model_type: "Fallback"
+        }
+      };
+    }
+  }
+
+  /**
+   * Send a simple message and get response (for backward compatibility)
+   */
+  async sendSimpleMessage(chatId: string, content: string): Promise<ChatMessage> {
+    try {
+      const response = await api.post(`/chats/${chatId}/messages/generate?message_content=${encodeURIComponent(content)}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error sending simple message:", error);
+      throw error;
+    }
   }
 }
 

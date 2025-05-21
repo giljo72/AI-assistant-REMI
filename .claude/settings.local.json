@@ -3,7 +3,9 @@
     "allow": [
       "Bash(ls:*)",
       "Bash(mkdir:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(./venv_nemo/Scripts/python -m pip list)"
     ],
     "deny": []
   }
