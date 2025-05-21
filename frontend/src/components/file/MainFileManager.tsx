@@ -12,6 +12,7 @@ interface LocalFile {
   size: string;
   active: boolean;
   projectId: ProjectId; // Using our ProjectId type for consistency
+  projectName?: string; // Name of the project this file is linked to
   addedAt: string;
   processed: boolean; // Indicates if the file has been processed into vector DB
   processingFailed?: boolean; // If processing failed
@@ -26,26 +27,114 @@ interface Project {
   name: string;
 }
 
-// Get file type badge color
-const getFileTypeColor = (type: string): string => {
-  switch (type.toLowerCase()) {
+// File type metadata for improved visualization
+interface FileTypeMetadata {
+  color: string;
+  icon: string;
+  description: string;
+}
+
+// Get file type metadata for display
+const getFileTypeMetadata = (type: string): FileTypeMetadata => {
+  const fileType = type.toLowerCase();
+  
+  switch (fileType) {
     case 'pdf':
-      return 'red';
+      return {
+        color: 'red',
+        icon: '📄',
+        description: 'Adobe PDF Document'
+      };
     case 'docx':
     case 'doc':
-      return 'blue';
+      return {
+        color: 'blue',
+        icon: '📝',
+        description: 'Microsoft Word Document'
+      };
     case 'xlsx':
     case 'xls':
-      return 'green';
+      return {
+        color: 'green',
+        icon: '📊',
+        description: 'Microsoft Excel Spreadsheet'
+      };
+    case 'pptx':
+    case 'ppt':
+      return {
+        color: 'orange',
+        icon: '📋',
+        description: 'Microsoft PowerPoint Presentation'
+      };
     case 'png':
     case 'jpg':
     case 'jpeg':
-      return 'purple';
+    case 'gif':
+    case 'bmp':
+      return {
+        color: 'purple',
+        icon: '🖼️',
+        description: 'Image File'
+      };
     case 'txt':
-      return 'gray';
+      return {
+        color: 'gray',
+        icon: '📄',
+        description: 'Text Document'
+      };
+    case 'md':
+    case 'markdown':
+      return {
+        color: 'cyan',
+        icon: '📝',
+        description: 'Markdown Document'
+      };
+    case 'json':
+    case 'xml':
+    case 'yaml':
+    case 'yml':
+      return {
+        color: 'yellow',
+        icon: '⚙️',
+        description: 'Data/Configuration File'
+      };
+    case 'csv':
+      return {
+        color: 'green',
+        icon: '📊',
+        description: 'Comma-Separated Values'
+      };
+    case 'zip':
+    case 'rar':
+    case '7z':
+    case 'tar':
+    case 'gz':
+      return {
+        color: 'amber',
+        icon: '📦',
+        description: 'Compressed Archive'
+      };
+    case 'html':
+    case 'htm':
+    case 'css':
+    case 'js':
+      return {
+        color: 'indigo',
+        icon: '🌐',
+        description: 'Web Document'
+      };
     default:
-      return 'gray';
+      return {
+        color: 'gray',
+        icon: '📄',
+        description: 'Document'
+      };
   }
+};
+
+// Helper function to get just the color
+const getFileTypeColor = (type: string): string => {
+  return getFileTypeMetadata(type).color;
 };
 
 // Helper to format bytes to human-readable size
@@ -66,7 +155,7 @@ const formatFileSize = (bytes: number): string => {
 // Map API File to LocalFile format
 const mapApiFileToLocal = (apiFile: File): LocalFile => {
   // Log the raw project_id value for debugging
-  console.log(`[MAPPER] Mapping file ${apiFile.id} (${apiFile.name}), project_id: ${apiFile.project_id}, type: ${typeof apiFile.project_id}`);
+  console.log(`[MAPPER] Mapping file ${apiFile.id} (${apiFile.name}), project_id: ${apiFile.project_id}, project_name: ${(apiFile as any).project_name}, type: ${typeof apiFile.project_id}`);
   
   // Use our normalization function for consistent types
   const normalizedProjectId = normalizeProjectId(apiFile.project_id);
@@ -80,6 +169,7 @@ const mapApiFileToLocal = (apiFile: File): LocalFile => {
     size: formatFileSize(apiFile.size),
     active: apiFile.active,
     projectId: normalizedProjectId, // Using our normalized project ID
+    projectName: (apiFile as any).project_name, // Include project name from backend
     addedAt: apiFile.created_at.split('T')[0], // Format date
     processed: apiFile.processed,
     processingFailed: apiFile.processing_failed,
@@ -131,10 +221,15 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
   const [searchResults, setSearchResults] = useState<LocalFile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
   
   // Processing state
   const [processingStats, setProcessingStats] = useState<ProcessingStats | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Details panel state
+  const [selectedFileDetails, setSelectedFileDetails] = useState<LocalFile | null>(null);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(false);
 
   // Function to fetch files based on current filters
   const fetchFiles = async () => {
@@ -143,7 +238,10 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
     
     // Set up API filters
     const filterOptions: FileFilterOptions = {};
-    if (projectId !== undefined) {
+    // Only filter by project if we're in a specific project view
+    // In the main file manager, we want to see ALL files (linked and unlinked)
+    // So we explicitly do NOT set project_id filter for the main view
+    if (projectId !== undefined && projectId !== null) {
       filterOptions.project_id = projectId;
     }
     
@@ -416,11 +514,36 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
 
   // Handle file selection for bulk operations
   const toggleFileSelection = (fileId: string) => {
-    setSelectedFiles(prev => 
-      prev.includes(fileId) 
+    setSelectedFiles(prev => {
+      const newSelection = prev.includes(fileId) 
         ? prev.filter(id => id !== fileId) 
-        : [...prev, fileId]
-    );
+        : [...prev, fileId];
+      
+      // Update select all checkbox state based on selection
+      setSelectAllChecked(newSelection.length === getSortedFiles().length);
+      
+      return newSelection;
+    });
+  };
+  
+  // Toggle all files selection
+  const toggleSelectAll = () => {
+    if (selectAllChecked) {
+      // Deselect all files
+      setSelectedFiles([]);
+      setSelectAllChecked(false);
+    } else {
+      // Select all files
+      const allFileIds = getSortedFiles().map(file => file.id);
+      setSelectedFiles(allFileIds);
+      setSelectAllChecked(true);
+    }
+  };
+  
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedFiles([]);
+    setSelectAllChecked(false);
   };
 
   // Handle attaching selected files to current project
@@ -565,6 +688,19 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
     });
   };
 
+  // Show file details panel
+  const showFileDetails = (file: LocalFile) => {
+    setSelectedFileDetails(file);
+    setShowDetailsPanel(true);
+  };
+  
+  // Close file details panel
+  const closeDetailsPanel = () => {
+    setShowDetailsPanel(false);
+    // Clear the selected file after a brief delay for smooth animation
+    setTimeout(() => setSelectedFileDetails(null), 300);
+  };
+  
   // Handle sort field change
   const handleSortChange = (field: 'name' | 'date' | 'size' | 'status' | 'processed') => {
     // Update sort state
@@ -597,6 +733,20 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
         <div>
           <h2 className="text-xl font-bold text-gold">Main File Manager</h2>
           <p className="text-gray-400 text-sm">Manage all system files</p>
+          <div className="mt-2 flex items-center space-x-3">
+            <span className="px-2 py-0.5 bg-navy rounded text-sm">
+              <span className="text-gold font-medium">{files.length}</span>
+              <span className="text-gray-400 ml-1">files total</span>
+            </span>
+            <span className="px-2 py-0.5 bg-navy rounded text-sm">
+              <span className="text-green-400 font-medium">{files.filter(f => f.processed).length}</span>
+              <span className="text-gray-400 ml-1">processed</span>
+            </span>
+            <span className="px-2 py-0.5 bg-navy rounded text-sm">
+              <span className="text-blue-400 font-medium">{files.filter(f => isFileLinkedToProject(f.projectId)).length}</span>
+              <span className="text-gray-400 ml-1">linked to projects</span>
+            </span>
+          </div>
         </div>
         <div className="flex space-x-2">
           <button 
@@ -792,7 +942,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
         )}
       </div>
       
-      {/* Files List */}
+      {/* Files List with bulk selection header */}
       <div className="flex-1 bg-navy-light p-4 rounded-lg overflow-y-auto">
         <h3 className="text-lg font-medium text-gold mb-3 pb-2 border-b border-navy flex justify-between items-center">
           <div className="flex items-center">
@@ -810,10 +960,44 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                 </div>
               </div>
             ) : (
-              <span>All Files</span>
+              <div className="flex items-center">
+                <span className="text-lg mr-2">All Files</span>
+                <div className="text-sm bg-navy/60 rounded px-2 py-0.5 flex items-center">
+                  <span className="text-gray-400">Showing:</span>
+                  <span className="ml-1 text-gold">{getSortedFiles().length}</span>
+                  {sortField && (
+                    <span className="ml-1 text-gray-400">
+                      • Sorted by <span className="text-gold">{sortField}</span> 
+                      {sortDirection === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <div className="flex items-center space-x-2">
+            {/* Select All Checkbox and Bulk Action Controls */}
+            <div className="flex items-center mr-3">
+              <label className="flex items-center cursor-pointer mr-3">
+                <input
+                  type="checkbox"
+                  checked={selectAllChecked}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-gold bg-navy border-gold/30 rounded focus:ring-gold"
+                />
+                <span className="ml-2 text-xs text-gray-400">Select All</span>
+              </label>
+              
+              {selectedFiles.length > 0 && (
+                <button
+                  onClick={clearSelection}
+                  className="text-xs text-gray-400 hover:text-gray-300 underline ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
             {/* Batch action buttons - only show when files are selected */}
             {selectedFiles.length > 0 && (
               <>
@@ -1075,9 +1259,11 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       />
                     </div>
                     
-                    {/* File type icon */}
-                    <div className={`w-10 h-10 bg-${getFileTypeColor(file.type)}-500/20 rounded flex items-center justify-center mr-3`}>
-                      <span className={`text-${getFileTypeColor(file.type)}-400 text-xs`}>{file.type}</span>
+                    {/* Enhanced file type icon */}
+                    <div className={`w-12 h-12 bg-${getFileTypeColor(file.type)}-500/20 rounded-lg flex flex-col items-center justify-center mr-3`} 
+                      title={getFileTypeMetadata(file.type).description}>
+                      <span className="text-xl">{getFileTypeMetadata(file.type).icon}</span>
+                      <span className={`text-${getFileTypeColor(file.type)}-400 text-xs mt-1`}>{file.type}</span>
                     </div>
                     
                     {/* File info */}
@@ -1141,12 +1327,19 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                         {isLinked && (
                           <>
                             <span>•</span>
-                            {linkedProject ? (
+                            {file.projectName ? (
+                              <button 
+                                className="text-blue-400 hover:underline"
+                                onClick={() => handleSelectProject(file.projectId as string)}
+                              >
+                                Project: {file.projectName}
+                              </button>
+                            ) : linkedProject ? (
                               <button 
                                 className="text-blue-400 hover:underline"
                                 onClick={() => handleSelectProject(linkedProject.id)}
                               >
-                                {linkedProject.name}
+                                Project: {linkedProject.name}
                               </button>
                             ) : (
                               <span className="text-yellow-400">
@@ -1185,17 +1378,11 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       </button>
                     )}
                     
-                    {/* View Button - Using 👁️ as placeholder for eye/view icon */}
+                    {/* View Details Button */}
                     <button 
-                      onClick={() => {
-                        // Toggle description visibility by adding/removing class
-                        const descEl = document.getElementById(`file-description-box-${file.id}`);
-                        if (descEl) {
-                          descEl.classList.toggle('hidden');
-                        }
-                      }}
+                      onClick={() => showFileDetails(file)}
                       className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
-                      title="View file description"
+                      title="View file details"
                     >
                       👁️
                     </button>
@@ -1408,17 +1595,77 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     <button 
                       onClick={async () => {
                         try {
-                          const blob = await fileService.downloadFile(file.id);
-                          const url = window.URL.createObjectURL(blob);
+                          console.log(`Attempting to download file: ${file.id} - ${file.name}`);
+                          
+                          // Try two different download methods for maximum compatibility
+                          
+                          // Method 1: Direct URL approach
+                          const baseUrl = window.location.origin;
+                          const downloadUrl = `${baseUrl}/api/files/${file.id}/download`;
+                          console.log(`Download URL: ${downloadUrl}`);
+                          
+                          // Try direct download method first
                           const a = document.createElement('a');
-                          a.href = url;
-                          a.download = file.name;
+                          a.href = downloadUrl;
+                          a.download = file.name; // Suggest a filename
+                          a.target = '_blank';
+                          a.rel = 'noopener noreferrer';
                           document.body.appendChild(a);
                           a.click();
-                          window.URL.revokeObjectURL(url);
-                          a.remove();
+                          document.body.removeChild(a);
+                          
+                          // Method 2: Backup approach - use fileService
+                          // This will be attempted if the user sees Method 1 not working
+                          console.log("If the file doesn't download automatically, try the API method...");
+                          
+                          // Allow user to try a backup method if needed
+                          setTimeout(() => {
+                            try {
+                              // Create a trigger for backup method if needed
+                              const backupTrigger = document.createElement('div');
+                              backupTrigger.textContent = 'Click here if download didn\'t start';
+                              backupTrigger.style.position = 'fixed';
+                              backupTrigger.style.bottom = '20px';
+                              backupTrigger.style.right = '20px';
+                              backupTrigger.style.backgroundColor = '#1F2937';
+                              backupTrigger.style.color = '#D1D5DB';
+                              backupTrigger.style.padding = '10px';
+                              backupTrigger.style.borderRadius = '4px';
+                              backupTrigger.style.cursor = 'pointer';
+                              backupTrigger.style.zIndex = '9999';
+                              backupTrigger.onclick = async () => {
+                                try {
+                                  // Use the Blob method as backup
+                                  const blob = await fileService.downloadFile(file.id);
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = file.name;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                  a.remove();
+                                  document.body.removeChild(backupTrigger);
+                                } catch (backupError) {
+                                  console.error('Backup download method failed:', backupError);
+                                  alert('Both download methods failed. Please try again later.');
+                                }
+                              };
+                              document.body.appendChild(backupTrigger);
+                              
+                              // Auto-remove after 10 seconds
+                              setTimeout(() => {
+                                if (document.body.contains(backupTrigger)) {
+                                  document.body.removeChild(backupTrigger);
+                                }
+                              }, 10000);
+                            } catch (notifyError) {
+                              console.error('Error showing backup notification:', notifyError);
+                            }
+                          }, 1000);
+                          
                         } catch (err) {
-                          console.error('Error downloading file:', err);
+                          console.error('Error initiating download:', err);
                           setError('Failed to download file. Please try again.');
                         }
                       }}
@@ -1462,6 +1709,156 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
           </div>
         )}
       </div>
+      
+      {/* File Details Panel */}
+      {showDetailsPanel && selectedFileDetails && (
+        <div className="fixed inset-y-0 right-0 w-80 bg-navy-light border-l border-navy-lighter shadow-lg z-40 transform transition-transform duration-300 ease-in-out">
+          <div className="h-full flex flex-col p-4">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-navy">
+              <h3 className="text-lg font-medium text-gold">File Details</h3>
+              <button 
+                onClick={closeDetailsPanel}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-navy/50"
+                title="Close details"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* File preview */}
+            <div className="mb-4 bg-navy rounded-lg p-4 flex flex-col items-center">
+              <div className={`w-16 h-16 bg-${getFileTypeColor(selectedFileDetails.type)}-500/20 rounded-lg flex flex-col items-center justify-center mb-2`}>
+                <span className="text-2xl">{getFileTypeMetadata(selectedFileDetails.type).icon}</span>
+                <span className={`text-${getFileTypeColor(selectedFileDetails.type)}-400 text-xs mt-1`}>{selectedFileDetails.type}</span>
+              </div>
+              <h4 className="text-center font-medium text-gold mt-2 break-words w-full">{selectedFileDetails.name}</h4>
+            </div>
+            
+            {/* File metadata */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-4">
+                {/* Basic info */}
+                <div>
+                  <h5 className="text-sm text-gray-400 mb-1">Basic Information</h5>
+                  <div className="bg-navy rounded p-3 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Size:</span>
+                      <span className="text-xs text-gold">{selectedFileDetails.size}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Added:</span>
+                      <span className="text-xs text-gold">{selectedFileDetails.addedAt}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Status:</span>
+                      <span className="text-xs">
+                        {selectedFileDetails.processed ? (
+                          <span className="text-green-400">Processed</span>
+                        ) : selectedFileDetails.processingFailed ? (
+                          <span className="text-red-400">Processing Failed</span>
+                        ) : (
+                          <span className="text-yellow-400">Processing...</span>
+                        )}
+                      </span>
+                    </div>
+                    {selectedFileDetails.processed && selectedFileDetails.chunks && (
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-400">Chunks:</span>
+                        <span className="text-xs text-gold">{selectedFileDetails.chunks}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Project info */}
+                <div>
+                  <h5 className="text-sm text-gray-400 mb-1">Project Assignment</h5>
+                  <div className="bg-navy rounded p-3">
+                    {isFileLinkedToProject(selectedFileDetails.projectId) ? (
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-xs text-gray-400">Project:</span>
+                          <span className="text-xs text-blue-400">
+                            {selectedFileDetails.projectName || selectedFileDetails.projectId}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-gray-400">Active in project:</span>
+                          <span className={`text-xs ${selectedFileDetails.active ? 'text-green-400' : 'text-orange-400'}`}>
+                            {selectedFileDetails.active ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400 text-center py-1">
+                        Not assigned to any project
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Description */}
+                <div>
+                  <h5 className="text-sm text-gray-400 mb-1">Description</h5>
+                  <div className="bg-navy rounded p-3">
+                    {selectedFileDetails.description ? (
+                      <p className="text-xs text-gray-300 whitespace-pre-wrap">{selectedFileDetails.description}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic">No description provided</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Action buttons */}
+            <div className="mt-4 pt-3 border-t border-navy flex justify-between">
+              <button 
+                onClick={async () => {
+                  try {
+                    const blob = await fileService.downloadFile(selectedFileDetails.id);
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = selectedFileDetails.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                  } catch (err) {
+                    console.error(`Error downloading file:`, err);
+                  }
+                }}
+                className="px-3 py-1.5 bg-gold/20 hover:bg-gold/30 text-gold rounded text-sm flex-1 mr-2"
+              >
+                Download
+              </button>
+              
+              {isFileLinkedToProject(selectedFileDetails.projectId) && (
+                <button 
+                  onClick={async () => {
+                    if (window.confirm(`Are you sure you want to detach this file from its project?`)) {
+                      try {
+                        await fileService.unlinkFilesFromProject([selectedFileDetails.id], selectedFileDetails.projectId as string);
+                        // Update the local file list
+                        setFiles(prev => prev.map(f => f.id === selectedFileDetails.id ? {...f, projectId: null} : f));
+                        // Update the details panel
+                        setSelectedFileDetails({...selectedFileDetails, projectId: null});
+                      } catch (err) {
+                        console.error('Error detaching file:', err);
+                      }
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded text-sm flex-1"
+                >
+                  Detach
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* File Upload Modal with tagging */}
       {showAddTagModal && (

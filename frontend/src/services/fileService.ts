@@ -11,6 +11,7 @@ export interface File {
   size: number; // in bytes
   description?: string;
   project_id?: ProjectId; 
+  project_name?: string; // Name of the project this file is linked to
   created_at: string;
   updated_at?: string;
   filepath: string;
@@ -68,6 +69,7 @@ export interface FileSearchRequest {
 export interface FileSearchResult extends File {
   relevance: number; // 0-100 relevance score
   content_snippets?: string[]; // Relevant text snippets from the document
+  project_name?: string; // Name of the project this file is linked to
 }
 
 /**
@@ -122,6 +124,8 @@ export interface FileBulkOperationResult {
     id: string;
     error: string;
   }[];
+  project_id?: string; // The project ID involved in the operation
+  project_name?: string; // The project name involved in the operation
 }
 
 /**
@@ -154,9 +158,9 @@ const fileEvents = {
     window.dispatchEvent(event);
   },
   
-  dispatchFileLinkChange: (fileIds: string[], projectId: ProjectId) => {
+  dispatchFileLinkChange: (fileIds: string[], projectId: ProjectId, projectName?: string) => {
     const event = new CustomEvent('file-link-change', { 
-      detail: { fileIds, projectId } 
+      detail: { fileIds, projectId, projectName } 
     });
     window.dispatchEvent(event);
   }
@@ -437,7 +441,11 @@ const fileService = {
       
       // Dispatch event for successful links
       if (response.data.success.length > 0) {
-        fileEvents.dispatchFileLinkChange(response.data.success, normalizedProjectId);
+        fileEvents.dispatchFileLinkChange(
+          response.data.success, 
+          normalizedProjectId,
+          response.data.project_name
+        );
       }
       
       return response.data;
@@ -459,7 +467,11 @@ const fileService = {
       
       // Dispatch event for successful unlinks
       if (response.data.success.length > 0) {
-        fileEvents.dispatchFileLinkChange(response.data.success, null);
+        fileEvents.dispatchFileLinkChange(
+          response.data.success, 
+          null,
+          null // No project name when unlinking
+        );
       }
       
       return response.data;

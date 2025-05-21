@@ -42,15 +42,26 @@ class DocumentInDB(DocumentBase):
         from_attributes = True  # Use this instead of orm_mode in Pydantic v2
 
 
-class Document(DocumentInDB):
+class Document(BaseModel):
     """Schema for document responses to match frontend expectations."""
-    type: str  # Mapped from filetype
+    id: str
+    filename: str  # Original filename for database
+    name: str  # Frontend expects this field 
+    description: Optional[str] = None
+    filepath: str  # Stored path
+    filetype: str  # File extension for database
+    type: str  # Frontend expects this field
     size: int  # File size in bytes
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     processed: bool  # Mapped from is_processed
     active: bool = False  # Whether document is active in context
     processing_failed: Optional[bool] = None
     chunk_count: Optional[int] = None
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None  # Added project name for UI display
     tags: Optional[List[str]] = None
+    meta_data: Optional[Dict[str, Any]] = None
     
     class Config:
         from_attributes = True
@@ -93,6 +104,8 @@ class FileBulkOperationResult(BaseModel):
     """Schema for results of bulk operations."""
     success: List[str]
     failed: List[Dict[str, str]]
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
 
 
 class FileProcessRequest(BaseModel):

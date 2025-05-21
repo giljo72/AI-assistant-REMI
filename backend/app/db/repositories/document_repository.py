@@ -42,13 +42,15 @@ class DocumentRepository(BaseRepository[Document, DocumentCreate, DocumentUpdate
         """Get documents with various filters."""
         query = db.query(Document)
         
-        # Filter by project ID
+        # Filter by project ID only if we're specifically looking for 
+        # documents in a project or unattached documents
         if project_id is not None:
             if project_id == "null":  # Special case for unattached documents
                 # Find documents that are not in any project
                 subquery = db.query(ProjectDocument.document_id)
                 query = query.filter(~Document.id.in_(subquery))
             else:
+                # Only filter by project_id if we're specifically looking in a project
                 query = query.join(ProjectDocument).filter(ProjectDocument.project_id == project_id)
                 
                 if active_only:

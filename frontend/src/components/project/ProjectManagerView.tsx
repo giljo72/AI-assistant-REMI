@@ -23,11 +23,30 @@ type File = {
   active: boolean;
   projectId: string;
   addedAt: string;
+  description?: string;
+  processed: boolean;
+  processingFailed?: boolean;
+  chunks?: number;
 };
 
 // Empty initial states for chats and files (will be replaced with API calls later)
 const initialChats: Chat[] = [];
 const initialFiles: File[] = [];
+
+// Helper to format bytes to human-readable size
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let size = bytes / 1024;
+  let unitIndex = 0;
+  
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  
+  return size.toFixed(1) + ' ' + units[unitIndex];
+};
 
 type ProjectManagerViewProps = {
   projectId: string;
@@ -82,9 +101,33 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
           setProjectChats([]);
         }
         
-        // TODO: Replace with actual API call to fetch files
-        // For now, use empty array
-        setProjectFiles([]);
+        // Fetch project files
+        try {
+          const fileService = await import('../../services/fileService').then(module => module.default);
+          const files = await fileService.getAllFiles({ project_id: projectId });
+          
+          // Convert API files to UI format
+          const uiFiles: File[] = files.map(file => ({
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            size: typeof file.size === 'number' ? 
+              formatFileSize(file.size) : 
+              (file.size as string),
+            active: file.active,
+            projectId: file.project_id as string,
+            addedAt: new Date(file.created_at).toLocaleDateString(),
+            description: file.description,
+            processed: file.processed || false,
+            processingFailed: file.processing_failed,
+            chunks: file.chunk_count
+          }));
+          
+          setProjectFiles(uiFiles);
+        } catch (fileError) {
+          console.error("Error fetching files:", fileError);
+          setProjectFiles([]);
+        }
       } catch (err) {
         console.error("Error fetching project data:", err);
         setError("Failed to load project. Please try again.");
@@ -260,12 +303,11 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
               Chats
             </button>
             <button
-              onClick={() => setActiveTab('files')}
-              className={`mr-4 py-2 px-1 ${
-                activeTab === 'files'
-                  ? 'border-b-2 border-gold text-gold'
-                  : 'text-gray-400 hover:text-gray-300'
-              }`}
+              onClick={() => {
+                // Instead of switching to files tab, directly open the file manager
+                handleOpenFiles();
+              }}
+              className={`mr-4 py-2 px-1 text-gray-400 hover:text-gray-300`}
             >
               Files
             </button>
@@ -327,11 +369,27 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
               </div>
               <div className="space-y-2">
                 {projectFiles.slice(0, 3).map(file => (
-                  <div key={file.id} className="p-2 bg-navy hover:bg-navy-lighter rounded cursor-pointer flex justify-between">
-                    <span>{file.name}</span>
-                    <div className="flex items-center space-x-2">
-                      <span className={`w-2 h-2 rounded-full ${file.active ? 'bg-green-500' : 'bg-gray-500'}`}></span>
-                      <span className="text-xs text-gray-400">{file.size}</span>
+                  <div key={file.id} className="p-2 bg-navy hover:bg-navy-lighter rounded cursor-pointer">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{file.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`w-2 h-2 rounded-full ${file.active ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+                        <span className="text-xs text-gray-400">{file.size}</span>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-400">
+                      {file.description && (
+                        <p className="text-gray-300 mb-1 line-clamp-1">{file.description}</p>
+                      )}
+                      <div className="flex flex-wrap gap-x-2">
+                        <span>{file.processed ? 
+                          <span className="text-green-400">Processed</span> : 
+                          <span className="text-yellow-400">Processing...</span>}
+                        </span>
+                        {(file as any).chunks && (
+                          <span>{(file as any).chunks} chunks</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

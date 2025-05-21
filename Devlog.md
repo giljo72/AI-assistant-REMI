@@ -1,5 +1,105 @@
 # AI Assistant Dev Log
 
+## May 20, 2025 - File Management Improvements and UI Enhancements
+
+### Key Initiative
+1. Fixing issues with file visibility across project and main views
+2. Enhancing file management UI for better usability
+3. Improving download functionality
+4. Adding more detailed file information in various views
+
+### Action Items and Activities
+- Fixed file filtering in document repository to not exclude project-linked files from main view
+- Added project_name field to all file-related API responses
+- Updated UI components to display project information more clearly
+- Enhanced Project Overview to show file descriptions, processing status, and chunk counts
+- Replaced text buttons with icon buttons in file managers for better space efficiency
+- Fixed file download functionality using multiple methods for cross-browser compatibility
+- Added expandable file description views in both file managers
+- Fixed navigation from project overview directly to Project File Manager
+
+### Technical Decisions
+- Updated document_repository.get_multi_with_filters to handle project filtering properly
+- Modified Document schema to include project_name field for better UI display
+- Enhanced file endpoints to consistently include project information
+- Updated file linking/unlinking endpoints to return project details
+- Implemented robust file download mechanism with multiple fallback methods
+- Used toggle-able description display for better space efficiency
+- Enhanced ProjectManagerView to properly fetch and display file information
+
+### Files Modified
+- Updated `/backend/app/db/repositories/document_repository.py` - Fixed filtering logic
+- Updated `/backend/app/schemas/document.py` - Added project_name to schema
+- Updated `/backend/app/api/endpoints/files.py` - Enhanced responses with project_name
+- Modified `/frontend/src/components/file/MainFileManager.tsx` - UI improvements and download fix
+- Modified `/frontend/src/components/file/ProjectFileManager.tsx` - UI improvements and description view
+- Updated `/frontend/src/components/project/ProjectManagerView.tsx` - Enhanced file details
+- Updated `/frontend/src/services/fileService.ts` - Added project_name to interfaces
+- Updated `/frontend/src/types/common.ts` - Enhanced ProjectId type handling
+
+### Challenges Addressed
+- Fixed issue where files attached to projects disappeared from Main File Manager
+- Resolved download functionality problems in both file managers
+- Improved space efficiency with icon-based controls
+- Enhanced user experience with more detailed file information
+- Fixed project files visualization in Project Overview
+- Improved file-project linking display
+
+### Next Steps
+- Implement file preview functionality
+- Add drag-and-drop support between projects
+- Enhance search capabilities with advanced filters
+- Implement bulk file operations (move, delete, process)
+- Add file versioning capability
+
+## May 19, 2025 - Backend API Routing Cleanup and Standardization
+
+### Key Initiative
+1. Cleaning up backend API routing to resolve endpoint accessibility issues
+2. Standardizing health check endpoints for easier monitoring
+3. Consolidating multiple main.py variations into a single, cleaner implementation
+4. Adding direct access points for critical endpoints like ping and file upload
+
+### Action Items and Activities
+- Fixed routing inconsistencies preventing access to `/ping` endpoint
+- Consolidated multiple main.py variations (direct_main.py, main.py) into a single clean implementation
+- Removed redundant health check endpoints (health2.py)
+- Added root-level `/ping` endpoint for simple health checks
+- Standardized API endpoint structure for consistent access
+- Cleaned up direct endpoints that bypassed router structure
+- Removed unused auxiliary files to simplify codebase
+
+### Technical Decisions
+- Added root-level ping endpoint for easy health verification: `/ping`
+- Standardized status endpoint at `/api/status` for monitoring
+- Implemented clean upload endpoint at `/api/upload` for direct testing
+- Maintained backwards compatibility with existing routed endpoints
+- Removed redundant files to simplify the codebase:
+  - Removed `direct_main.py`
+  - Removed `health2.py`
+  - Removed `run_direct.py`
+- Maintained proper routing structure while adding critical direct endpoints
+
+### Files Modified
+- Updated `/backend/app/main.py` - Cleaned up and standardized endpoint structure
+- Updated `/backend/app/api/api.py` - Removed health2_router import and registration
+- Removed `/backend/app/direct_main.py` - Consolidated functionality into main.py
+- Removed `/backend/app/api/endpoints/health2.py` - Redundant health check endpoints
+- Removed `/backend/run_direct.py` - No longer needed with consolidated structure
+
+### Challenges Addressed
+- Fixed routing inconsistency that prevented `/ping` endpoint from being accessed
+- Standardized endpoints to follow RESTful conventions
+- Simplified the application structure by removing redundant files
+- Maintained compatibility with existing frontend code
+- Improved API discoverability and documentation
+
+### Next Steps
+- Test consolidated structure with frontend integration
+- Implement comprehensive API documentation
+- Consider implementing rate limiting and monitoring for API endpoints
+- Review and standardize other API endpoints as needed
+
 ## May 18, 2025 - Complete Refactor of Navigation System and File Manager UI Improvements
 
 ### Key Initiative

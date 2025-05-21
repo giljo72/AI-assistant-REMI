@@ -168,12 +168,36 @@ def get_files(
                 None
             )
         
+        # Check project details if the document is associated with any project
+        project_name = None
+        project_id_value = None
+        
+        # Project reference for this specific query if applicable
+        if project_id and project_id != "null" and project_document:
+            project_id_value = project_id
+            # Try to get the project name
+            from ...db.models.project import Project
+            project = db.query(Project).filter(Project.id == project_id).first()
+            if project:
+                project_name = project.name
+        # Otherwise check if document is associated with any project
+        elif doc.project_documents:
+            # Get first associated project
+            from ...db.models.project import Project
+            pd = doc.project_documents[0]
+            project_id_value = pd.project_id
+            project = db.query(Project).filter(Project.id == pd.project_id).first()
+            if project:
+                project_name = project.name
+        
         # Map to response schema
         doc_dict = {
             "id": doc.id,
-            "name": doc.filename,  # Keep 'name' in response for frontend compatibility
+            "filename": doc.filename,
+            "name": doc.filename,  # Frontend expects 'name'
             "description": doc.description,
             "type": doc.filetype,
+            "filetype": doc.filetype,  # Add to satisfy schema
             "size": doc.filesize,
             "created_at": doc.created_at.isoformat(),
             "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
@@ -181,7 +205,8 @@ def get_files(
             "processed": doc.is_processed,
             "processing_failed": doc.is_processing_failed,
             "chunk_count": doc.chunk_count,
-            "project_id": project_id if project_id and project_id != "null" else None,
+            "project_id": project_id_value,  # Use the determined project ID
+            "project_name": project_name,    # Include project name for UI
             "active": project_document.is_active if project_document else doc.is_active,
             "tags": doc.tags,
             "meta_data": doc.meta_data
@@ -203,12 +228,27 @@ def get_file(
     if not document:
         raise HTTPException(status_code=404, detail="File not found")
     
+    # Get project name if document is linked to a project
+    project_name = None
+    project_id = None
+    
+    if document.project_documents:
+        project_id = document.project_documents[0].project_id
+        
+        # Get project name from the database
+        from ...db.models.project import Project
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if project:
+            project_name = project.name
+    
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,  # Keep 'name' in response for frontend compatibility
+        "filename": document.filename,
+        "name": document.filename,  # Frontend expects 'name'
         "description": document.description,
         "type": document.filetype,
+        "filetype": document.filetype,  # Add to satisfy schema
         "size": document.filesize,
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat() if document.updated_at else None,
@@ -216,7 +256,8 @@ def get_file(
         "processed": document.is_processed,
         "processing_failed": document.is_processing_failed,
         "chunk_count": document.chunk_count,
-        "project_id": document.project_documents[0].project_id if document.project_documents else None,
+        "project_id": project_id,
+        "project_name": project_name, # Add project name for UI display
         "active": document.project_documents[0].is_active if document.project_documents else document.is_active,
         "tags": document.tags,
         "meta_data": document.meta_data
@@ -411,12 +452,14 @@ async def upload_file(
             process_document_background, db=db, document_id=document.id
         )
         
-        # Map to response schema
+        # Map to response schema with both name and filename fields
         result = {
             "id": document.id,
-            "name": document.filename,  # Return as 'name' for frontend compatibility
+            "filename": document.filename,
+            "name": document.filename,  # Frontend expects 'name'
             "description": document.description,
             "type": document.filetype,
+            "filetype": document.filetype, # Add to satisfy schema
             "size": document.filesize,
             "created_at": document.created_at.isoformat() if document.created_at else None,
             "updated_at": document.updated_at.isoformat() if document.updated_at else None,
@@ -426,7 +469,8 @@ async def upload_file(
             "chunk_count": document.chunk_count or 0,
             "project_id": project_id,
             "active": True,
-            "tags": document.tags
+            "tags": document.tags,
+            "meta_data": None
         }
         
         return result
@@ -490,12 +534,27 @@ def process_file(
         chunk_overlap=process_request.chunk_overlap
     )
     
+    # Get project name if document is linked to a project
+    project_name = None
+    project_id = None
+    
+    if document.project_documents:
+        project_id = document.project_documents[0].project_id
+        
+        # Get project name from the database
+        from ...db.models.project import Project
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if project:
+            project_name = project.name
+    
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,  # Keep 'name' in response for frontend compatibility
+        "filename": document.filename,
+        "name": document.filename,  # Frontend expects 'name'
         "description": document.description,
         "type": document.filetype,
+        "filetype": document.filetype,  # Add to satisfy schema
         "size": document.filesize,
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat() if document.updated_at else None,
@@ -503,7 +562,8 @@ def process_file(
         "processed": document.is_processed,
         "processing_failed": document.is_processing_failed,
         "chunk_count": document.chunk_count,
-        "project_id": document.project_documents[0].project_id if document.project_documents else None,
+        "project_id": project_id,
+        "project_name": project_name, # Add project name for UI display
         "active": document.project_documents[0].is_active if document.project_documents else document.is_active,
         "tags": document.tags,
         "meta_data": document.meta_data
@@ -540,12 +600,27 @@ def retry_processing(
         document_id=document.id
     )
     
+    # Get project name if document is linked to a project
+    project_name = None
+    project_id = None
+    
+    if document.project_documents:
+        project_id = document.project_documents[0].project_id
+        
+        # Get project name from the database
+        from ...db.models.project import Project
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if project:
+            project_name = project.name
+    
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,  # Keep 'name' in response for frontend compatibility
+        "filename": document.filename,
+        "name": document.filename,  # Frontend expects 'name'
         "description": document.description,
         "type": document.filetype,
+        "filetype": document.filetype,  # Add to satisfy schema
         "size": document.filesize,
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat() if document.updated_at else None,
@@ -553,7 +628,8 @@ def retry_processing(
         "processed": document.is_processed,
         "processing_failed": document.is_processing_failed,
         "chunk_count": document.chunk_count,
-        "project_id": document.project_documents[0].project_id if document.project_documents else None,
+        "project_id": project_id,
+        "project_name": project_name, # Add project name for UI display
         "active": document.project_documents[0].is_active if document.project_documents else document.is_active,
         "tags": document.tags,
         "meta_data": document.meta_data
@@ -624,12 +700,27 @@ def update_file(
     db.commit()
     db.refresh(document)
     
+    # Get project name if document is linked to a project
+    project_name = None
+    project_id = None
+    
+    if document.project_documents:
+        project_id = document.project_documents[0].project_id
+        
+        # Get project name from the database
+        from ...db.models.project import Project
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if project:
+            project_name = project.name
+    
     # Map to response schema
     result = {
         "id": document.id,
-        "name": document.filename,  # Keep 'name' in response for frontend compatibility
+        "filename": document.filename,
+        "name": document.filename,  # Frontend expects 'name'
         "description": document.description,
         "type": document.filetype,
+        "filetype": document.filetype,  # Add to satisfy schema
         "size": document.filesize,
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat() if document.updated_at else None,
@@ -637,7 +728,8 @@ def update_file(
         "processed": document.is_processed,
         "processing_failed": document.is_processing_failed,
         "chunk_count": document.chunk_count,
-        "project_id": document.project_documents[0].project_id if document.project_documents else None,
+        "project_id": project_id,
+        "project_name": project_name, # Add project name for UI display
         "active": document.project_documents[0].is_active if document.project_documents else document.is_active,
         "tags": document.tags,
         "meta_data": document.meta_data
@@ -730,6 +822,9 @@ def link_files_to_project(
     success = []
     failed = []
     
+    # Get project name for including in the response
+    project_name = project.name
+    
     for file_id in request.file_ids:
         try:
             document = document_repository.get(db, id=file_id)
@@ -744,7 +839,12 @@ def link_files_to_project(
         except Exception as e:
             failed.append({"id": file_id, "error": str(e)})
     
-    return {"success": success, "failed": failed}
+    return {
+        "success": success, 
+        "failed": failed,
+        "project_id": request.project_id,
+        "project_name": project_name
+    }
 
 
 @router.post("/unlink", response_model=FileBulkOperationResult)
@@ -766,6 +866,9 @@ def unlink_files_from_project(
     success = []
     failed = []
     
+    # Get project name for including in the response
+    project_name = project.name
+    
     for file_id in request.file_ids:
         try:
             # Unlink from project
@@ -780,7 +883,12 @@ def unlink_files_from_project(
         except Exception as e:
             failed.append({"id": file_id, "error": str(e)})
     
-    return {"success": success, "failed": failed}
+    return {
+        "success": success, 
+        "failed": failed,
+        "project_id": request.project_id,
+        "project_name": project_name
+    }
 
 
 @router.post("/search", response_model=List[FileSearchResult])
@@ -866,12 +974,24 @@ def search_files(
                         
                         content_snippets.append(snippet)
             
+            # Get project name if document is linked to a project
+            project_name = None
+            if document.project_documents:
+                project_id = document.project_documents[0].project_id
+                # Get project details
+                from ...db.models.project import Project
+                project = db.query(Project).filter(Project.id == project_id).first()
+                if project:
+                    project_name = project.name
+
             # Create result object
             result = {
                 "id": document.id,
-                "name": document.filename,
+                "filename": document.filename,
+                "name": document.filename,  # Frontend expects 'name'
                 "description": document.description,
                 "type": document.filetype,
+                "filetype": document.filetype,  # Add to satisfy schema
                 "size": document.filesize,
                 "created_at": document.created_at.isoformat(),
                 "updated_at": document.updated_at.isoformat() if document.updated_at else None,
@@ -880,6 +1000,7 @@ def search_files(
                 "processing_failed": document.is_processing_failed,
                 "chunk_count": document.chunk_count,
                 "project_id": document.project_documents[0].project_id if document.project_documents else None,
+                "project_name": project_name,  # Include project name for UI display
                 "active": document.project_documents[0].is_active if document.project_documents else document.is_active,
                 "tags": document.tags,
                 "meta_data": document.meta_data,
@@ -990,11 +1111,8 @@ def test_ping():
     """
     return {"ping": "pong", "time": "now"}
 
-# Processing status endpoints - multiple routes for the same handler
+# Processing status endpoints
 @router.get("/processing-status", response_model=ProcessingStats)
-@router.get("/processing_status", response_model=ProcessingStats)  # Underscore version
-@router.get("/processing-stats", response_model=ProcessingStats)  # Alternate endpoint name
-@router.get("/status", response_model=ProcessingStats)  # Simpler URL
 def get_processing_status(db: Session = Depends(get_db)) -> Any:
     """
     Get current processing status for all files.
