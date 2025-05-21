@@ -4,6 +4,7 @@ import { File, FileFilterOptions, ProcessingStats } from '../../services/fileSer
 import { Project } from '../../services/projectService';
 import { useNavigation } from '../../hooks/useNavigation';
 import { ProjectId, normalizeProjectId, isFileLinkedToProject } from '../../types/common';
+import TagAndAddFileModal from '../modals/TagAndAddFileModal';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -966,111 +967,74 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
         </div>
       )}
       
-      {/* File Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-navy-light rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gold mb-4">Upload Files to Project</h3>
+      {/* File Upload Modal using TagAndAddFileModal */}
+      <TagAndAddFileModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onProcessFiles={async (selectedFiles) => {
+          console.log("Processing files from TagAndAddFileModal in ProjectFileManager:", selectedFiles);
+          setIsUploading(true);
+          
+          try {
+            // Process each file with its individual description
+            for (const selectedFile of selectedFiles) {
+              console.log("Processing file:", {
+                name: selectedFile.file.name,
+                description: selectedFile.description,
+                projectId: selectedFile.projectId
+              });
+              
+              const uploadRequest = {
+                file: selectedFile.file,
+                name: selectedFile.file.name,
+                description: selectedFile.description,
+                project_id: selectedFile.projectId || projectId
+              };
+              
+              try {
+                // Upload the file using fileService
+                await fileService.uploadFile(uploadRequest);
+                console.log(`Successfully uploaded file: ${selectedFile.file.name} with project_id: ${selectedFile.projectId || projectId}`);
+              } catch (uploadError) {
+                console.error(`Error uploading file ${selectedFile.file.name}:`, uploadError);
+                // If the API endpoint doesn't exist yet, show a mock success message
+                alert(`Mock upload: File ${selectedFile.file.name} uploaded successfully (API endpoint not available)`);
+              }
+            }
             
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Files</label>
-              <input 
-                type="file" 
-                multiple
-                className="w-full bg-navy p-2 rounded text-gray-300"
-              />
-            </div>
+            // Refresh project files list
+            try {
+              const filterOptions: FileFilterOptions = {
+                project_id: projectId,
+                active_only: false
+              };
+              
+              console.log("[PROJECTFILEMANAGER] Refreshing files after upload with options:", filterOptions);
+              const apiFiles = await fileService.getAllFiles(filterOptions);
+              console.log("[PROJECTFILEMANAGER] Received", apiFiles.length, "files after upload");
+              
+              const localFiles = apiFiles.map(mapApiFileToLocal);
+              console.log("[PROJECTFILEMANAGER] Mapped files after upload:", localFiles.length);
+              
+              setProjectFiles(localFiles);
+              
+              // Also dispatch a custom event to ensure MainFileManager is updated
+              const refreshEvent = new CustomEvent('mockFileAdded');
+              window.dispatchEvent(refreshEvent);
+            } catch (refreshError) {
+              console.error('Error refreshing file list:', refreshError);
+            }
             
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Description</label>
-              <textarea 
-                className="w-full bg-navy p-2 rounded text-gray-300 h-20"
-                placeholder="Add a description for these files..."
-              />
-            </div>
-            
-            
-            <div className="flex justify-end">
-              <button 
-                onClick={() => setShowUploadModal(false)}
-                className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm mr-2"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={async () => {
-                  console.log("Upload button clicked in ProjectFileManager");
-                  try {
-                    // Get the file input and description
-                    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-                    const descriptionInput = document.querySelector('textarea') as HTMLTextAreaElement;
-                    
-                    console.log("Selected files:", fileInput?.files);
-                    
-                    if (fileInput?.files?.length) {
-                      setShowUploadModal(false);
-                      setIsUploading(true);
-                      
-                      // Process each file
-                      for (let i = 0; i < fileInput.files.length; i++) {
-                        const file = fileInput.files[i];
-                        const uploadRequest = {
-                          file,
-                          name: file.name,
-                          description: descriptionInput?.value || '',
-                          project_id: projectId
-                        };
-                        
-                        try {
-                          // Upload the file
-                          await fileService.uploadFile(uploadRequest);
-                          console.log(`Successfully uploaded file: ${file.name} with project_id: ${projectId}`);
-                        } catch (uploadError) {
-                          console.error(`Error uploading file ${file.name}:`, uploadError);
-                          // If the API endpoint doesn't exist yet, show a mock success message
-                          alert(`Mock upload: File ${file.name} uploaded successfully (API endpoint not available)`);
-                        }
-                      }
-                      
-                      // Refresh project files list
-                      try {
-                        const filterOptions: FileFilterOptions = {
-                          project_id: projectId,
-                          active_only: false
-                        };
-                        
-                        console.log("[PROJECTFILEMANAGER] Refreshing files after upload with options:", filterOptions);
-                        const apiFiles = await fileService.getAllFiles(filterOptions);
-                        console.log("[PROJECTFILEMANAGER] Received", apiFiles.length, "files after upload");
-                        
-                        const localFiles = apiFiles.map(mapApiFileToLocal);
-                        console.log("[PROJECTFILEMANAGER] Mapped files after upload:", localFiles.length);
-                        
-                        setProjectFiles(localFiles);
-                        
-                        // Also dispatch a custom event to ensure MainFileManager is updated
-                        const refreshEvent = new CustomEvent('mockFileAdded');
-                        window.dispatchEvent(refreshEvent);
-                      } catch (refreshError) {
-                        console.error('Error refreshing file list:', refreshError);
-                      }
-                    }
-                  } catch (err) {
-                    console.error('Error uploading files:', err);
-                    setError('Failed to upload files. Please try again.');
-                  } finally {
-                    setIsUploading(false);
-                  }
-                }}
-                className="px-3 py-1 bg-gold text-navy font-medium rounded hover:bg-gold/90"
-                disabled={isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Upload & Process Files'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            console.log(`Successfully processed ${selectedFiles.length} files`);
+          } catch (error) {
+            console.error('Error uploading files:', error);
+            setError('Failed to upload one or more files. Please try again.');
+          } finally {
+            setIsUploading(false);
+          }
+        }}
+        currentProjectId={projectId}
+      />
     </div>
   );
 };

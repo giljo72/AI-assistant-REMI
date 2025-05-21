@@ -19,13 +19,15 @@ type TagAndAddFileModalProps = {
   onClose: () => void;
   onProcessFiles: (files: SelectedFile[]) => void;
   currentProjectId?: string; // Optional current project ID
+  preDroppedFiles?: File[]; // Optional pre-dropped files from drag and drop
 };
 
 const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({ 
   isOpen, 
   onClose, 
   onProcessFiles,
-  currentProjectId
+  currentProjectId,
+  preDroppedFiles
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -47,6 +49,20 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
       fetchProjects();
     }
   }, [isOpen]);
+
+  // Handle pre-dropped files when modal opens
+  useEffect(() => {
+    if (isOpen && preDroppedFiles?.length) {
+      const newFiles: SelectedFile[] = preDroppedFiles.map(file => ({
+        id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        file,
+        description: ''
+      }));
+      
+      setSelectedFiles(newFiles);
+      console.log("TagAndAddFileModal - Pre-dropped files added:", newFiles.length);
+    }
+  }, [isOpen, preDroppedFiles]);
 
   // Handle file selection from the file input
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,24 +117,23 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
     }));
     
     onProcessFiles(filesWithProject);
+    handleClose();
+  };
+
+  // Handle cancel and close
+  const handleClose = () => {
     setSelectedFiles([]);
     onClose();
-    
-    // Dispatch a custom event to ensure file lists are refreshed across components
-    console.log("[TagAndAddFileModal] Dispatching mockFileAdded event");
-    const refreshEvent = new CustomEvent('mockFileAdded');
-    window.dispatchEvent(refreshEvent);
   };
 
   // Handle cancel
   const handleCancel = () => {
     if (selectedFiles.length > 0) {
       if (window.confirm('Are you sure you want to cancel? Any changes will be lost.')) {
-        setSelectedFiles([]);
-        onClose();
+        handleClose();
       }
     } else {
-      onClose();
+      handleClose();
     }
   };
 

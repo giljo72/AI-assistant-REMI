@@ -7,6 +7,8 @@ A private, local AI assistant with project-centered containment, prioritized doc
 This AI Assistant provides:
 
 - **Project-Centered Containment**: Each project is a self-contained knowledge environment with its own chats and attached documents
+- **Universal Search Interface**: Comprehensive 3-checkbox search across Chats, Knowledge Base, and Documents with probability scoring
+- **System & Model Management**: Real-time monitoring and switching between Ollama/NeMo models with service controls
 - **Selective Knowledge Expansion**: Opt-in controls to expand beyond project boundaries when needed
 - **Prioritized Document Retrieval**: Project-attached documents receive higher priority in retrieval
 - **Hierarchical Document Processing**: Improved document understanding using NeMo
@@ -14,7 +16,7 @@ This AI Assistant provides:
 - **Multiple Reasoning Modes**: Different reasoning depths optimized for hardware capabilities
 - **Complete Document Lifecycle**: Upload, process, retrieve, view, and delete documents
 - **RAG (Retrieval Augmented Generation)**: Enhanced with PostgreSQL+pgvector
-- **Voice Interaction**: Using Whisper for transcription
+- **Voice Interaction**: Using Whisper for transcription (planned)
 - **Modern, Responsive UI**: Built with React and Tailwind CSS
 - **Hardware Optimization**: Specifically for RTX 4090, Ryzen 7800X3D, and 64GB RAM
 
@@ -69,12 +71,13 @@ The application is optimized for the following hardware configuration:
 | **Document Management** | ✅ Completed | ✅ Completed | ✅ Completed | Document viewing and processing fully implemented |
 | **Project Containment** | ✅ Completed | ✅ Completed | ✅ Completed | Architecture implemented with proper flows |
 | **File Management** | ✅ Completed | ✅ Completed | ✅ Completed | Upload, linking, and attachment fully functional |
-| **User Prompts** | ✅ Completed | ✅ Completed | ✅ Complete | Create, activate, and manage prompts by project |
+| **Universal Search** | 🟡 Pending | ✅ Completed | 🟡 Mock Only | 3-checkbox search interface with probability scoring |
+| **System & Models Panel** | 🟡 Pending | 🟡 Planned | 🟡 Pending | Service monitoring and model switching interface |
+| **User Prompts** | ✅ Completed | ✅ Completed | ✅ Completed | Create, activate, and manage prompts by project |
 | **Context Controls** | 🟡 Pending | ✅ Completed | 🟡 Pending | UI implemented, backend integration pending |
 | **Document Processing** | ✅ Completed | ✅ Completed | ✅ Completed | Processing pipeline with status tracking |
 | **Vector Database** | ✅ Completed | N/A | ✅ Completed | pgvector integrated for semantic search |
-| **Search Functionality** | ✅ Completed | ✅ Completed | ✅ Completed | Keyword and content search API fully implemented |
-| **Admin Tools** | ✅ Completed | ✅ Completed | ✅ Completed | Settings panel with database management tools |
+| **Admin Tools** | ✅ Completed | ✅ Completed | ✅ Completed | Database management and system diagnostics |
 | **GPU Monitoring** | ✅ Completed | ✅ Completed | ✅ Completed | Real-time utilization visualization |
 | **NeMo Integration** | 🟡 Mock Only | N/A | 🟡 Pending | Mock implementation for development |
 | **RAG Implementation** | 🟡 Partial | 🟡 Pending | 🟡 Pending | Vector search implemented, retrieval integration pending |
@@ -87,6 +90,22 @@ The application is optimized for the following hardware configuration:
 - N/A: Not applicable
 
 ## Key Features
+
+### Universal Search Interface
+- Multi-domain search across Chats, Knowledge Base (processed documents), and Documents
+- 3-checkbox selection system for targeted search scope
+- Probability scoring (0-100%) for all search results
+- Knowledge base results with contextual snippets and expandable detail
+- Direct document download functionality without in-app viewers
+- Project-aware search results with appropriate context
+
+### System & Model Management (Planned)
+- Real-time monitoring of system services (FastAPI, PostgreSQL, pgvector)
+- Service control interface with start/stop/restart capabilities
+- AI model management for Ollama and NeMo models
+- Dynamic model loading, unloading, and switching
+- Environment monitoring (Python, Node.js, CUDA versions)
+- Hardware performance tracking and optimization settings
 
 ### Project-Centered Containment
 - Projects serve as self-contained knowledge environments

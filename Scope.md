@@ -22,10 +22,13 @@ The project is currently in active development with the following progress:
 * ✅ User Prompts System: Created user prompt functionality for custom assistant instructions
 * ✅ Context Controls UI: Implemented context settings panel with project/global toggle controls
 * ✅ File Management UI: Developed project file management and global file system with proper flow and robust file-project linking persistence
+* ✅ Universal Search Interface: Implemented comprehensive search with 3-checkbox system (Chats, Knowledge Base, Documents)
+* ✅ System Management Architecture: Designed separation between system monitoring (❓) and admin controls (⚙️)
 * ✅ Database Models: Created database models with proper relationships for project containment
 * ✅ API Endpoints: Implemented backend API endpoints for core functionality
 * ✅ Document Processing: Backend pipeline created with chunking and processing capabilities
 * ✅ Vector Database: Integrated pgvector for semantic search capabilities
+* ⏳ System & Models Panel: UI architecture planned, implementation pending
 * ⏳ Frontend-Backend Integration: Partially complete, some features not fully connected
 * ⏳ Chat Backend: API structure defined, partial implementation
 * ⏳ RAG Implementation: Vector database integrated, retrieval implementation in progress
@@ -54,6 +57,24 @@ The project is currently in active development with the following progress:
 * TensorRT optimization for maximizing hardware performance
 
 ## Key Differentiators
+
+### Universal Search Interface
+The system provides a comprehensive search capability across all knowledge domains:
+
+* **Multi-Domain Search**: Search across Chats, Knowledge Base (processed documents), and Documents simultaneously
+* **Probability Scoring**: All search results include relevance scores (0-100%) for transparency
+* **Contextual Knowledge Results**: Knowledge base results show relevant snippets with expandable context
+* **Direct Download Access**: Quick access to source documents without in-app viewers
+* **Project-Aware Results**: Search results understand project context and relationships
+
+### System & Models Management
+Comprehensive system monitoring and model management capabilities:
+
+* **System Services Monitoring**: Real-time status tracking for FastAPI, PostgreSQL, pgvector with start/stop/restart controls
+* **AI Model Management**: Load, unload, and switch between Ollama and NeMo models
+* **Environment Monitoring**: Track Python, Node.js, CUDA, and dependency versions
+* **Model Switching Interface**: Easy switching between different AI backends for optimization
+* **Performance Monitoring**: Real-time hardware utilization and system metrics
 
 ### Project-First Containment Architecture
 Projects serve as the primary organizational unit, acting as self-contained knowledge environments. Each project contains:
@@ -113,6 +134,17 @@ The FastAPI backend delivers:
 * Well-documented API with Swagger UI
 * Optimized document processing pipeline
 
+## Asset Resources
+
+### UI Icons
+* **SVG Icon Library**: Curated collection of UI icons stored in `/Images/` directory
+  * **Primary Usage Icons**: View (👁️→View.SVG), Add (+ buttons→add.svg), Close (X buttons→close.svg), Delete (🗑️→delete.svg), Download (⬇️→download.svg), Link (🔗→link.svg), Question (?→question.svg), Refresh, Search (🔍→search.svg)
+  * **Dropdown Controls**: Multiple dropdown state icons for various UI elements
+  * **Usage Pattern**: "Add Project (+)" where (+) represents the clickable add.svg icon
+  * **Modal Integration**: All modal close buttons should use close.svg instead of text/emoji
+  * **Reserved for Future**: unlink.svg (no current unlink function), save.svg (using download.svg instead)
+  * Location: `F:\Assistant\Images\` - Scalable vector graphics for crisp display
+
 ## Technology Stack
 
 | Component | Technology | Purpose |
@@ -121,9 +153,11 @@ The FastAPI backend delivers:
 | State Management | Redux Toolkit | Centralized application state |
 | Backend API | FastAPI | High-performance API endpoints |
 | Vector Database | PostgreSQL + pgvector | Vector storage and retrieval |
-| LLM Options | NeMo (primary) / Ollama + TensorRT (alternative) | Language model capabilities |
+| LLM Options | NeMo (primary) / Ollama + TensorRT (alternative) | Language model capabilities with runtime switching |
 | Document Processing | NeMo Document AI + Python libraries | Hierarchical document processing |
-| Voice Processing | Whisper | Transcription for voice input |
+| Voice Processing | Whisper (planned) | Transcription for voice input |
+| System Monitoring | Custom service management + psutil | Real-time system and model status tracking |
+| Model Management | Dynamic loading system (planned) | Runtime model switching and configuration |
 | NVIDIA Integration | TensorRT, NeMo | Hardware optimization and document understanding |
 
 ## Core System Architecture

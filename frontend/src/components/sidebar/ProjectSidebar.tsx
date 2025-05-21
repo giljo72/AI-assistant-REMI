@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AddProjectModal from '../modals/AddProjectModal';
 import AdminSettingsPanel from '../modals/AdminSettingsPanel';
+import SystemModelsPanel from '../modals/SystemModelsPanel';
+import UniversalSearchModal from '../layout/UniversalSearchModal';
 import { useProjects } from '../../context/ProjectContext';
 import { useNavigation } from '../../hooks/useNavigation';
 
@@ -8,6 +10,8 @@ const ProjectSidebar: React.FC = () => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
+  const [isSystemPanelOpen, setIsSystemPanelOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   
   // Use the shared project context
   const { projects, loading, error, addProject } = useProjects();
@@ -54,13 +58,17 @@ const ProjectSidebar: React.FC = () => {
             <span className={`${navigation.activeView === 'mainFiles' ? 'text-gold font-bold' : 'text-gold'}`}>📄</span>
           </button>
           <button 
-            className={`p-2 ${navigation.isSearchActive ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
-            onClick={() => navigation.setSearchActive(true)}
-            title="Search Files"
+            className={`p-2 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            onClick={() => setIsSearchModalOpen(true)}
+            title="Universal Search"
           >
             <span className="text-gold">🔍</span>
           </button>
-          <button className="p-2 hover:bg-navy-lighter rounded-full" title="Help">
+          <button 
+            className={`p-2 ${isSystemPanelOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            onClick={() => setIsSystemPanelOpen(true)}
+            title="System & Models"
+          >
             <span className="text-gold">❓</span>
           </button>
           <button 
@@ -141,6 +149,18 @@ const ProjectSidebar: React.FC = () => {
       <AdminSettingsPanel
         isOpen={isSettingsPanelOpen}
         onClose={() => setIsSettingsPanelOpen(false)}
+      />
+      
+      {/* System & Models Panel */}
+      <SystemModelsPanel
+        isOpen={isSystemPanelOpen}
+        onClose={() => setIsSystemPanelOpen(false)}
+      />
+      
+      {/* Universal Search Modal */}
+      <UniversalSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
       />
     </div>
   );

@@ -158,6 +158,20 @@ This approach ensures a consistent and polished user experience throughout devel
 
 ```
 F:/Assistant/                        # Project root
+├── Images/                          # SVG icon assets (14 icons)
+│   ├── View.SVG                     # 👁️→View.SVG for file viewing operations  
+│   ├── add.svg                      # + buttons→add.svg ("Add Project (+)" pattern)
+│   ├── close.svg                    # All modal X buttons→close.svg
+│   ├── delete.svg                   # 🗑️→delete.svg for removal operations
+│   ├── download.svg                 # ⬇️→download.svg for file downloads
+│   ├── dropdown_close.svg           # Dropdown collapse states
+│   ├── dropdown_open.svg            # Dropdown expand states  
+│   ├── link.svg                     # 🔗→link.svg for file-project associations
+│   ├── question.svg                 # ?→question.svg for system/help panels
+│   ├── refresh.svg                  # Refresh/reload operations
+│   ├── save.svg                     # [RESERVED - using download.svg instead]
+│   ├── search.svg                   # 🔍→search.svg for search functionality
+│   └── unlink.svg                   # [RESERVED - no unlink function yet]
 ├── backend/                         # FastAPI backend
 │   ├── app/
 │   │   ├── api/                     # API endpoints
@@ -290,6 +304,17 @@ F:/Assistant/                        # Project root
 - [ ] Implement context control state management with backend
 - [ ] Connect memory system to RAG implementation
 
+### Phase 4.5: Universal Search Interface (Complete ✅)
+- [x] Create UniversalSearchModal with 3-checkbox system (Chats, Knowledge Base, Documents)
+- [x] Implement knowledge base search results with snippet cards and contextual display
+- [x] Add probability scoring (0-100%) for all search result types
+- [x] Implement expandable context feature for knowledge base results
+- [x] Add direct document download functionality to search results
+- [x] Integrate universal search modal with sidebar magnifying glass icon
+- [x] Design clean UI matching existing navy/gold theme
+- [x] Add mock data to demonstrate interface capabilities
+- [ ] Connect to real backend API endpoints for search functionality
+
 ### Phase 5: File Management System (UI Complete ✅, Integration Partial ⏳)
 - [x] Create ProjectFileManager component
 - [x] Build MainFileManager for global file access
@@ -365,15 +390,27 @@ F:/Assistant/                        # Project root
 - [ ] Optimize voice processing for hardware
 - [ ] Test voice functionality
 
-### Phase 12: Admin Tools & Settings (To Be Implemented ❌)
-- [ ] Create AdminTools component accessible via gear icon in sidebar
-- [ ] Implement database reset functionality with different clearing options
-- [ ] Add system diagnostics and status reporting tools
+### Phase 12: System & Models Management Panel (UI Planned, To Be Implemented ⏳)
+- [ ] Create SystemModelsPanel component accessible via question mark icon
+- [ ] Implement system services monitoring (FastAPI, PostgreSQL, pgvector)
+- [ ] Add service start/stop/restart controls for system components
+- [ ] Create AI model management interface (Ollama, NeMo models)
+- [ ] Implement model loading, unloading, and switching capabilities
+- [ ] Add environment monitoring (Python, Node.js, CUDA versions)
+- [ ] Create model configuration and optimization settings
+- [ ] Add real-time hardware and performance monitoring
+- [ ] Implement system health diagnostics and status reporting
+
+### Phase 13: Admin Tools & Settings (Partially Implemented ✅)
+- [x] Create AdminSettingsPanel component accessible via gear icon in sidebar
+- [x] Implement database reset functionality with different clearing options
+- [x] Add system diagnostics and status reporting tools
+- [x] Create system information dashboard with real-time metrics
 - [ ] Create log viewing and export capabilities
 - [ ] Implement user preferences and configuration settings
 - [ ] Add system documentation and help resources
 
-### Phase 13: Testing and Refinement (Ongoing ⏳)
+### Phase 14: Testing and Refinement (Ongoing ⏳)
 - [ ] Comprehensive testing of all features
 - [ ] Performance optimization for target hardware
 - [ ] UI/UX refinement based on testing

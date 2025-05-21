@@ -1,5 +1,212 @@
 # AI Assistant Dev Log
 
+## May 20, 2025 - UI Icons Collection and System Integration
+
+### SVG Icon Library Implementation
+Added complete SVG icon collection to support professional UI components throughout the application.
+
+**Icon Assets Added:**
+- Created `/Images/` directory containing 14 professional SVG icons
+- **Primary Usage**: View (👁️→View.SVG), Add (+ buttons→add.svg), Close (X→close.svg), Delete (🗑️→delete.svg), Download (⬇️→download.svg), Link (🔗→link.svg), Question (?→question.svg), Search (🔍→search.svg)
+- **Dropdown Controls**: Multiple dropdown state management icons
+- **Reserved for Future**: unlink.svg (no current unlink function), save.svg (using download.svg instead)
+- **Usage Pattern**: "Add Project (+)" where (+) represents clickable add.svg icon
+
+**Documentation Updates:**
+- Updated Scope.md with logical icon usage patterns and emoji→SVG mappings
+- Enhanced implementation.md to show clear icon purpose and replacement strategy
+- Identified reserved icons to prevent premature implementation
+- Icons stored at `F:\Assistant\Images\` with clear integration guidelines
+
+**Integration Strategy:**
+- Replace emoji placeholders with appropriate SVG icons where function exists
+- All modal close buttons should use close.svg consistently
+- Add buttons follow "Label (+)" pattern with add.svg as clickable element
+- Conservative approach: avoid unclear replacements until specific implementation
+
+## May 20, 2025 - Complete System & Models Panel Implementation with Backend Integration
+
+### Key Initiative
+Implementing complete backend integration for the System & Models Panel with real system monitoring, service control, and AI model management capabilities.
+
+### Action Items and Activities
+- Created comprehensive backend API endpoints for system monitoring and control
+- Implemented real-time system service detection using psutil for process and resource monitoring
+- Added functional service control endpoints supporting Windows/Linux PostgreSQL service management
+- Integrated Ollama model management with real CLI command execution
+- Developed environment monitoring with actual version detection and hardware statistics
+- Created intelligent fallback system maintaining user experience when backend components are offline
+- Added cross-platform support for service operations and system monitoring
+
+### Technical Decisions
+- Used psutil library for real system monitoring instead of mock data
+- Implemented process detection by port scanning for accurate service status
+- Added platform-specific service control commands (Windows: net start/stop, Linux: systemctl)
+- Created timeout handling for long-running model operations (Ollama pull commands)
+- Designed API-first approach with graceful degradation to mock data
+- Implemented background task support for model loading operations
+- Used subprocess execution with proper error handling and security measures
+
+### Backend Implementation
+- Created `/backend/app/api/endpoints/system.py` with comprehensive system management API
+- Added real process monitoring: memory usage, CPU usage, uptime calculation
+- Implemented service detection: FastAPI backend (current process), PostgreSQL (port 5432)
+- Added environment detection: Python, Node.js, CUDA, PyTorch version auto-detection
+- Created model management: Ollama integration with pull/list/switch commands
+- Added GPU monitoring with RTX 4090 detection and fallback mock data
+- Implemented service control: PostgreSQL start/stop/restart with platform awareness
+
+### API Endpoints Created
+- **GET /api/system/status**: Complete system status with services, models, and environment
+- **POST /api/system/services/control**: Service start/stop/restart functionality
+- **POST /api/system/models/load**: AI model loading with Ollama integration
+- **POST /api/system/models/unload**: Model unloading and memory management
+- **POST /api/system/models/switch**: Active model switching with state persistence
+- **GET /api/system/models/available**: Available model discovery and listing
+
+### Frontend Integration
+- Updated systemService.ts to prioritize real API calls with intelligent fallback
+- Maintained seamless user experience with mock data when backend unavailable
+- Added comprehensive error logging for debugging and monitoring
+- Preserved all existing UI functionality while connecting to real backend
+
+### System Features Implemented
+**Real System Monitoring:**
+- Process detection and resource usage tracking
+- Service status monitoring with uptime and performance metrics
+- Memory and CPU utilization for running services
+- Platform detection and cross-platform compatibility
+
+**Functional Service Control:**
+- PostgreSQL service start/stop/restart operations
+- Windows service management via net commands
+- Linux systemctl integration for service control
+- Safety measures preventing FastAPI self-termination
+
+**AI Model Management:**
+- Real Ollama CLI integration for model operations
+- Model loading with progress tracking and timeout handling
+- Background task support for long-running operations
+- Model state persistence and switching capabilities
+
+**Environment Monitoring:**
+- Automatic version detection for Python, Node.js, CUDA, PyTorch
+- Real memory and GPU monitoring with hardware statistics
+- System information gathering and reporting
+- Hardware capability detection and optimization
+
+### Challenges Addressed
+- Cross-platform service management requiring different command structures
+- Long-running model operations needing timeout and background task handling
+- Security considerations for subprocess execution and service control
+- Maintaining user experience during backend unavailability or errors
+- Process detection accuracy across different system configurations
+- Resource monitoring precision and real-time data collection
+
+### Next Steps
+- Test complete system integration with real hardware configurations
+- Enhance GPU monitoring with more detailed hardware statistics
+- Implement model quantization and optimization controls
+- Add system performance benchmarking and optimization recommendations
+- Create automated system health checks and alerts
+
+## May 20, 2025 - Universal Search Interface and System Management Panel Design
+
+### Key Initiative
+Implementing a comprehensive universal search interface and planning the system management panel for model switching and service monitoring.
+
+### Action Items and Activities
+- Created UniversalSearchModal component with 3-checkbox search interface (Chats, Knowledge Base, Documents)
+- Implemented knowledge base search results with snippet cards and contextual display
+- Added direct document download functionality to search results instead of in-app viewers
+- Integrated universal search modal with sidebar magnifying glass icon
+- Designed architecture for System & Models Panel (question mark icon) and Admin Settings (gear icon) separation
+- Planned comprehensive system monitoring and model management capabilities
+
+### Technical Decisions
+- Implemented Option 2 design for knowledge base results: contextual snippet cards with expandable detail
+- Used direct download approach for documents instead of building in-app viewers for cleaner interface
+- Created modal-based universal search interface accessible from sidebar
+- Designed separation of concerns: question mark for system status/model management, gear for database/performance admin
+- Added probability scoring (0-100%) for all search result types
+- Implemented expandable context feature for knowledge base results
+
+### Files Created/Modified
+- Created `/frontend/src/components/layout/UniversalSearchModal.tsx` - Universal search interface with 3-checkbox system
+- Updated `/frontend/src/components/sidebar/ProjectSidebar.tsx` - Added search modal integration
+- Enhanced search interface includes:
+  - Query input with Enter key support
+  - Checkbox filters for Chats, Knowledge Base, Documents
+  - Knowledge results with snippet cards, context expansion, and download buttons
+  - Chat results with project context and navigation links
+  - Document results with download functionality
+  - No results messaging and loading states
+
+### Search Interface Features Implemented
+- **Knowledge Base Results**: Display document name, probability score, relevant snippet with faded context, expandable detail, direct download
+- **Chat Results**: Show chat name, project context, message snippets with probability scores and navigation
+- **Document Results**: Display filename, description, probability with view and download options
+- **Clean UI**: Matches existing navy/gold theme with consistent styling
+- **Mock Data**: Sample results demonstrate interface capabilities
+
+### System Management Architecture Planned
+#### Question Mark (❓) - System & Models Panel:
+- **System Services**: FastAPI, PostgreSQL, pgvector status with start/stop/restart controls
+- **AI Models**: Ollama models, NeMo models, embedding models with load/unload/switch capabilities  
+- **Environment**: Python version, Node.js, CUDA, dependencies overview
+- **Model Management**: Load new models, switch between Ollama/NeMo, model configuration
+
+#### Gear (⚙️) - Admin Settings Panel (existing):
+- Database operations & stats
+- Performance metrics
+- Reset functions  
+- Storage information
+
+### Next Steps
+- Implement System & Models Panel for comprehensive system monitoring
+- Add real backend API integration for universal search functionality
+- Implement model switching and loading capabilities
+- Add service status monitoring and control
+- Connect search results to actual navigation and download endpoints
+
+## May 20, 2025 - Individual File Descriptions in Batch Upload
+
+### Key Initiative
+Restructured file upload system to allow individual descriptions for each file in batch uploads instead of a single description for all files.
+
+### Action Items and Activities
+- Identified issue where MainFileManager and ProjectFileManager had simplified upload modals with single description fields
+- Replaced custom upload modals with the properly designed TagAndAddFileModal component
+- Enhanced TagAndAddFileModal to support pre-dropped files from drag-and-drop operations
+- Updated both file managers to use the standardized modal with individual file description capabilities
+- Modified TagAndAddFileModal to handle file clearing and state management properly
+
+### Technical Decisions
+- Replaced inline modal code in MainFileManager and ProjectFileManager with TagAndAddFileModal component usage
+- Added preDroppedFiles prop to TagAndAddFileModal to support drag-and-drop workflow
+- Enhanced TagAndAddFileModal with proper state management for pre-dropped files
+- Updated file upload handlers to process individual file descriptions correctly
+- Maintained existing project assignment functionality while adding per-file description capability
+
+### Files Modified
+- Updated `/frontend/src/components/file/MainFileManager.tsx` - Replaced custom modal with TagAndAddFileModal
+- Updated `/frontend/src/components/file/ProjectFileManager.tsx` - Replaced custom modal with TagAndAddFileModal  
+- Enhanced `/frontend/src/components/modals/TagAndAddFileModal.tsx` - Added preDroppedFiles support
+- Added proper state management and cleanup for modal operations
+
+### Challenges Addressed
+- Removed duplicate modal implementations that only supported single descriptions
+- Standardized file upload workflow across both file managers
+- Preserved drag-and-drop functionality while enabling individual file descriptions
+- Ensured proper cleanup and state management for modal operations
+- Maintained backward compatibility with existing upload workflows
+
+### Next Steps
+- Test the new individual file description functionality
+- Consider adding file preview capabilities in upload modal
+- Implement file type validation and restrictions
+- Add progress indicators for large file uploads
+
 ## May 20, 2025 - File Management Improvements and UI Enhancements
 
 ### Key Initiative

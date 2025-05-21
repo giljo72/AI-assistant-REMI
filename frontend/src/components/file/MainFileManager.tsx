@@ -3,6 +3,7 @@ import { fileService, projectService } from '../../services';
 import { File, FileFilterOptions, FileSortOptions, ProcessingStats, FileSearchResult } from '../../services/fileService';
 import { useNavigation } from '../../hooks/useNavigation';
 import { ProjectId, normalizeProjectId, isFileLinkedToProject } from '../../types/common';
+import TagAndAddFileModal from '../modals/TagAndAddFileModal';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -1860,193 +1861,63 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
         </div>
       )}
       
-      {/* File Upload Modal with tagging */}
-      {showAddTagModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-navy-light rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gold mb-4">Upload and Tag Files</h3>
+      {/* File Upload Modal using TagAndAddFileModal */}
+      <TagAndAddFileModal
+        isOpen={showAddTagModal}
+        onClose={() => {
+          setShowAddTagModal(false);
+          setDroppedFiles([]);
+        }}
+        preDroppedFiles={droppedFiles}
+        onProcessFiles={async (selectedFiles) => {
+          console.log("Processing files from TagAndAddFileModal:", selectedFiles);
+          setIsUploading(true);
+          
+          try {
+            // Process each file with its individual description
+            for (const selectedFile of selectedFiles) {
+              console.log("Processing file:", {
+                name: selectedFile.file.name,
+                description: selectedFile.description,
+                projectId: selectedFile.projectId
+              });
+              
+              const uploadRequest = {
+                file: selectedFile.file,
+                name: selectedFile.file.name,
+                description: selectedFile.description,
+                project_id: selectedFile.projectId || undefined
+              };
+              
+              try {
+                // Upload the file using fileService
+                await fileService.uploadFile(uploadRequest);
+                console.log(`Successfully uploaded file: ${selectedFile.file.name} with project_id: ${selectedFile.projectId || 'null'}`);
+              } catch (uploadError) {
+                console.error(`Error uploading file ${selectedFile.file.name}:`, uploadError);
+                // If the API endpoint doesn't exist yet, show a mock success message
+                alert(`Mock upload: File ${selectedFile.file.name} uploaded successfully (API endpoint not available)`);
+              }
+            }
             
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Files</label>
-              {droppedFiles.length > 0 ? (
-                <div className="w-full bg-navy p-2 rounded text-gray-300">
-                  <div className="text-sm text-gold mb-2">Dropped files:</div>
-                  <ul className="max-h-24 overflow-y-auto">
-                    {droppedFiles.map((file, index) => (
-                      <li key={index} className="text-sm text-gray-300 mb-1">
-                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <input 
-                  type="file" 
-                  multiple
-                  className="w-full bg-navy p-2 rounded text-gray-300"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setDroppedFiles(Array.from(e.target.files));
-                    }
-                  }}
-                />
-              )}
-            </div>
+            // Clear dropped files
+            setDroppedFiles([]);
             
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Description</label>
-              <textarea 
-                className="w-full bg-navy p-2 rounded text-gray-300 h-20"
-                placeholder="Add a description for these files..."
-              />
-            </div>
+            console.log("[MAINFILEMANAGER] Upload complete");
             
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Link to Project (Optional)</label>
-              <select 
-                className="w-full bg-navy p-2 rounded text-gray-300"
-                defaultValue={projectId || ""}
-                onChange={(e) => {
-                  console.log("Selected project ID changed to:", e.target.value);
-                  const selectedProjectId = e.target.value || undefined;
-                  
-                  // Store the selected project ID for later use
-                  window.localStorage.setItem('selectedProjectId', selectedProjectId || '');
-                }}
-              >
-                <option value="">None (Keep in Global Knowledge)</option>
-                {projects.length > 0 ? 
-                  projects.map(project => (
-                    <option 
-                      key={project.id} 
-                      value={project.id}
-                    >
-                      {project.name}
-                    </option>
-                  ))
-                  : 
-                  <option value="" disabled>Loading projects...</option>
-                }
-              </select>
-              <div className="text-xs text-gray-500 mt-1">Available projects: {projects.length} {projects.length > 0 ? `(${projects.map(p => p.name).join(', ')})` : ''}</div>
-            </div>
+            // Manually trigger a refresh of the file list after upload
+            await handleUploadSuccess();
             
-            
-            <div className="flex justify-end">
-              <button 
-                onClick={() => {
-                  setShowAddTagModal(false);
-                  setDroppedFiles([]);
-                }}
-                className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-sm mr-2"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={async () => {
-                  console.log("Upload button clicked");
-                  try {
-                    // Get the description and project
-                    const descriptionInput = document.querySelector('textarea') as HTMLTextAreaElement;
-                    const projectSelect = document.querySelector('select') as HTMLSelectElement;
-                    
-                    // Determine which files to use - either dropped files or from file input
-                    let filesToProcess: File[] = [];
-                    
-                    if (droppedFiles.length > 0) {
-                      // Use dropped files
-                      filesToProcess = droppedFiles;
-                    } else {
-                      // Check for files from input
-                      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-                      if (fileInput?.files?.length) {
-                        filesToProcess = Array.from(fileInput.files);
-                      }
-                    }
-                    
-                    console.log("Files to process:", filesToProcess);
-                    
-                    if (filesToProcess.length > 0) {
-                      setShowAddTagModal(false);
-                      setIsUploading(true);
-                      
-                      // Process each file
-                      for (let i = 0; i < filesToProcess.length; i++) {
-                        const file = filesToProcess[i];
-                        // Get the selected project ID from the dropdown
-                        const selectedProjectId = projectSelect?.value;
-                        
-                        // Handle empty selection ("None")
-                        if (selectedProjectId === "") {
-                          console.log("None (Keep in Global Knowledge) selected - setting project_id to null");
-                          // Use null specifically for "None" selection
-                          var finalProjectId = null;
-                        }
-                        // Important: Check if selectedProjectId is "Standard" and replace with actual projectId
-                        else if (selectedProjectId === "Standard") {
-                          console.log("Replacing 'Standard' with actual project ID:", projectId);
-                          var finalProjectId = projectId;
-                        } else {
-                          const storedProjectId = window.localStorage.getItem('selectedProjectId');
-                          var finalProjectId = selectedProjectId || storedProjectId || projectId || undefined;
-                        }
-                        
-                        console.log("File upload details:", {
-                          filename: file.name,
-                          dropdown_project_id: selectedProjectId,
-                          current_prop_projectId: projectId,
-                          localStorage_project_id: window.localStorage.getItem('selectedProjectId'),
-                          final_project_id: finalProjectId
-                        });
-                        
-                        const uploadRequest = {
-                          file,
-                          name: file.name,
-                          description: descriptionInput?.value || '',
-                          project_id: finalProjectId || undefined
-                        };
-                        
-                        try {
-                          // Try to upload the file
-                          await fileService.uploadFile(uploadRequest);
-                          console.log(`Successfully uploaded file: ${file.name} with project_id: ${finalProjectId || 'null'}`);
-                        } catch (uploadError) {
-                          console.error(`Error uploading file ${file.name}:`, uploadError);
-                          // If the API endpoint doesn't exist yet, show a mock success message
-                          alert(`Mock upload: File ${file.name} uploaded successfully (API endpoint not available)`);
-                        }
-                      }
-                      
-                      // Clear dropped files first
-                      setDroppedFiles([]);
-                      
-                      console.log("[MAINFILEMANAGER] Upload complete");
-                      
-                      // Check global mock files after upload
-                      console.log(`[MAINFILEMANAGER] Mock files in global variable after upload: ${window.mockFiles?.length || 0}`);
-                      
-                      // Reset UI state
-                      setShowAddTagModal(false); 
-                      setIsUploading(false);
-                      
-                      // Manually trigger a refresh of the file list after upload
-                      await handleUploadSuccess();
-                    }
-                  } catch (err) {
-                    console.error('Error uploading files:', err);
-                    setError('Failed to upload files. Please try again.');
-                    setIsUploading(false);
-                  }
-                }}
-                className="px-3 py-1 bg-gold text-navy font-medium rounded hover:bg-gold/90"
-                disabled={isUploading || (droppedFiles.length === 0 && !document.querySelector('input[type="file"]')?.files?.length)}
-              >
-                {isUploading ? 'Uploading...' : 'Upload & Process Files'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            console.log(`Successfully processed ${selectedFiles.length} files`);
+          } catch (error) {
+            console.error('Error uploading files:', error);
+            setError('Failed to upload one or more files. Please try again.');
+          } finally {
+            setIsUploading(false);
+          }
+        }}
+        currentProjectId={projectId}
+      />
     </div>
   );
 };
