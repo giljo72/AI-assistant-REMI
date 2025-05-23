@@ -172,17 +172,19 @@ class ChatService {
     include_context?: boolean;
     model_name?: string;
     model_type?: string;
+    context_mode?: string;
   }): Promise<ChatGenerateResponse> {
     try {
       console.log('🚀 ChatService: Sending message with options:', options);
       
       const request: ChatGenerateRequest = {
         message: content,
-        max_length: options?.max_length || 150,
+        max_length: options?.max_length || 4096,  // Increased from 150 to allow full responses
         temperature: options?.temperature || 0.7,
         include_context: options?.include_context !== false, // Default to true
         model_name: options?.model_name,
-        model_type: options?.model_type
+        model_type: options?.model_type,
+        context_mode: options?.context_mode
       };
       
       console.log('📤 ChatService: Request payload:', request);
@@ -215,6 +217,97 @@ class ChatService {
     } catch (error) {
       console.error("Error sending simple message:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Send a message with streaming response
+   */
+  async sendMessageStream(
+    chatId: string, 
+    content: string, 
+    options?: {
+      max_length?: number;
+      temperature?: number;
+      include_context?: boolean;
+      model_name?: string;
+      model_type?: string;
+      context_mode?: string;
+      onChunk?: (chunk: string) => void;
+      onStart?: (modelInfo: { model: string }) => void;
+      onComplete?: (messageIds: { user_message_id: string; assistant_message_id: string }) => void;
+      onError?: (error: string) => void;
+    }
+  ): Promise<void> {
+    const request: ChatGenerateRequest = {
+      message: content,
+      max_length: options?.max_length || 4096,
+      temperature: options?.temperature || 0.7,
+      include_context: options?.include_context !== false,
+      model_name: options?.model_name,
+      model_type: options?.model_type,
+      context_mode: options?.context_mode
+    };
+
+    const response = await fetch(`${api.defaults.baseURL}/chats/${chatId}/generate-stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data.trim()) {
+            try {
+              const event = JSON.parse(data);
+              
+              switch (event.type) {
+                case 'start':
+                  console.log('🚀 Streaming started with model:', event.model);
+                  options?.onStart?.(event);
+                  break;
+                case 'chunk':
+                  options?.onChunk?.(event.content);
+                  break;
+                case 'complete':
+                  options?.onComplete?.({
+                    user_message_id: event.user_message_id,
+                    assistant_message_id: event.assistant_message_id
+                  });
+                  break;
+                case 'error':
+                  options?.onError?.(event.message);
+                  break;
+              }
+            } catch (e) {
+              console.error('Error parsing SSE event:', e);
+            }
+          }
+        }
+      }
     }
   }
 }

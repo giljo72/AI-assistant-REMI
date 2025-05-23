@@ -67,7 +67,7 @@ class NeMoLLM:
     
     def generate(self, 
                 prompt: str, 
-                max_length: int = 100,
+                max_length: int = 4096,
                 temperature: float = 0.7,
                 top_p: float = 0.9,
                 top_k: int = 40) -> str:
@@ -117,7 +117,7 @@ class NeMoLLM:
     
     def chat_generate(self, 
                      messages: List[Dict[str, str]], 
-                     max_length: int = 150,
+                     max_length: int = 4096,
                      temperature: float = 0.7) -> str:
         """Generate chat response from conversation history.
         
@@ -158,7 +158,7 @@ class NeMoLLM:
         prompt_parts.append("Assistant:")
         return "\n".join(prompt_parts)
     
-    def _mock_generate(self, prompt: str, max_length: int = 100) -> str:
+    def _mock_generate(self, prompt: str, max_length: int = 4096) -> str:
         """Fallback mock generation when NeMo is not available."""
         return f"Mock NeMo response to: {prompt[:50]}... (Generated {max_length} token response)"
     

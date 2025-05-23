@@ -40,6 +40,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
   const [name, setName] = useState(initialName);
   const [prompt, setPrompt] = useState(initialPrompt);
   const [nameError, setNameError] = useState('');
+  const [showPromptHelp, setShowPromptHelp] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -84,7 +85,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
       PaperProps={{
         sx: {
           borderRadius: '8px',
-          backgroundColor: '#1a2b47', // Navy background
+          backgroundColor: '#121922', // Navy-light from tailwind
           color: '#ffffff'
         }
       }}
@@ -93,10 +94,11 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        backgroundColor: '#152238' // Darker navy for header
+        borderBottom: '1px solid #FFC000', // Gold border to match design
+        backgroundColor: '#1e2735', // Navy-lighter from tailwind
+        padding: '16px 24px'
       }}>
-        <Typography variant="h6" component="div">
+        <Typography variant="h6" component="div" sx={{ color: '#FFC000', fontWeight: 'bold' }}>
           {editMode ? 'Modify User Prompt' : 'Add User Prompt'}
         </Typography>
         <IconButton 
@@ -113,14 +115,15 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
 
       <DialogContent sx={{ 
         padding: '24px',
-        backgroundColor: '#1a2b47' // Navy background
+        backgroundColor: '#121922' // Navy-light from tailwind
       }}>
         <Box sx={{ mb: 3 }}>
           <Typography 
             variant="subtitle1" 
             sx={{ 
               mb: 1, 
-              color: '#d4af37' // Gold color for labels
+              color: '#FFC000', // Gold from tailwind
+              fontWeight: 500
             }}
           >
             Prompt Name
@@ -140,14 +143,15 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
             disabled={isSaving}
             sx={{
               '& .MuiOutlinedInput-root': {
+                backgroundColor: '#080d13', // Navy default
                 '& fieldset': {
-                  borderColor: 'rgba(255, 255, 255, 0.23)',
+                  borderColor: 'rgba(255, 192, 0, 0.3)', // Transparent gold
                 },
                 '&:hover fieldset': {
-                  borderColor: '#d4af37',
+                  borderColor: '#FFC000',
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: '#d4af37',
+                  borderColor: '#FFC000',
                 },
                 '& input': {
                   color: '#ffffff',
@@ -161,15 +165,48 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
         </Box>
 
         <Box>
-          <Typography 
-            variant="subtitle1" 
-            sx={{ 
-              mb: 1, 
-              color: '#d4af37' // Gold color for labels
-            }}
-          >
-            Prompt Content
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography 
+              variant="subtitle1" 
+              sx={{ 
+                color: '#FFC000', // Gold from tailwind
+              fontWeight: 500
+              }}
+            >
+              Prompt Content
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => setShowPromptHelp(!showPromptHelp)}
+              sx={{ color: '#FFC000', textTransform: 'none', fontSize: '0.875rem' }}
+            >
+              {showPromptHelp ? 'Hide Help' : 'What are Prompts?'}
+            </Button>
+          </Box>
+          
+          {showPromptHelp && (
+            <Box sx={{ 
+              mb: 2, 
+              p: 2, 
+              backgroundColor: '#080d13', // Navy default
+              borderRadius: 1,
+              border: '1px solid rgba(255, 192, 0, 0.3)' // Transparent gold
+            }}>
+              <Typography variant="body2" sx={{ color: '#ffffff', mb: 1 }}>
+                <strong>Prompts</strong> guide the AI's personality, tone, and response style:
+              </Typography>
+              <Box component="ul" sx={{ color: '#d0d0d0', fontSize: '0.875rem', pl: 2, mb: 0 }}>
+                <li>Set communication style (formal, casual, technical)</li>
+                <li>Define response format (concise, detailed, step-by-step)</li>
+                <li>Add domain expertise (act as a Python expert, creative writer)</li>
+                <li>Control behavior (be helpful, avoid certain topics)</li>
+              </Box>
+              <Typography variant="body2" sx={{ color: '#ffffff', mt: 1 }}>
+                <strong>Prompts vs Context:</strong> Prompts shape HOW the AI responds, while Context (in Mode settings) determines WHAT information it can access.
+              </Typography>
+            </Box>
+          )}
+          
           <TextField
             fullWidth
             multiline
@@ -214,10 +251,11 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
               onClick={handleDelete}
               disabled={isSaving}
               sx={{
-                borderColor: '#f44336',
-                color: '#f44336',
+                borderColor: 'rgba(244, 67, 54, 0.5)',
+                color: '#ff6b6b',
+                backgroundColor: 'transparent',
                 '&:hover': {
-                  backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
                   borderColor: '#f44336',
                 }
               }}
@@ -233,8 +271,11 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
             sx={{ 
               color: '#ffffff',
               marginRight: 2,
+              backgroundColor: 'transparent',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
               }
             }}
           >
@@ -246,10 +287,14 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
             disabled={isSaving}
             startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{ 
-              backgroundColor: '#d4af37', // Gold button
-              color: '#000000',
+              backgroundColor: '#FFC000', // Gold from tailwind
+              color: '#080d13', // Navy text on gold
+              fontWeight: 'medium',
               '&:hover': {
-                backgroundColor: '#b4941f', // Darker gold on hover
+                backgroundColor: '#e6ac00', // Darker gold on hover
+              },
+              '&:disabled': {
+                backgroundColor: 'rgba(255, 192, 0, 0.5)',
               }
             }}
           >

@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useEffect } from 'react';
-import { Provider } from 'react-redux';
-import { store } from './store';
+import { Provider, useSelector } from 'react-redux';
+import { store, RootState } from './store';
 import MainLayout from './components/layout/MainLayout';
 import ProjectManagerView from './components/project/ProjectManagerView';
 import ChatView from './components/chat/ChatView';
@@ -13,6 +13,7 @@ import TagAndAddFileModal from './components/modals/TagAndAddFileModal';
 import { projectService, chatService, fileService } from './services';
 import type { Chat as ChatType, ChatMessage } from './services';
 import { ProjectProvider } from './context/ProjectContext';
+import { ContextControlsProvider } from './context/ContextControlsContext';
 import { useNavigation } from './hooks/useNavigation';
 
 // Adapted chat message type to match UI needs
@@ -21,6 +22,10 @@ interface UIMessage {
   content: string;
   sender: 'user' | 'assistant';
   timestamp: string;
+  modelInfo?: {
+    name: string;
+    type: string;
+  };
 }
 
 // Initial empty state for chat messages
@@ -30,6 +35,9 @@ const initialMessages: UIMessage[] = [];
 function AppContent() {
   // Use the navigation hook for state management
   const navigation = useNavigation();
+  
+  // Get context mode from Redux store
+  const { contextMode } = useSelector((state: RootState) => state.projectSettings);
   
   // Local component state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -147,53 +155,97 @@ function AppContent() {
     return chatNames[chatId] || 'Unknown Chat';
   };
 
-  // Handle message sending
-  const handleSendMessage = async (content: string) => {
+  // Handle message sending with streaming
+  const handleSendMessage = async (content: string, modelName?: string) => {
     if (!navigation.activeChatId) return;
     
+    // Immediately add user message to UI
+    const tempUserMessage: UIMessage = {
+      id: `temp-${Date.now()}`,
+      content,
+      sender: 'user',
+      timestamp: new Date().toLocaleString()
+    };
+    
+    setChatMessages(prev => [...prev, tempUserMessage]);
     setIsProcessing(true);
     
+    // Create assistant message placeholder for streaming
+    const assistantMessageId = `assistant-${Date.now()}`;
+    const assistantMessage: UIMessage = {
+      id: assistantMessageId,
+      content: '',
+      sender: 'assistant',
+      timestamp: new Date().toLocaleString(),
+      modelInfo: undefined // Will be set when streaming starts
+    };
+    
+    setChatMessages(prev => [...prev, assistantMessage]);
+    
     try {
-      // Send message to API
-      await chatService.sendMessage(navigation.activeChatId, content);
-      
-      // Reload messages
-      const chat = await chatService.getChat(navigation.activeChatId);
-      
-      // Convert API messages to UI format
-      const uiMessages: UIMessage[] = chat.messages.map((msg: ChatMessage) => ({
-        id: msg.id,
-        content: msg.content,
-        sender: msg.is_user ? 'user' : 'assistant',
-        timestamp: new Date(msg.created_at).toLocaleString()
-      }));
-      
-      setChatMessages(uiMessages);
+      // Use streaming API
+      await chatService.sendMessageStream(navigation.activeChatId, content, {
+        context_mode: contextMode,
+        model_name: modelName,
+        onStart: (modelInfo: { model: string }) => {
+          // Update the assistant message with model info
+          setChatMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, modelInfo: { name: modelInfo.model, type: 'streaming' } }
+                : msg
+            )
+          );
+        },
+        onChunk: (chunk: string) => {
+          // Update the assistant message content as chunks arrive
+          setChatMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, content: msg.content + chunk }
+                : msg
+            )
+          );
+        },
+        onComplete: async (messageIds) => {
+          // Update message IDs with the real ones from the server
+          setChatMessages(prev => 
+            prev.map(msg => {
+              if (msg.id === tempUserMessage.id) {
+                return { ...msg, id: messageIds.user_message_id };
+              }
+              if (msg.id === assistantMessageId) {
+                return { ...msg, id: messageIds.assistant_message_id };
+              }
+              return msg;
+            })
+          );
+          setIsProcessing(false);
+        },
+        onError: (error: string) => {
+          console.error('Streaming error:', error);
+          // Update the assistant message with error
+          setChatMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, content: `Error: ${error}` }
+                : msg
+            )
+          );
+          setIsProcessing(false);
+        }
+      });
     } catch (error) {
       console.error('Failed to send message:', error);
       
-      // Fallback to local message display if API fails
-      const userMessage: UIMessage = {
-        id: Date.now().toString(),
-        content,
-        sender: 'user',
-        timestamp: new Date().toLocaleString()
-      };
-      
-      setChatMessages(prev => [...prev, userMessage]);
-      
-      // Simulate assistant response
-      setTimeout(() => {
-        const assistantMessage: UIMessage = {
-          id: (Date.now() + 1).toString(),
-          content: `Error communicating with server. This is a fallback response.`,
-          sender: 'assistant',
-          timestamp: new Date().toLocaleString()
-        };
-        
-        setChatMessages(prev => [...prev, assistantMessage]);
-      }, 1000);
-    } finally {
+      // Update assistant message with error
+      setChatMessages(prev => 
+        prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: `Error communicating with server: ${error}` }
+            : msg
+        )
+      );
       setIsProcessing(false);
     }
   };
@@ -292,6 +344,11 @@ function AppContent() {
             isProcessing={isProcessing}
             onSendMessage={handleSendMessage}
             onEnableMic={() => console.log('Mic enabled')}
+            onStopGeneration={() => {
+              console.log('Stopping generation...');
+              setIsProcessing(false);
+              // TODO: Implement actual API call to stop generation
+            }}
           />
         );
       case 'document':
@@ -355,7 +412,9 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <AppContent />
+      <ContextControlsProvider>
+        <AppContent />
+      </ContextControlsProvider>
     </Provider>
   );
 }

@@ -39,26 +39,27 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 ```
 Windows 11 Production Environment
 ├── Docker Desktop (WSL2 Backend)
-│   ├── nim-embeddings:8081 → NVIDIA NV-EmbedQA-E5-V5
-│   ├── nim-generation-8b:8082 → Llama 3.1 8B (TensorRT)
-│   └── nim-generation-70b:8083 → Llama 3.1 70B (TensorRT)
+│   ├── nim-embeddings:8001 → NVIDIA NV-EmbedQA-E5-V5
+│   └── nim-llm:8002 → Llama 3.1 70B (Optional, TensorRT)
 ├── Ollama Service:11434
 │   ├── Mistral-Nemo 12B (Primary workhorse)
-│   └── CodeLlama 13B (Code specialist)
+│   ├── DeepSeek-Coder V2 16B (Code specialist)
+│   ├── Qwen 2.5 32B (Advanced reasoning)
+│   └── Llama 3.1 70B (Complex queries)
 ├── PostgreSQL:5432 (Document storage + pgvector search)
 ├── FastAPI Backend:8000 (Unified LLM routing)
-└── React Frontend:5173 (Model management interface)
+└── React Frontend:3000 (Model management interface)
 ```
 
 ### **AI Model Lineup**
 | Model | Type | VRAM | Use Case | Status |
 |-------|------|------|----------|--------|
 | **Mistral-Nemo 12B** | Ollama | 7.1GB | Primary workhorse | ✅ Active |
-| **CodeLlama 13B** | Ollama | 7.3GB | Code generation | ✅ Ready |
-| **Llama 3.1 8B** | NIM | 4.2GB | Fast responses | ✅ Active |
-| **Llama 3.1 70B** | NIM | 18GB | High-quality backup | ⚡ On-demand |
+| **DeepSeek-Coder V2 16B** | Ollama | 9GB | Code generation | ✅ Ready |
+| **Qwen 2.5 32B** | Ollama | 19GB | Advanced reasoning | ✅ Ready |
+| **Llama 3.1 70B** | Ollama | 40GB | Complex queries | ⚡ On-demand |
 | **NVIDIA Embeddings** | NIM | 1.2GB | Semantic search | 🔄 Always running |
-| **NeMo Document AI** | NeMo | 2.1GB | Document processing | ✅ Ready |
+| **NeMo Document AI** | Mock | 0GB | Document processing | ✅ Ready |
 
 ## 🚀 Quick Start
 
@@ -99,12 +100,16 @@ Windows 11 Production Environment
 
 4. **Configure Services**
    ```bash
-   # Pull required models
-   ollama pull mistral-nemo:12b-instruct-2407-q4_0
-   ollama pull codellama:13b-instruct-q4_0
+   # Install Ollama models
+   python install_models.py
    
-   # Setup NVIDIA NIM containers (requires NGC API key)
-   docker-compose up -d nim-embeddings nim-generation-8b
+   # Configure NGC API key (if not already set)
+   # Add to .env file: NGC_API_KEY=your_key_here
+   
+   # Test NIM integration
+   python test_nim_integration.py
+   
+   # Setup will automatically handle Docker containers
    ```
 
 ### **Launch Application**
@@ -127,7 +132,7 @@ cd frontend
 npm run dev
 
 # Access application
-# http://localhost:5173
+# http://localhost:3000
 ```
 
 **Stop Services**:

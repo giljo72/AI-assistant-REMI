@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-type Mode = 'standard' | 'project-focus' | 'deep-research' | 'quick-response' | 'custom';
+type Mode = 'standard' | 'project-focus' | 'deep-research' | 'quick-response' | 'self-aware' | 'create';
 
 type ContextControlsPanelProps = {
   isOpen: boolean;
@@ -16,6 +16,7 @@ type ContextSettings = {
   useProjectChats: boolean;
   useAllDocs: boolean;
   useAllChats: boolean;
+  customContext?: string; // For custom mode context instructions
 };
 
 const defaultSettings: ContextSettings = {
@@ -34,15 +35,17 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
   initialSettings,
 }) => {
   const [settings, setSettings] = useState<ContextSettings>(initialSettings || defaultSettings);
-  const [isCustomMode, setIsCustomMode] = useState(settings.mode === 'custom');
+  const [isCustomMode, setIsCustomMode] = useState(settings.mode === 'create');
+  const [showContextHelp, setShowContextHelp] = useState(false);
+  const [newContextName, setNewContextName] = useState('');
 
   // Handle mode change
   const handleModeChange = (mode: Mode) => {
-    if (mode === 'custom') {
+    if (mode === 'create') {
       setIsCustomMode(true);
       setSettings({
         ...settings,
-        mode: 'custom',
+        mode: 'create',
       });
     } else {
       setIsCustomMode(false);
@@ -71,6 +74,13 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
           newSettings.useAllDocs = false;
           newSettings.useAllChats = false;
           break;
+        case 'self-aware':
+          newSettings.contextDepth = 90;
+          newSettings.useProjectDocs = false; // No project docs in self-aware mode
+          newSettings.useProjectChats = false;
+          newSettings.useAllDocs = false;
+          newSettings.useAllChats = false;
+          break;
         case 'standard':
         default:
           newSettings.contextDepth = 50;
@@ -91,7 +101,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
     setSettings({
       ...settings,
       contextDepth,
-      mode: 'custom',
+      mode: 'create',
     });
     setIsCustomMode(true);
   };
@@ -101,7 +111,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
     setSettings({
       ...settings,
       [field]: !settings[field],
-      mode: 'custom',
+      mode: 'create',
     });
     setIsCustomMode(true);
   };
@@ -142,13 +152,93 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
             <option value="project-focus">Project Focus</option>
             <option value="deep-research">Deep Research</option>
             <option value="quick-response">Quick Response</option>
-            <option value="custom">Custom</option>
+            <option value="self-aware">Self-Aware (Code Analysis)</option>
+            <option value="create">+ Create New Context</option>
           </select>
         </div>
 
-        {/* Custom Controls - only shown when in custom mode */}
+        {/* Show preset template for non-create modes */}
+        {!isCustomMode && settings.mode !== 'standard' && (
+          <div className="border-t border-navy pt-4 mb-6">
+            <h4 className="text-sm font-medium text-gold mb-3">Context Template Settings</h4>
+            
+            {/* Context Depth Display (non-editable) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2 text-gray-400">
+                Context Depth: <span className="text-gray-300">{settings.contextDepth}%</span>
+              </label>
+              <div className="w-full h-2 bg-navy rounded-lg relative">
+                <div 
+                  className="h-full bg-gold/50 rounded-lg"
+                  style={{ width: `${settings.contextDepth}%` }}
+                />
+              </div>
+            </div>
+            
+            {/* Source Selection Display (non-editable) */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-400">
+                Active Sources:
+              </label>
+              <div className="space-y-1 text-sm text-gray-300">
+                {settings.useProjectDocs && <div>✓ Project Documents</div>}
+                {settings.useProjectChats && <div>✓ Project Chats</div>}
+                {settings.useAllDocs && <div>✓ All Documents</div>}
+                {settings.useAllChats && <div>✓ All Conversations</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Controls - only shown when in create mode */}
         {isCustomMode && (
           <div className="border-t border-navy pt-4 mb-6">
+            {/* Context Name Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2 text-gold">
+                Context Name <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={newContextName}
+                onChange={(e) => setNewContextName(e.target.value)}
+                placeholder="e.g., Technical Documentation Focus"
+                className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-gold text-white"
+              />
+            </div>
+            
+            {/* Custom Context Instructions */}
+            <div className="mb-4 bg-navy/50 p-3 rounded-lg border border-gold/20">
+              <div className="flex items-start justify-between mb-2">
+                <h4 className="text-sm font-medium text-gold">Custom Context Instructions</h4>
+                <button
+                  onClick={() => setShowContextHelp(!showContextHelp)}
+                  className="text-gold hover:text-gold/80 text-xs"
+                >
+                  {showContextHelp ? 'Hide Help' : 'Show Help'}
+                </button>
+              </div>
+              
+              {showContextHelp && (
+                <div className="text-xs text-gray-300 mb-3 space-y-1">
+                  <p><strong>Context</strong> defines the AI's knowledge scope and behavior:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Sets what information the AI has access to</li>
+                    <li>Determines search depth and breadth</li>
+                    <li>Controls which documents and chats to include</li>
+                    <li>Different from prompts (which guide personality/style)</li>
+                  </ul>
+                </div>
+              )}
+              
+              <textarea
+                value={settings.customContext || ''}
+                onChange={(e) => setSettings({...settings, customContext: e.target.value})}
+                placeholder="Define custom context behavior... (e.g., 'Focus only on Python files', 'Include all technical documentation', 'Prioritize recent chats')"
+                className="w-full bg-navy p-2 rounded text-white text-sm h-20 resize-none focus:outline-none focus:ring-1 focus:ring-gold"
+              />
+            </div>
+            
             {/* Context Depth Slider */}
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2 text-gray-300">
@@ -235,7 +325,8 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
             {settings.mode === 'project-focus' && 'Strictly uses project-specific documents and chats. Best for staying focused on project scope.'}
             {settings.mode === 'deep-research' && 'Comprehensive analysis using all available knowledge. Best for complex research tasks.'}
             {settings.mode === 'quick-response' && 'Faster responses with minimal context. Best for simple questions and quick tasks.'}
-            {settings.mode === 'custom' && 'Custom settings tailored to your specific needs.'}
+            {settings.mode === 'self-aware' && 'AI can read and analyze its own source code at F:\\assistant. Perfect for debugging, code improvements, and understanding the system architecture. No project documents are used in this mode.'}
+            {settings.mode === 'create' && 'Create a new custom context with your own settings. Define context name, depth, sources, and specific instructions for the AI.'}
           </p>
         </div>
 

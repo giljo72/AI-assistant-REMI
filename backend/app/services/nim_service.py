@@ -87,7 +87,7 @@ class NIMGenerationService:
     async def generate_chat_response(
         self,
         messages: List[Dict[str, str]],
-        max_tokens: int = 150,
+        max_tokens: int = 4096,
         temperature: float = 0.7,
         top_p: float = 0.9
     ) -> str:

@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Typewriter cursor blinking animation */
+@keyframes blink {
+  0%, 50% { opacity: 0.7; }
+  51%, 100% { opacity: 0; }
+}

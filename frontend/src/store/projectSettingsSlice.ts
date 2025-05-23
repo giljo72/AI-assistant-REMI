@@ -4,12 +4,14 @@ interface ProjectSettingsState {
   projectPromptEnabled: boolean;
   globalDataEnabled: boolean;
   projectDocumentsEnabled: boolean;
+  contextMode: string;
 }
 
 const initialState: ProjectSettingsState = {
   projectPromptEnabled: true,
   globalDataEnabled: false,
-  projectDocumentsEnabled: true
+  projectDocumentsEnabled: true,
+  contextMode: 'standard'
 };
 
 export const projectSettingsSlice = createSlice({
@@ -45,6 +47,10 @@ export const projectSettingsSlice = createSlice({
         ...state,
         ...action.payload
       };
+    },
+    
+    setContextMode: (state, action: PayloadAction<string>) => {
+      state.contextMode = action.payload;
     }
   }
 });
@@ -56,7 +62,8 @@ export const {
   setProjectPromptEnabled,
   setGlobalDataEnabled,
   setProjectDocumentsEnabled,
-  updateProjectSettings
+  updateProjectSettings,
+  setContextMode
 } = projectSettingsSlice.actions;
 
 export default projectSettingsSlice.reducer;

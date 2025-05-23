@@ -1,20 +1,24 @@
 """
-Unified LLM Service
-Routes requests to appropriate model service (NIM, Ollama, Transformers, NeMo)
+Unified LLM Service with Model Orchestration
+Routes requests to appropriate model service with intelligent model selection
 """
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
+import json
+import aiohttp
 from .nim_service import get_nim_service, NIMGenerationService
 from .ollama_service import get_ollama_service, OllamaService
+from .model_orchestrator import model_orchestrator
 
 logger = logging.getLogger(__name__)
 
 class UnifiedLLMService:
-    """Unified service to route requests to different LLM backends"""
+    """Unified service to route requests to different LLM backends with orchestration"""
     
     def __init__(self):
         self.nim_service = get_nim_service()
         self.ollama_service = get_ollama_service()
+        self.orchestrator = model_orchestrator
         self.active_model = None
         self.active_model_type = None
     
@@ -30,133 +34,136 @@ class UnifiedLLMService:
         model_name: Optional[str] = None,
         model_type: Optional[str] = None,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None
-    ) -> str:
-        """Generate chat response using the appropriate service"""
+        max_tokens: Optional[int] = None,
+        stream: bool = False,
+        context_mode: Optional[str] = None,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
+        """Generate chat response using the appropriate service with model orchestration"""
         
-        # Use provided model or fall back to active model
-        target_model = model_name or self.active_model
-        target_type = model_type or self.active_model_type
+        # Analyze request for intelligent routing
+        request_type = "chat"
+        complexity = "medium"
+        domain = "general"
         
-        if not target_model or not target_type:
-            raise ValueError("No model specified and no active model set")
+        # Analyze messages for routing hints
+        all_content = " ".join([msg.get("content", "") for msg in messages]).lower()
+        
+        if any(keyword in all_content for keyword in ["code", "function", "class", "debug", "error", "implement", "fix"]):
+            request_type = "code_analysis"
+            domain = "technical"
+        elif any(keyword in all_content for keyword in ["business", "strategy", "market", "revenue", "analysis"]):
+            domain = "business"
+            complexity = "high" if len(all_content) > 500 else "medium"
+        
+        # Select model if not specified
+        if not model_name:
+            model_name = await self.orchestrator.select_model(
+                request_type=request_type,
+                complexity=complexity,
+                domain=domain,
+                context_size=len(str(messages))
+            )
+            
+        if not model_name:
+            raise ValueError("No suitable model available")
+            
+        # Get model info
+        model_info = self.orchestrator.models.get(model_name)
+        if not model_info:
+            # Try to find a similar model
+            for name, info in self.orchestrator.models.items():
+                if model_name in name or name in model_name:
+                    model_name = name
+                    model_info = info
+                    break
+                    
+        if not model_info:
+            raise ValueError(f"Model {model_name} not found")
+            
+        # Mark model as in use
+        self.orchestrator.mark_model_used(model_name)
         
         try:
-            if target_type == "nvidia-nim":
-                return await self._generate_nim_response(
-                    target_model, messages, temperature, max_tokens
-                )
-            elif target_type == "ollama":
-                return await self._generate_ollama_response(
-                    target_model, messages, temperature, max_tokens
-                )
-            elif target_type == "transformers":
-                return await self._generate_transformers_response(
-                    target_model, messages, temperature, max_tokens
-                )
-            elif target_type == "nemo":
-                return await self._generate_nemo_response(
-                    target_model, messages, temperature, max_tokens
-                )
+            # Route to appropriate backend
+            if model_info.backend == "ollama":
+                async for chunk in self._generate_ollama_stream(
+                    model_name, messages, temperature, max_tokens, model_info.endpoint
+                ):
+                    yield chunk
+            elif model_info.backend == "nim":
+                async for chunk in self._generate_nim_stream(
+                    model_name, messages, temperature, max_tokens, model_info.endpoint
+                ):
+                    yield chunk
             else:
-                raise ValueError(f"Unsupported model type: {target_type}")
+                raise ValueError(f"Unsupported backend: {model_info.backend}")
                 
-        except Exception as e:
-            logger.error(f"Error generating response with {target_model} ({target_type}): {e}")
-            raise
+        finally:
+            # Release model
+            self.orchestrator.release_model(model_name)
     
-    async def _generate_nim_response(
+    async def _generate_ollama_stream(
         self,
         model_name: str,
         messages: List[Dict[str, str]],
         temperature: float,
-        max_tokens: Optional[int]
-    ) -> str:
-        """Generate response using NVIDIA NIM"""
+        max_tokens: Optional[int],
+        endpoint: str
+    ) -> AsyncGenerator[str, None]:
+        """Generate streaming response using Ollama"""
         
-        # Determine which NIM service to use based on model
+        # Check if model exists
+        if not await self.ollama_service.check_model_exists(model_name):
+            logger.info(f"Model {model_name} not found locally")
+            yield f"Error: Model {model_name} not found. Please install it first."
+            return
+            
+        async with aiohttp.ClientSession() as session:
+            data = {
+                "model": model_name,
+                "messages": messages,
+                "options": {
+                    "temperature": temperature,
+                    "num_predict": max_tokens or 4096
+                },
+                "stream": True
+            }
+            
+            async with session.post(f"{endpoint}/api/chat", json=data) as response:
+                async for line in response.content:
+                    if line:
+                        try:
+                            chunk = json.loads(line)
+                            if "message" in chunk and "content" in chunk["message"]:
+                                yield chunk["message"]["content"]
+                        except json.JSONDecodeError:
+                            continue
+    
+    async def _generate_nim_stream(
+        self,
+        model_name: str,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: Optional[int],
+        endpoint: str
+    ) -> AsyncGenerator[str, None]:
+        """Generate streaming response using NVIDIA NIM"""
+        
+        # Determine which NIM service to use
         if "70b" in model_name.lower():
             nim_service = NIMGenerationService(model_size="70b")
         else:
             nim_service = NIMGenerationService(model_size="8b")
         
-        response = await nim_service.generate_chat_response(
+        async for chunk in nim_service.generate_chat_response_stream(
             messages=messages,
-            max_tokens=max_tokens or 150,
+            max_tokens=max_tokens or 4096,
             temperature=temperature
-        )
-        
+        ):
+            yield chunk
+            
         await nim_service.close()
-        return response
-    
-    async def _generate_ollama_response(
-        self,
-        model_name: str,
-        messages: List[Dict[str, str]],
-        temperature: float,
-        max_tokens: Optional[int]
-    ) -> str:
-        """Generate response using Ollama"""
-        
-        # Check if model exists, if not try to pull it
-        if not await self.ollama_service.check_model_exists(model_name):
-            logger.info(f"Model {model_name} not found, attempting to pull...")
-            await self.ollama_service.pull_model(model_name)
-        
-        return await self.ollama_service.generate_chat_completion(
-            model_name=model_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-    
-    async def _generate_transformers_response(
-        self,
-        model_name: str,
-        messages: List[Dict[str, str]],
-        temperature: float,
-        max_tokens: Optional[int]
-    ) -> str:
-        """Generate response using Transformers (local models)"""
-        # Import here to avoid circular imports
-        from ..core.transformers_llm import TransformersLLM
-        
-        llm = TransformersLLM(model_name=model_name)
-        
-        # Convert messages to single prompt for transformers
-        prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
-        
-        response = await llm.generate_response(
-            prompt=prompt,
-            max_length=max_tokens or 150,
-            temperature=temperature
-        )
-        
-        return response
-    
-    async def _generate_nemo_response(
-        self,
-        model_name: str,
-        messages: List[Dict[str, str]],
-        temperature: float,
-        max_tokens: Optional[int]
-    ) -> str:
-        """Generate response using NeMo"""
-        # Import here to avoid circular imports
-        from ..core.nemo_llm import NeMoLLM
-        
-        llm = NeMoLLM(model_name=model_name)
-        
-        # Convert messages to single prompt for NeMo
-        prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
-        
-        response = await llm.generate_response(
-            prompt=prompt,
-            max_length=max_tokens or 150,
-            temperature=temperature
-        )
-        
-        return response
     
     async def health_check(self, model_type: str) -> bool:
         """Check health of specific model service"""
@@ -165,14 +172,22 @@ class UnifiedLLMService:
         elif model_type == "ollama":
             return await self.ollama_service.health_check()
         else:
-            return True  # Assume local models are always available
+            return True
     
     async def list_available_models(self, model_type: str) -> List[Dict[str, Any]]:
         """List available models for a specific service"""
         if model_type == "ollama":
             return await self.ollama_service.list_models()
         else:
-            return []  # Other services don't have dynamic model lists
+            return []
+    
+    async def get_model_status(self) -> List[Dict[str, Any]]:
+        """Get status of all models from orchestrator"""
+        return await self.orchestrator.get_model_status()
+    
+    async def switch_mode(self, mode: str) -> Dict[str, bool]:
+        """Switch operational mode"""
+        return await self.orchestrator.switch_mode(mode)
     
     async def close(self):
         """Close all service connections"""

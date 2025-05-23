@@ -36,14 +36,13 @@ The AI Assistant is now fully operational with a complete multi-model architectu
 #### AI Model Infrastructure
 ```
 ├── NVIDIA NIM Containers (TensorRT optimized)
-│   ├── Llama 3.1 8B (fast responses)
-│   ├── Llama 3.1 70B (high-quality)
-│   └── NV-EmbedQA-E5-V5 (embeddings)
+│   ├── Llama 3.1 70B (Solo Mode - Deep reasoning)
+│   └── NV-EmbedQA-E5-V5 (Always active for RAG)
 ├── Ollama Service (local models)
-│   ├── Mistral-Nemo 12B (primary)
-│   └── CodeLlama 13B (code specialist)
-├── Transformers Integration (development)
-└── NeMo Document AI (processing)
+│   ├── Qwen 2.5 32B (Default - Full document support)
+│   ├── Mistral-Nemo 12B (Quick responses)
+│   └── DeepSeek Coder V2 16B (Self-aware coding)
+└── Mock NeMo Document AI (document processing)
 ```
 
 ## Multi-Model Architecture
@@ -67,44 +66,51 @@ class UnifiedLLMService:
 
 ### Model Selection Strategy
 
-#### Production Models
-1. **Mistral-Nemo 12B (Q4_0)** - Primary workhorse (7.1GB VRAM)
-   - Best balance of performance and resource usage
-   - 128k context window for large documents
-   - Optimized 4-bit quantization
+#### Production Models with Clear Purpose
+1. **Qwen 2.5 32B (Q4_K_M)** - Default Primary Model (19GB VRAM)
+   - Full document and RAG support (runs with embeddings)
+   - Advanced reasoning and analysis capabilities
+   - Best for general questions and document interaction
+   - 32k context window for comprehensive understanding
 
-2. **CodeLlama 13B (Q4_0)** - Code generation specialist (7.3GB VRAM)
-   - Specialized for programming tasks
-   - Code completion and debugging
-   - Technical documentation support
+2. **Llama 3.1 70B (NIM)** - Solo Mode Deep Reasoning (22GB VRAM)
+   - Runs alone - automatically unloads ALL other models
+   - Maximum VRAM allocation for complex reasoning
+   - TensorRT optimized for best performance
+   - Use when deep analysis is needed without distractions
 
-3. **Llama 3.1 8B (NIM)** - Fast responses (4.2GB VRAM)
-   - TensorRT optimized for speed
-   - Quick queries and interactions
-   - Always-available fallback
+3. **Mistral-Nemo 12B (Latest)** - Quick Responses (7GB VRAM)
+   - Fast responses when speed is priority
+   - Runs with embeddings for document support
+   - 128k context window for efficiency
+   - Ideal for quick drafts and simple queries
 
-4. **Llama 3.1 70B (NIM)** - High-quality backup (18GB VRAM)
-   - Premium responses for complex queries
-   - On-demand loading for resource management
-   - Maximum reasoning capability
+4. **DeepSeek Coder V2 16B (Q4_K_M)** - Self-Aware Coding (9GB VRAM)
+   - Specialized for code generation and analysis
+   - Runs with embeddings for code documentation
+   - Optimized for programming tasks
+   - Use in self-aware mode for coding
 
-5. **NVIDIA Embeddings** - Semantic search (1.2GB VRAM)
-   - Always-running for document retrieval
-   - Enterprise-grade semantic understanding
-   - Real-time document processing
+5. **NVIDIA NV-EmbedQA-E5-V5** - Always-On Embeddings (2GB VRAM)
+   - Active with all models EXCEPT Llama 70B solo mode
+   - Enterprise-grade semantic search
+   - Real-time document processing and RAG
+   - Critical for knowledge retrieval
 
-6. **NeMo Document AI** - Document processing (2.1GB)
-   - Advanced document understanding
-   - Hierarchical content extraction
-   - Mixed precision optimization
+### Memory Management Strategy
+The system intelligently manages RTX 4090's 24GB VRAM based on model selection:
 
-### Memory Management
-The system intelligently manages RTX 4090's 24GB VRAM across multiple operational modes:
+- **Qwen Mode (Default)**: Qwen 32B + embeddings (21GB used)
+- **Quick Mode**: Mistral-Nemo + embeddings (9GB used)
+- **Coding Mode**: DeepSeek + embeddings (11GB used)
+- **Solo Mode**: Llama 70B alone (22GB used, embeddings unloaded)
+- **System Reserve**: 1GB for stability
 
-- **Conservative Mode**: Single active model + embeddings (6-9GB used)
-- **Balanced Mode**: Two models active + embeddings (13-16GB used)
-- **Maximum Mode**: 70B model + embeddings (19GB used)
-- **System Reserve**: 4GB for Windows/Docker overhead
+#### Automatic Model Switching
+- When switching to Llama 70B: All models unloaded first
+- When switching from Llama 70B: Embeddings reloaded automatically
+- Smart unloading based on last-used timestamps
+- Protection for embeddings model (except in solo mode)
 
 ## Service Architecture
 
@@ -112,15 +118,15 @@ The system intelligently manages RTX 4090's 24GB VRAM across multiple operationa
 ```
 Windows 11 Host
 ├── Docker Desktop (WSL2 Backend)
-│   ├── nim-embeddings:8081 → NVIDIA NV-EmbedQA-E5-V5
-│   ├── nim-generation-8b:8082 → Llama 3.1 8B (TensorRT)
-│   └── nim-generation-70b:8083 → Llama 3.1 70B (TensorRT)
+│   ├── nim-embeddings:8001 → NVIDIA NV-EmbedQA-E5-V5
+│   └── nim-generation-70b:8000 → Llama 3.1 70B (TensorRT)
 ├── Ollama Service:11434
-│   ├── mistral-nemo:12b-instruct-2407-q4_0
-│   └── codellama:13b-instruct-q4_0
+│   ├── qwen2.5:32b-instruct-q4_K_M (Default)
+│   ├── mistral-nemo:latest (Quick)
+│   └── deepseek-coder-v2:16b-lite-instruct-q4_K_M (Coding)
 ├── PostgreSQL:5432 (Document storage + pgvector)
 ├── FastAPI Backend:8000 (Unified LLM routing)
-└── React Frontend:5173 (Model management interface)
+└── React Frontend:3000 (Model management interface)
 ```
 
 ### WSL2 Development Environment

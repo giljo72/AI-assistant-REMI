@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system
+from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis
 from .endpoints.fix_files import router as fix_files_router
 
 api_router = APIRouter()
@@ -22,3 +22,9 @@ api_router.include_router(health.router, prefix="/health", tags=["health"])
 
 # Add fix_files router for testing
 api_router.include_router(fix_files_router, prefix="/fix-files", tags=["fix_files"])
+
+# Add model management endpoints
+api_router.include_router(models.router, tags=["models"])
+
+# Add self-analysis endpoints (development mode)
+api_router.include_router(self_analysis.router, tags=["self_analysis"])

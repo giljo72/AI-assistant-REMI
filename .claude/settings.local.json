@@ -12,7 +12,9 @@
       "Bash(mv:*)",
       "Bash(python3:*)",
       "Bash(python:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ollama pull:*)",
+      "Bash(/mnt/f/assistant/venv_nemo/bin/python:*)"
     ],
     "deny": []
   }

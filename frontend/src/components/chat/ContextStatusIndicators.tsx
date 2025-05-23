@@ -9,6 +9,7 @@ type ContextStatusIndicatorsProps = {
   onToggleGlobalData: () => void;
   onToggleProjectDocuments: () => void;
   onOpenContextControls?: () => void;
+  contextMode?: string;
 };
 
 const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
@@ -18,9 +19,35 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
   onToggleProjectPrompt,
   onToggleGlobalData,
   onToggleProjectDocuments,
+  onOpenContextControls,
+  contextMode = 'standard'
 }) => {
+  // Format context mode display name
+  const getContextModeDisplay = (mode: string) => {
+    const modeMap: { [key: string]: string } = {
+      'standard': 'Standard',
+      'project-focus': 'Project Focus',
+      'deep-research': 'Deep Research',
+      'quick-response': 'Quick Response',
+      'self-aware': 'Self-Aware',
+      'create': 'Create New'
+    };
+    // If it's not a preset mode, it's a custom context name
+    return modeMap[mode] || mode;
+  };
+
   return (
     <div className="flex flex-wrap gap-2 justify-center">
+      {/* Context Mode Indicator - Yellow Box */}
+      <button
+        onClick={onOpenContextControls}
+        className="inline-flex items-center px-3 py-1 rounded text-sm mr-2 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors cursor-pointer"
+        title="Click to change context mode"
+      >
+        <span className="w-2 h-2 rounded-full mr-2 bg-yellow-400"></span>
+        Context: <span className="font-semibold ml-1">{getContextModeDisplay(contextMode)}</span>
+      </button>
+
       {/* Project Prompt Indicator */}
       <button
         onClick={onToggleProjectPrompt}

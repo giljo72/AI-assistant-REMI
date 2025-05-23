@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import userPromptsReducer from './userPromptsSlice';
 import projectSettingsReducer from './projectSettingsSlice';
 import navigationReducer from './navigationSlice';
+import typedMessagesReducer from './typedMessagesSlice';
 
 export const store = configureStore({
   reducer: {
     userPrompts: userPromptsReducer,
     projectSettings: projectSettingsReducer,
     navigation: navigationReducer,
+    typedMessages: typedMessagesReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

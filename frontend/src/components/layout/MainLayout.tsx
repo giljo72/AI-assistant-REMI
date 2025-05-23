@@ -6,17 +6,19 @@ import UserPromptsPanel from '../chat/UserPromptsPanel';
 import ContextControlsPanel from '../modals/ContextControlsPanel';
 import { RootState } from '../../store';
 import { useNavigation } from '../../hooks/useNavigation';
+import { useContextControls } from '../../context/ContextControlsContext';
+import { setContextMode } from '../../store/projectSettingsSlice';
 
 type MainLayoutProps = {
   children: ReactNode;
 };
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const [isContextControlsOpen, setIsContextControlsOpen] = useState(false);
   const dispatch = useDispatch();
-  const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled } = useSelector(
+  const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled, contextMode } = useSelector(
     (state: RootState) => state.projectSettings
   );
+  const { isOpen: isContextControlsOpen, openContextControls, closeContextControls } = useContextControls();
   
   // Get navigation state using our custom hook
   const { activeView } = useNavigation();
@@ -34,7 +36,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="p-3 border-t border-navy">
           {/* Context Settings Button */}
           <button 
-            onClick={() => setIsContextControlsOpen(true)}
+            onClick={openContextControls}
             className="w-full py-2 mb-4 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold font-medium rounded transition-colors"
           >
             <span className="mr-1">⚙</span> Context Settings
@@ -46,30 +48,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </div>
       
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-navy-light p-4 border-b border-gold flex justify-between items-center">
+      <div className="flex-1 flex flex-col min-h-0">
+        <header className="bg-navy-light p-4 border-b border-gold flex justify-between items-center flex-shrink-0">
           <h1 className="text-2xl font-bold text-gold">AI Assistant</h1>
           
           {/* View indicator showing current view */}
           <div className="flex items-center">
-            <span className="text-sm text-gold mr-2">
+            <span className="text-sm text-gold">
               View: <span className="font-bold">{activeView.charAt(0).toUpperCase() + activeView.slice(1)}</span>
             </span>
-            
-            {/* Mode dropdown - simplified version */}
-            <div className="flex items-center bg-navy px-3 py-1.5 rounded ml-4">
-              <span className="text-sm text-gray-400 mr-2">Mode:</span>
-              <select className="bg-navy text-white text-sm focus:outline-none focus:ring-1 focus:ring-gold rounded">
-                <option>Standard</option>
-                <option>Project Focus</option>
-                <option>Deep Research</option>
-                <option>Quick Response</option>
-                <option>Custom</option>
-              </select>
-            </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4">
+        <main className="flex-1 overflow-y-auto p-4 min-h-0">
           {children}
         </main>
       </div>
@@ -77,13 +67,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Context Controls Modal */}
       <ContextControlsPanel
         isOpen={isContextControlsOpen}
-        onClose={() => setIsContextControlsOpen(false)}
+        onClose={closeContextControls}
         onApplySettings={(settings) => {
-          // Here you would dispatch actions to update settings
-          setIsContextControlsOpen(false);
+          // Update the context mode in Redux
+          dispatch(setContextMode(settings.mode));
+          closeContextControls();
         }}
         initialSettings={{
-          mode: 'standard',
+          mode: contextMode,
           contextDepth: 50,
           useProjectDocs: projectPromptEnabled,
           useProjectChats: true,

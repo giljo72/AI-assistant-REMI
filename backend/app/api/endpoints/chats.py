@@ -1,8 +1,10 @@
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -126,11 +128,13 @@ def read_chat_messages(
 class ChatGenerateRequest(BaseModel):
     """Request model for generating chat responses."""
     message: str
-    max_length: int = 150
+    max_length: int = 4096  # Increased from 150 to allow full responses
     temperature: float = 0.7
     include_context: bool = True
     model_name: Optional[str] = None
     model_type: Optional[str] = None
+    context_mode: Optional[str] = None  # standard, project-focus, deep-research, quick-response, self-aware, custom
+    custom_context: Optional[str] = None  # Custom context instructions when mode is 'custom'
 
 
 class ChatGenerateResponse(BaseModel):
@@ -168,23 +172,8 @@ async def generate_chat_response_endpoint(
         
         # Get recent messages for context if requested
         messages = []
-        if request.include_context:
-            recent_messages = chat_repository.get_chat_messages(
-                db, chat_id=chat_id, skip=0, limit=10
-            )
-            # Convert to format expected by NIM (OpenAI-compatible)
-            messages = [
-                {"role": "user" if msg.is_user else "assistant", "content": msg.content}
-                for msg in reversed(recent_messages)  # Reverse to get chronological order
-            ]
         
-        # Add current user message
-        messages.append({"role": "user", "content": request.message})
-        
-        # Generate response using Unified LLM Service
-        llm_service = get_llm_service()
-        
-        # Use specified model or get from system state
+        # Use specified model or get from system state (moved up to get model info early)
         model_name = request.model_name
         model_type = request.model_type
         
@@ -193,6 +182,189 @@ async def generate_chat_response_endpoint(
             from ...api.endpoints.system import service_states
             model_name = model_name or service_states.get('active_model', 'meta/llama-3.1-8b-instruct')
             model_type = model_type or service_states.get('active_model_type', 'nvidia-nim')
+        
+        # Get list of available models for model awareness
+        from ...api.endpoints.system import get_ai_models
+        available_models = get_ai_models()
+        active_models = [m for m in available_models if m.status in ['loaded', 'running']]
+        model_list = ", ".join([f"{m.name} ({m.type})" for m in active_models])
+        
+        # Check for active user prompts
+        from ...db.repositories.user_prompt_repository import user_prompt_repository
+        project_id = chat.project_id
+        active_prompts = user_prompt_repository.get_active_for_project(db, project_id=project_id)
+        
+        # Check if we're in self-aware mode (from context mode, not user prompts)
+        is_self_aware = request.context_mode == "self-aware"
+        
+        # Build comprehensive system message
+        from datetime import datetime
+        current_date = datetime.now().strftime("%A, %B %d, %Y")
+        
+        # Base system prompt
+        system_content = f"""You are {model_name}, an AI assistant running via {model_type}. Today's date is {current_date}.
+
+You are part of an AI Assistant system with the following capabilities:
+- Multiple AI models available: {model_list}
+- Currently active model: {model_name} ({model_type})
+- Document processing and semantic search
+- Project-based knowledge containment
+- Custom user prompts for behavior modification
+
+You are a helpful, friendly, and knowledgeable assistant. Be concise but thorough in your responses."""
+
+        if is_self_aware:
+            # Self-aware mode - add project structure knowledge
+            system_content += f"""
+
+SELF-AWARE MODE ACTIVE:
+You have access to knowledge about your own implementation at F:\\assistant. This is a FastAPI + React application with:
+- Backend: FastAPI, SQLAlchemy, PostgreSQL with pgvector
+- Frontend: React, TypeScript, Redux Toolkit, Tailwind CSS
+- LLM Integration: Ollama, NVIDIA NIM, Transformers
+- Key features: Project management, document processing, RAG, user prompts
+
+You can help improve your own code, debug issues, and suggest enhancements. When asked about your implementation, reference specific files and provide accurate technical details."""
+        
+        # Add custom context if provided
+        if request.context_mode == "custom" and request.custom_context:
+            system_content += f"\n\nCustom Context Instructions:\n{request.custom_context}"
+        
+        # Add active user prompts to system message
+        if active_prompts:
+            system_content += "\n\nAdditional Instructions:"
+            for prompt in active_prompts:
+                system_content += f"\n- {prompt.content}"
+        
+        system_message = {
+            "role": "system",
+            "content": system_content
+        }
+        messages.append(system_message)
+        
+        if request.include_context:
+            recent_messages = chat_repository.get_chat_messages(
+                db, chat_id=chat_id, skip=0, limit=10
+            )
+            # Convert to format expected by NIM (OpenAI-compatible)
+            context_messages = [
+                {"role": "user" if msg.is_user else "assistant", "content": msg.content}
+                for msg in reversed(recent_messages)  # Reverse to get chronological order
+            ]
+            messages.extend(context_messages)
+        
+        # Add document context if not in self-aware mode
+        if not is_self_aware and request.include_context:
+            try:
+                # Search for relevant documents in the project
+                from ...api.endpoints.semantic_search import search_chat_context
+                from ...schemas.chat import ChatContextRequest
+                
+                context_request = ChatContextRequest(
+                    query=request.message,
+                    project_id=project_id,
+                    top_k=3  # Get top 3 most relevant chunks
+                )
+                
+                search_results = await search_chat_context(
+                    request=context_request,
+                    db=db
+                )
+                
+                if search_results.results:
+                    # Add document context as a system message
+                    doc_context = "\n\nRelevant Document Context:\n"
+                    for idx, result in enumerate(search_results.results):
+                        doc_context += f"\n[{idx+1}] From '{result.filename}':\n{result.content}\n"
+                    
+                    doc_message = {
+                        "role": "system",
+                        "content": doc_context
+                    }
+                    messages.append(doc_message)
+                    logger.info(f"Added {len(search_results.results)} document chunks to context")
+            except Exception as e:
+                logger.warning(f"Failed to add document context: {e}")
+        
+        # Process file operations in self-aware mode
+        if is_self_aware:
+            from ...services.file_reader_service import get_file_reader
+            file_reader = get_file_reader()
+            
+            # Check if the user is asking about files
+            user_msg_lower = request.message.lower()
+            file_context = ""
+            
+            # Auto-detect file-related queries
+            if any(keyword in user_msg_lower for keyword in ['file', 'code', 'show', 'read', 'list', 'search', 'find', 'look at', 'check']):
+                # Extract potential file paths from the message
+                import re
+                
+                # Look for file paths (e.g., backend/app/main.py or app.py)
+                file_patterns = [
+                    r'[\'"`]([^\'"`]+\.[a-zA-Z]+)[\'"`]',  # Quoted filenames
+                    r'\b(\w+/[\w/]+\.\w+)\b',  # Path-like patterns
+                    r'\b(\w+\.\w+)\b',  # Simple filenames
+                ]
+                
+                potential_files = []
+                for pattern in file_patterns:
+                    matches = re.findall(pattern, request.message)
+                    potential_files.extend(matches)
+                
+                # Try to read mentioned files
+                files_read = []
+                for file_path in potential_files:
+                    result = file_reader.read_file(file_path)
+                    if result["success"]:
+                        files_read.append({
+                            "path": file_path,
+                            "content": result["content"]  # Full file content, no truncation
+                        })
+                
+                # If files were found and read, add them to context
+                if files_read:
+                    file_context = "\n\nFile Contents:\n"
+                    for file_info in files_read:
+                        file_context += f"\n=== {file_info['path']} ===\n{file_info['content']}\n"
+                
+                # If asking to list files in a directory
+                if 'list' in user_msg_lower and ('file' in user_msg_lower or 'directory' in user_msg_lower):
+                    # Extract directory from message
+                    dir_match = re.search(r'(?:in|from)\s+[\'"`]?([^\'"`\s]+)[\'"`]?', request.message)
+                    directory = dir_match.group(1) if dir_match else ""
+                    
+                    files = file_reader.list_files(directory)
+                    if files:
+                        file_context += f"\n\nFiles in {directory or 'root directory'}:\n"
+                        for f in files[:20]:  # Limit to 20 files
+                            file_context += f"- {f['type']}: {f['path']}\n"
+                
+                # If searching for something in files
+                if 'search' in user_msg_lower or 'find' in user_msg_lower:
+                    search_match = re.search(r'(?:search|find)\s+(?:for\s+)?[\'"`]([^\'"`]+)[\'"`]', request.message)
+                    if search_match:
+                        search_term = search_match.group(1)
+                        results = file_reader.search_in_files(search_term, max_results=10)
+                        if results:
+                            file_context += f"\n\nSearch results for '{search_term}':\n"
+                            for r in results:
+                                file_context += f"- {r['file']}:{r['line']}: {r['content']}\n"
+            
+            # Add file context if any was gathered
+            if file_context:
+                file_message = {
+                    "role": "system",
+                    "content": file_context
+                }
+                messages.append(file_message)
+                logger.info("Added file reading context to self-aware mode")
+        
+        # Add current user message
+        messages.append({"role": "user", "content": request.message})
+        
+        # Generate response using Unified LLM Service
+        llm_service = get_llm_service()
         
         logger.info(f"Generating response using {model_name} ({model_type})...")
         
@@ -205,13 +377,17 @@ async def generate_chat_response_endpoint(
                 detail=f"{model_type} service is not available. Please check if the service is running."
             )
         
-        ai_response = await llm_service.generate_chat_response(
+        # Collect the full response from the async generator
+        ai_response = ""
+        async for chunk in llm_service.generate_chat_response(
             messages=messages,
             model_name=model_name,
             model_type=model_type,
             temperature=request.temperature,
-            max_tokens=request.max_length
-        )
+            max_tokens=request.max_length,
+            context_mode=request.context_mode
+        ):
+            ai_response += chunk
         logger.info(f"Generated response: {ai_response[:100]}...")
         
         # Save assistant message
@@ -300,3 +476,142 @@ def generate_and_save_response(
             status_code=500,
             detail=f"Failed to generate response: {str(e)}"
         )
+
+
+@router.post("/{chat_id}/generate-stream")
+async def generate_chat_response_stream(
+    *,
+    db: Session = Depends(get_db),
+    chat_id: str,
+    request: ChatGenerateRequest,
+    background_tasks: BackgroundTasks
+) -> StreamingResponse:
+    """
+    Generate AI response for a chat message with streaming.
+    Returns Server-Sent Events (SSE) stream.
+    """
+    # Verify chat exists
+    chat = chat_repository.get(db, id=chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    # Save user message first
+    user_message = ChatMessageCreate(
+        chat_id=chat_id,
+        content=request.message,
+        is_user=True
+    )
+    user_msg_obj = chat_repository.create_message(db, obj_in=user_message)
+    
+    async def generate_stream() -> AsyncGenerator[str, None]:
+        try:
+            # Build messages context (same as non-streaming endpoint)
+            messages = []
+            
+            # Get model info
+            model_name = request.model_name
+            model_type = request.model_type
+            
+            if not model_name or not model_type:
+                from ...api.endpoints.system import service_states
+                model_name = model_name or service_states.get('active_model', 'mistral-nemo:latest')
+                model_type = model_type or service_states.get('active_model_type', 'ollama')
+            
+            # Get available models for awareness
+            from ...api.endpoints.system import get_ai_models
+            available_models = get_ai_models()
+            active_models = [m for m in available_models if m.status in ['loaded', 'running']]
+            model_list = ", ".join([f"{m.name} ({m.type})" for m in active_models])
+            
+            # Build system message
+            from datetime import datetime
+            current_date = datetime.now().strftime("%A, %B %d, %Y")
+            
+            system_content = f"""You are {model_name}, an AI assistant running via {model_type}. Today's date is {current_date}.
+
+You are part of an AI Assistant system with the following capabilities:
+- Multiple AI models available: {model_list}
+- Currently active model: {model_name} ({model_type})
+- Document processing and semantic search
+- Project-based knowledge containment
+- Custom user prompts for behavior modification
+
+You are a helpful, friendly, and knowledgeable assistant. Be concise but thorough in your responses."""
+
+            # Add self-aware mode if enabled
+            if request.context_mode == "self-aware":
+                system_content += """
+
+SELF-AWARE MODE ACTIVE:
+You have access to knowledge about your own implementation at F:\\assistant. This is a FastAPI + React application with:
+- Backend: FastAPI, SQLAlchemy, PostgreSQL with pgvector
+- Frontend: React, TypeScript, Redux Toolkit, Tailwind CSS
+- LLM Integration: Ollama, NVIDIA NIM, Transformers
+- Key features: Project management, document processing, RAG, user prompts
+
+You can help improve your own code, debug issues, and suggest enhancements."""
+
+            # Add custom context if provided
+            if request.context_mode == "custom" and request.custom_context:
+                system_content += f"\n\nCustom Context Instructions:\n{request.custom_context}"
+            
+            messages.append({"role": "system", "content": system_content})
+            
+            # Add context messages if requested
+            if request.include_context:
+                recent_messages = chat_repository.get_chat_messages(
+                    db, chat_id=chat_id, skip=0, limit=request.context_messages
+                )
+                for msg in reversed(recent_messages[:-1]):  # Exclude the just-saved user message
+                    role = "user" if msg.is_user else "assistant"
+                    messages.append({"role": role, "content": msg.content})
+            
+            # Add current user message
+            messages.append({"role": "user", "content": request.message})
+            
+            # Start streaming response
+            llm_service = get_llm_service()
+            
+            # Send initial SSE event
+            yield f"data: {json.dumps({'type': 'start', 'model': model_name})}\n\n"
+            
+            # Collect response for saving
+            full_response = ""
+            
+            # Stream the response
+            async for chunk in llm_service.generate_chat_response(
+                messages=messages,
+                model_name=model_name,
+                model_type=model_type,
+                temperature=request.temperature,
+                max_tokens=request.max_length,
+                context_mode=request.context_mode
+            ):
+                full_response += chunk
+                # Send chunk as SSE event
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+            
+            # Save the complete assistant message
+            assistant_message = ChatMessageCreate(
+                chat_id=chat_id,
+                content=full_response,
+                is_user=False
+            )
+            assistant_msg_obj = chat_repository.create_message(db, obj_in=assistant_message)
+            
+            # Send completion event with message IDs
+            yield f"data: {json.dumps({'type': 'complete', 'user_message_id': str(user_msg_obj.id), 'assistant_message_id': str(assistant_msg_obj.id)})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Streaming generation failed: {str(e)}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable Nginx buffering
+        }
+    )

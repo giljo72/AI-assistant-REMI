@@ -22,14 +22,14 @@ class ChatMessageInDB(ChatMessageBase):
     created_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ChatMessage(ChatMessageInDB):
     """Schema for chat message responses."""
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Chat schemas
@@ -56,7 +56,7 @@ class ChatInDB(ChatBase):
     updated_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Chat(ChatInDB):
@@ -64,4 +64,4 @@ class Chat(ChatInDB):
     messages: List[ChatMessage] = []
     
     class Config:
-        orm_mode = True
+        from_attributes = True

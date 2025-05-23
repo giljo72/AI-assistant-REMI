@@ -28,7 +28,7 @@ class ProjectInDB(ProjectBase):
     updated_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Project(ProjectInDB):
@@ -37,4 +37,4 @@ class Project(ProjectInDB):
     document_count: int = 0
     
     class Config:
-        orm_mode = True
+        from_attributes = True

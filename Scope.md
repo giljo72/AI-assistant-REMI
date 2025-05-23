@@ -32,11 +32,11 @@ The core philosophy remains that powerful AI assistance should not require surre
 
 ### ✅ **Multi-Model AI Integration (100% Complete)**
 * ✅ **Unified LLM Service**: Single interface routing to NIM, Ollama, Transformers, and NeMo models
-* ✅ **NVIDIA NIM Integration**: Complete TensorRT-optimized inference with Llama 3.1 8B/70B models
-* ✅ **Ollama Integration**: Full HTTP API support with Mistral-Nemo 12B and CodeLlama 13B models
-* ✅ **Model Switching**: Seamless switching between 6 different AI models via unified interface
-* ✅ **Chat Backend**: Complete chat API with multi-model support and context management
-* ✅ **RAG Implementation**: Vector database integrated with semantic search and document retrieval
+* ✅ **NVIDIA NIM Integration**: TensorRT-optimized Llama 3.1 70B and NV-Embedqa-E5-v5
+* ✅ **Ollama Integration**: Qwen 2.5 32B (default), Mistral-Nemo 12B (quick), DeepSeek Coder V2 16B (coding)
+* ✅ **Intelligent Model Selection**: Purpose-based routing with clear user control
+* ✅ **Solo Mode for Llama 70B**: Automatic unloading of all models for maximum reasoning power
+* ✅ **RAG Always Active**: NV-Embedqa runs with all models except Llama 70B solo mode
 
 ### ✅ **Production Infrastructure (100% Complete)**
 * ✅ **Docker Integration**: Complete NIM container deployment with GPU acceleration
@@ -122,12 +122,28 @@ Users can control both the scope and prioritization of knowledge:
 
 This tiered system allows selective expansion of context beyond project boundaries when needed, while maintaining project containment as the default.
 
-### Adaptive Reasoning Modes
-The system provides different reasoning modes optimized for the hardware:
+### Intelligent Model Selection Strategy
+The system provides specialized AI models for different use cases:
 
-* **Standard**: Balanced analysis with normal context depth
-* **Comprehensive**: Multi-step reasoning with expanded context
-* **Expert**: Detailed reasoning chains with maximum context utilization
+* **Qwen 2.5 32B (Default)**: Primary model with full document/RAG support
+  - Always runs with NV-Embedqa for document processing
+  - Best for general questions, analysis, and document interaction
+  - 19GB VRAM requirement
+
+* **Llama 3.1 70B (Solo Mode)**: Deep reasoning without distractions
+  - Automatically unloads ALL other models including embeddings
+  - Maximum VRAM allocation for complex reasoning tasks
+  - 22GB VRAM requirement (exclusive use)
+
+* **Mistral-Nemo 12B (Quick Mode)**: Fast responses when speed matters
+  - Runs with NV-Embedqa for document support
+  - Ideal for quick drafts and simple queries
+  - 7GB VRAM requirement
+
+* **DeepSeek Coder V2 16B (Self-Aware Mode)**: Specialized for coding
+  - Runs with NV-Embedqa for code documentation support
+  - Optimized for code generation and analysis
+  - 9GB VRAM requirement
 
 ### Visual Context Awareness
 The interface provides clear visual indicators showing:
@@ -175,8 +191,11 @@ The FastAPI backend delivers:
 | State Management | Redux Toolkit | Centralized application state |
 | Backend API | FastAPI | High-performance API endpoints |
 | Vector Database | PostgreSQL + pgvector | Vector storage and retrieval |
-| LLM Generation | NVIDIA NIM MegatronGPT-20B | Production-optimized language model with TensorRT acceleration |
-| Embeddings | NVIDIA NIM NV-Embed-v1 | Enterprise-grade document understanding and semantic search |
+| Primary Model | Qwen 2.5 32B (Ollama) | Default model with full document/RAG support |
+| Deep Reasoning | Llama 3.1 70B (NIM) | Solo mode for maximum reasoning power |
+| Quick Responses | Mistral-Nemo 12B (Ollama) | Fast responses when speed is priority |
+| Code Generation | DeepSeek Coder V2 16B (Ollama) | Self-aware coding mode |
+| Embeddings | NVIDIA NIM NV-Embedqa-E5-v5 | Always active except in Llama 70B solo mode |
 | Document Processing | NeMo Document AI + Python libraries | Hierarchical document processing with structure preservation |
 | Voice Processing | Whisper (planned) | Transcription for voice input |
 | System Monitoring | Custom service management + psutil | Real-time system and model status tracking |

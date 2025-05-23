@@ -32,11 +32,11 @@ class UserPromptInDB(UserPromptBase):
     is_active: bool = False
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserPrompt(UserPromptInDB):
     """Schema for user prompt responses."""
     
     class Config:
-        orm_mode = True
+        from_attributes = True

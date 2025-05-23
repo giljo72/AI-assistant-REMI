@@ -6,7 +6,7 @@ services:
     image: nvcr.io/nim/nvidia/nv-embedqa-e5-v5:latest
     container_name: nim-embeddings
     ports:
-      - "8081:8000"  # Map to local port 8081
+      - "8001:8000"  # Map to port 8001 as configured in orchestrator
     environment:
       - NVIDIA_VISIBLE_DEVICES=0  # Use GPU 0 (RTX 4090)
       - NGC_API_KEY=${NGC_API_KEY}
@@ -58,7 +58,7 @@ services:
     image: nvcr.io/nim/meta/llama-3.1-70b-instruct:latest
     container_name: nim-generation-70b
     ports:
-      - "8083:8000"  # Map to local port 8083
+      - "8000:8000"  # Map to port 8000 as configured in orchestrator
     environment:
       - NVIDIA_VISIBLE_DEVICES=0  # Use GPU 0 (RTX 4090)
       - NGC_API_KEY=${NGC_API_KEY}

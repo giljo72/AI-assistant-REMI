@@ -17,6 +17,7 @@ numpy==1.26.2
 
 # System monitoring and utilities
 psutil==5.9.6
+gputil==1.4.0
 
 # HTTP clients for service integration
 httpx>=0.25.0

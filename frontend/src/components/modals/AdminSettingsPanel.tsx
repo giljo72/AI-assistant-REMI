@@ -10,7 +10,8 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'info' | 'reset'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'reset' | 'development'>('info');
+  const [developmentMode, setDevelopmentMode] = useState<boolean>(false);
   const [resetAction, setResetAction] = useState<string>('');
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
   const [operationStatus, setOperationStatus] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -128,6 +129,12 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
             onClick={() => setActiveTab('reset')}
           >
             Reset Options
+          </button>
+          <button 
+            className={`px-4 py-2 ${activeTab === 'development' ? 'text-gold border-b-2 border-gold' : 'text-gray-400 hover:text-white'}`}
+            onClick={() => setActiveTab('development')}
+          >
+            Development
           </button>
         </div>
         
@@ -271,6 +278,76 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                   </button>
                 </div>
               )}
+            </div>
+          )}
+          
+          {activeTab === 'development' && !loading && (
+            <div className="space-y-6">
+              <div className="bg-navy p-4 rounded-md">
+                <h3 className="text-lg font-semibold text-gold mb-4">Development Settings</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-navy-lighter rounded-md">
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Development Mode</h4>
+                      <p className="text-sm text-gray-400">
+                        Enables enhanced debugging, verbose logging, and access to experimental features.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDevelopmentMode(!developmentMode)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        developmentMode ? 'bg-gold' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          developmentMode ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  {developmentMode && (
+                    <>
+                      <div className="p-4 bg-yellow-900 bg-opacity-20 border border-yellow-600 rounded-md">
+                        <p className="text-sm text-yellow-400">
+                          🚧 Development mode is active. Additional features and debugging tools are enabled.
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="p-3 bg-navy-lighter rounded-md">
+                          <h5 className="font-medium text-gold mb-2">Available Development Features:</h5>
+                          <ul className="list-disc list-inside text-sm text-gray-400 space-y-1">
+                            <li>Enhanced error messages with stack traces</li>
+                            <li>API request/response logging</li>
+                            <li>Model performance metrics</li>
+                            <li>Database query monitoring</li>
+                            <li>Memory usage tracking</li>
+                            <li>Self-analysis endpoints for code improvement</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="p-3 bg-navy-lighter rounded-md">
+                          <h5 className="font-medium text-gold mb-2">Quick Actions:</h5>
+                          <div className="space-y-2">
+                            <button className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left">
+                              📊 View Performance Metrics
+                            </button>
+                            <button className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left">
+                              🔍 Run Self-Analysis
+                            </button>
+                            <button className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left">
+                              📝 Export Debug Logs
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

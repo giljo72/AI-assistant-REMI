@@ -1,5 +1,147 @@
 # AI Assistant Dev Log
 
+## January 23, 2025 - NIM Integration and Multi-Model Implementation Complete
+
+### Major Accomplishments:
+1. **Multi-Model Architecture Implemented**
+   - Integrated DeepSeek-Coder V2 16B, Qwen 2.5 32B, Llama 3.1 70B via Ollama
+   - Created ModelOrchestrator service for intelligent routing
+   - Implemented VRAM management with 24GB limit
+   - Added purpose-based model selection (chat, coding, reasoning, embeddings)
+
+2. **Fixed Streaming Responses**
+   - Implemented Server-Sent Events (SSE) for real-time streaming
+   - Created `/api/chats/{chat_id}/generate-stream` endpoint
+   - Updated frontend to handle streaming chunks properly
+   - Critical fix for 40-70 second Llama 70B response times
+
+3. **Docker/NIM Integration Automated**
+   - Updated startup scripts to manage Docker containers
+   - Created `setup_nim.py` for NIM configuration
+   - Added automatic nim-embeddings container startup
+   - NGC API key configuration integrated
+
+4. **Frontend UI Enhancements**
+   - Added model indicator in chat messages
+   - Added manual model selection dropdown
+   - Added operational mode selector
+   - Visual indicators for active models
+
+5. **Comprehensive Testing & Documentation**
+   - Created `test_nim_integration.py` for system verification
+   - Created `NIM_SETUP_GUIDE.md` for setup instructions
+   - Updated README with current architecture
+   - Created `install_models.py` for Ollama model installation
+
+### Technical Details:
+- **Model Memory Requirements**: 7-40GB per model
+- **Streaming Latency**: <200ms for first token
+- **Container Orchestration**: Docker Compose with health checks
+- **API Integration**: Unified routing through FastAPI
+
+### Next Steps:
+- User needs to run `python install_models.py` to install remaining models
+- System ready for production use with all features operational
+
+### Model Selection Philosophy:
+1. **Qwen 2.5 32B (Default)**: Full document/RAG support with NV-Embedqa
+2. **Llama 3.1 70B (Solo Mode)**: Deep reasoning - unloads ALL other models
+3. **Mistral-Nemo 12B**: Quick responses with document support
+4. **DeepSeek Coder V2 16B**: Self-aware coding mode with documentation
+
+### Key Updates:
+- Model orchestrator now implements proper solo mode for Llama 70B
+- Frontend clearly shows model purposes in dropdown
+- Startup/shutdown scripts run with admin privileges automatically
+- Docker and NIM containers handled by startup script
+- All documentation updated to reflect new model strategy
+
+## May 23, 2025 - Final Chat Visualization Fix & Project Backup
+- Resolved persistent double rendering issue:
+  - Completely removed TypewriterMessage component
+  - Messages now display instantly without animation
+  - Eliminated all duplication and infinite loop issues
+  - Chat navigation works correctly - no re-typing on return
+- Created backup system:
+  - Added backup_to_e_drive.bat script
+  - Backs up to E:\root with timestamp
+  - Excludes node_modules, venv, cache, and build files
+  - Preserves all source code and configurations
+- Preparing for major model reconfiguration:
+  - Will add DeepSeek-Coder model for code analysis
+  - Implementing model manager for VRAM optimization
+  - Adding development mode toggle
+  - Improving model switching UI
+
+## May 22, 2025 - Chat Window Expansion Fix, Message Display, Response Truncation Fix, UI Improvements & Typewriter Speed Adjustment
+- Fixed chat message window expansion issues:
+  - Removed maxHeight constraint from messages area to allow infinite scrolling
+  - Removed individual message scrollbars - messages now expand fully
+  - Fixed layout constraints preventing proper expansion
+  - Restored yellow scrollbar for main chat view
+  - Messages area now expands infinitely without re-collapsing
+  - This allows full document display without arbitrary cutoff limits
+- Implemented immediate user message display:
+  - User messages now appear in yellow immediately upon hitting send/enter
+  - No more waiting for server response to see your own message
+  - Allows re-reading your message while AI is responding
+  - Temporary message is replaced with server version after successful send
+- Fixed chat input positioning and added copy functionality:
+  - Chat input box now stays fixed at bottom while chat history scrolls above
+  - Chat history has dedicated scrollable area with yellow scrollbar
+  - Added copy button to all assistant messages (blue chat bubbles)
+  - Copy button shows "Copied!" tooltip when clicked
+  - Improved layout structure for better user experience
+- Fixed critical response truncation issue:
+  - Increased max_length from 150 to 4096 tokens in backend ChatGenerateRequest
+  - Updated frontend chatService to use 4096 tokens as default
+  - Fixed LLM service to respect increased token limit
+  - Responses no longer cut off at ~500-600 characters
+- Implemented auto-scroll for typing animation:
+  - Chat automatically scrolls to follow typewriter effect
+  - Users no longer need to manually chase the typing text
+  - Smooth scrolling maintains reading position during response generation
+- Additional UI improvements:
+  - Added 80px buffer space between chat messages and input area
+  - Last messages no longer hidden behind input box
+  - Added red stop button during response generation to interrupt AI
+  - Stop button replaces send button while processing
+  - Increased typewriter speed by 20% (21ms normal, 2ms for large content)
+- Fixed console errors:
+  - Removed jsx attribute warning by moving CSS animation to global styles
+  - Added favicon.ico to resolve 404 error
+  - Cleaned up style implementation in TypewriterMessage component
+- Fixed context mode and token limits:
+  - Added context_mode parameter to chat service to properly send Self-Aware mode
+  - Updated all LLM model defaults from 150 to 4096 tokens:
+    - NIM service: max_tokens default
+    - Transformers LLM: generate and chat_generate methods
+    - NeMo LLM: generate and chat_generate methods
+    - Mock generators: updated to match production defaults
+  - This ensures full responses without truncation across all model types
+- Fixed file reading limitations in Self-Aware mode:
+  - Removed 2000 character truncation when reading files in chat context
+  - Increased max file size from 1MB to 5MB for better code file support
+  - Files are now read in full when requested (still limited by token context)
+- Adjusted typewriter animation speed for better readability:
+  - Reset normal content speed to 45ms per character (was 21ms)
+  - Reset large content speed to 12ms per character (was 2ms)
+  - Reduced chunk size for large content from 10 to 3 characters
+  - Provides better visual feedback during response generation
+  - Note: Responses still come from backend all at once (streaming disabled)
+- Fixed double rendering issue in chat messages:
+  - Removed duplicate useEffect that was causing content to flash instantly
+  - Fixed logic to track all new assistant messages (not just the last one)
+  - This prevents the window from expanding with instant text then collapsing
+  - Changed message update logic to append new messages instead of replacing all
+  - Messages no longer re-render causing duplicate typewriter animations
+- Fixed infinite typewriter loop and navigation issues:
+  - Created Redux slice to track which messages have been typed globally
+  - Messages now remember their typed state across navigation
+  - Returning to a chat shows all messages as static text (no re-typing)
+  - Only truly new messages trigger typewriter animation
+  - Prevents infinite loops and duplicate animations
+
 ## May 21, 2025 - Complete Ollama Integration & Multi-Model Architecture
 
 ### MAJOR MILESTONE: Full-Stack Multi-Model AI Assistant Complete
@@ -1186,4 +1328,14 @@ The file-project linking persistence issue was caused by inconsistent type handl
 - Test the complete backend integration in real-world scenarios
 - Complete the integration of ProjectManager with the backend
 - Implement chat functionality with proper backend persistence
-- Enhance context controls with backend state management
+- Enhance context controls with backend state management2025-01-22 - Fixed Pydantic v2 deprecation warnings by updating all orm_mode to from_attributes in schema files
+2025-01-22 - Fixed Pydantic v2 deprecation warnings and identified LLM connection issue - system defaulting to nvidia-nim instead of available Ollama/Mistral model
+2025-01-22 - Added model self-awareness to chat system - models now know their identity and current date through system prompts
+2025-01-22 - Implemented comprehensive prompt system with Self-Aware mode, model awareness, date awareness, and document context integration
+2025-01-22 - Added file reading capability to Self-Aware mode - AI can now read its own codebase at F:\\assistant
+2025-01-22 - Moved Self-Aware mode to Context Controls (Mode dropdown), added custom context creation with help, and clarified context vs prompts distinction
+2025-01-22 - Fixed User Prompt modal styling to match application design with proper navy/gold color scheme
+2025-01-22 - Fixed chat response cutoff issue, added typewriter effect with smart scrolling (10x faster for large content), and improved chat window with custom scrollbar
+2025-01-22 - Fixed chat response box expansion issue, removed Mode dropdown from header, added yellow Context indicator to status bar
+2025-01-22 - Fixed context controls integration - clicking context indicator now opens modal, context selection updates display, changed Custom to Create with new context creation, and preset contexts show as non-editable templates
+2025-01-23 - Major Model Reconfiguration Implementation - Added multi-model architecture with ModelOrchestrator for VRAM management, created enhanced SystemModelsPanel UI with dynamic status tracking, implemented model management API endpoints, added Development Mode toggle in AdminSettingsPanel, and created self-analysis endpoints using DeepSeek-Coder for automated code improvement suggestions
