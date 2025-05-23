@@ -14,29 +14,9 @@ from app.document_processing.status_tracker import status_tracker
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Use mock NeMo if specified or if NeMo import fails
-use_mock_nemo = os.getenv("USE_MOCK_NEMO", "false").lower() == "true"
-
-if use_mock_nemo:
-    try:
-        from app.core.mock_nemo import load_model
-        nemo_model = load_model(os.getenv("MODEL_NAME", "nvidia/nemo-1"))
-        print("Using mock NeMo model for development")
-    except ImportError:
-        print("Mock NeMo module not found. Please create the mock module first.")
-else:
-    try:
-        # Try to import real NeMo
-        import nemo
-        print("Using real NeMo model")
-        # Add real NeMo initialization here
-    except ImportError:
-        print("NeMo import failed, falling back to mock")
-        try:
-            from app.core.mock_nemo import load_model
-            nemo_model = load_model(os.getenv("MODEL_NAME", "nvidia/nemo-1"))
-        except ImportError:
-            print("Mock NeMo module not found. Please create the mock module first.")
+# NeMo integration is handled via Docker container and HTTP API
+# Chat endpoints use nemo_docker_client.py for communication
+print("Using NeMo Docker container for AI inference")
 
 app = FastAPI(
     title="AI Assistant API",
@@ -55,6 +35,7 @@ app.add_middleware(
 
 # Check if we're using NeMo
 use_nemo = os.getenv("USE_NEMO", "false").lower() == "true"
+use_mock_nemo = os.getenv("USE_MOCK_NEMO", "true").lower() == "true"
 model_name = os.getenv("MODEL_NAME", "nvidia/nemo-1")
 
 # Include API router

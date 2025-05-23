@@ -33,11 +33,13 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
     setLoading(true);
     setError(null);
     try {
+      console.log('🔍 SystemModelsPanel: Fetching status...');
       const status = await systemService.getSystemStatus();
+      console.log('✅ SystemModelsPanel: Status received:', status);
       setSystemStatus(status);
     } catch (err) {
-      console.error('Error fetching system status:', err);
-      setError('Failed to fetch system status');
+      console.error('❌ SystemModelsPanel: Error fetching system status:', err);
+      setError(`Backend Connection Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -76,20 +78,20 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
     
     try {
       let response;
+      const modelType = systemStatus?.models.find(m => m.name === modelName)?.type || 'ollama';
       
       switch (action) {
         case 'load':
-          const modelType = systemStatus?.models.find(m => m.name === modelName)?.type || 'ollama';
           response = await systemService.loadModel({
             model_name: modelName,
-            model_type: modelType as 'ollama' | 'nemo'
+            model_type: modelType as 'ollama' | 'nvidia-nim' | 'nemo' | 'transformers'
           });
           break;
         case 'unload':
-          response = await systemService.unloadModel(modelName);
+          response = await systemService.unloadModel(modelName, modelType);
           break;
         case 'switch':
-          response = await systemService.switchModel(modelName);
+          response = await systemService.switchModel(modelName, modelType);
           break;
       }
       
@@ -101,6 +103,7 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
       // Refresh status after action
       setTimeout(fetchSystemStatus, 3000);
     } catch (err: any) {
+      console.error('Model action error:', err);
       setOperationStatus({
         message: err.message || 'Operation failed',
         type: 'error'

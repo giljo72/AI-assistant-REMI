@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  nemo:
+    image: nvcr.io/nvidia/nemo:dev
+    container_name: assistant-nemo
+    restart: unless-stopped
+    
+    # GPU Configuration for RTX 4090 optimization
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # Environment variables for CUDA optimization and MegatronGPT-20B
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - NEMO_LOG_LEVEL=INFO
+      - NEMO_MODEL_CACHE=/models
+      - PYTHONPATH=/workspace/nemo
+      - MEGATRON_MODEL=nvidia/megatron-gpt-20b
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:2048
+    
+    # Port mapping for API access
+    ports:
+      - "8889:8889"  # NeMo API port
+      - "6006:6006"  # TensorBoard port (optional)
+    
+    # Volume mounts for persistence and model storage
+    volumes:
+      # Model storage (Windows path mapped to container)
+      - /mnt/f/assistant/data/models:/models
+      # NeMo workspace for custom scripts
+      - /mnt/f/assistant/nemo-workspace:/workspace/nemo-custom
+      # Logs directory
+      - /mnt/f/assistant/logs/nemo:/workspace/logs
+    
+    # Memory and resource limits optimized for MegatronGPT-20B on RTX 4090
+    mem_limit: 24g
+    memswap_limit: 24g
+    
+    # Shared memory size (important for large model loading)
+    shm_size: 8g
+    
+    # Command to run NeMo inference service with API
+    command: >
+      bash -c "
+        echo 'Starting NeMo inference service...' &&
+        mkdir -p /models /workspace/logs &&
+        python -c 'import nemo.collections.nlp as nemo_nlp; print(\"NeMo NLP imported successfully\")' &&
+        cd /workspace &&
+        echo 'Starting NeMo API server on port 8889...' &&
+        python /workspace/nemo-custom/nemo_api_server.py
+      "
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import nemo; print('NeMo available')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Network configuration
+    networks:
+      - assistant-network
+
+  # Optional: PostgreSQL service (if needed locally)
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: assistant-postgres
+    restart: unless-stopped
+    
+    environment:
+      - POSTGRES_DB=assistant_db
+      - POSTGRES_USER=assistant_user
+      - POSTGRES_PASSWORD=assistant_pass
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    
+    networks:
+      - assistant-network
+
+# Networks
+networks:
+  assistant-network:
+    driver: bridge
+
+# Volumes
+volumes:
+  postgres_data:
+    driver: local

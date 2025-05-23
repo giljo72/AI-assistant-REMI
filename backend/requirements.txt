@@ -1,14 +1,49 @@
+# AI Assistant Backend Dependencies
+# Core FastAPI and web framework
 fastapi==0.104.1
 uvicorn==0.24.0
+python-multipart==0.0.6
+
+# Database and ORM
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
+alembic==1.12.1
+pgvector>=0.1.0
+
+# Data validation and configuration
 pydantic==2.4.2
 python-dotenv==1.0.0
-alembic==1.12.1
-python-multipart==0.0.6
 numpy==1.26.2
+
+# System monitoring and utilities
 psutil==5.9.6
+
+# HTTP clients for service integration
+httpx>=0.25.0
+requests>=2.31.0
+aiohttp>=3.8.0
+
+# AI Model Integration
+# PyTorch and Transformers for local models
 torch>=2.0.0
 transformers>=4.30.0
 accelerate>=0.20.0
 sentencepiece>=0.1.99
+
+# NVIDIA NIM API client dependencies
+# (Containers are managed via Docker)
+
+# Ollama API client dependencies
+# (Service communication via HTTP)
+
+# Document processing pipeline
+pypdf>=3.0.0
+docx2txt>=0.8
+python-docx>=0.8.11
+
+# Optional: NeMo Document AI (for advanced document processing)
+# nemo-toolkit[all]>=1.22.0  # Uncomment if using full NeMo integration
+
+# Development and testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

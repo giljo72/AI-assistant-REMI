@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Backend Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; background: #2a2a2a; border-radius: 8px; }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .info { color: #60a5fa; }
+        .warning { color: #fbbf24; }
+        button { padding: 10px 20px; margin: 5px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #2563eb; }
+        pre { background: #111; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .log { margin: 10px 0; padding: 10px; background: #111; border-radius: 5px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 AI Assistant Backend Connection Test</h1>
+        
+        <div class="test-section">
+            <h2>Connection Tests</h2>
+            <button onclick="testBackendConnection()">Test Backend Connection</button>
+            <button onclick="testSystemStatus()">Test System Status</button>
+            <button onclick="testModelList()">Test Model List</button>
+            <button onclick="testOllamaConnection()">Test Ollama Connection</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            results.innerHTML += `<div class="log ${colorClass}">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function clearLogs() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testBackendConnection() {
+            log('🔍 Testing backend connection...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    log('✅ Backend connection successful!', 'success');
+                    const data = await response.text();
+                    log(`Response: ${data}`, 'info');
+                } else {
+                    log(`❌ Backend responded with status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Backend connection failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testSystemStatus() {
+            log('🔍 Testing system status endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/system/status`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ System status retrieved successfully!', 'success');
+                    log(`Models found: ${data.models?.length || 0}`, 'info');
+                    log(`Services found: ${data.services?.length || 0}`, 'info');
+                    
+                    if (data.models && data.models.length > 0) {
+                        log('📋 Available models:', 'info');
+                        data.models.forEach(model => {
+                            log(`  - ${model.name} (${model.type}): ${model.status}`, 'info');
+                        });
+                    }
+                } else {
+                    log(`❌ System status failed with status: ${response.status}`, 'error');
+                    const errorText = await response.text();
+                    log(`Error details: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ System status request failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testModelList() {
+            log('🔍 Testing model list endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/system/models/available`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Model list retrieved successfully!', 'success');
+                    log(`Total models: ${data.length}`, 'info');
+                    
+                    data.forEach(model => {
+                        log(`📋 ${model.name}: ${model.status} (${model.size}, ${model.parameters})`, 'info');
+                    });
+                } else {
+                    log(`❌ Model list failed with status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Model list request failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testOllamaConnection() {
+            log('🔍 Testing Ollama connection via backend proxy...', 'info');
+            log('ℹ️ Direct browser-to-Ollama blocked by CORS, using backend route', 'warning');
+            
+            try {
+                // Test through backend which can make the request without CORS issues
+                const response = await fetch(`${API_BASE}/api/system/ollama/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Ollama connection via backend successful!', 'success');
+                    log(`Backend can reach Ollama: ${data.accessible}`, 'info');
+                    if (data.models) {
+                        log(`Ollama models found: ${data.models.length}`, 'info');
+                        data.models.forEach(model => {
+                            const sizeGB = model.size ? (model.size / (1024**3)).toFixed(1) : 'Unknown';
+                            log(`  - ${model.name}: ${sizeGB}GB`, 'info');
+                        });
+                    }
+                } else {
+                    log(`❌ Backend-to-Ollama connection failed with status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Backend-to-Ollama connection failed: ${error.message}`, 'error');
+                log('💡 Check if backend is running and can reach Ollama at 10.1.0.224:11434', 'warning');
+            }
+        }
+        
+        // Run initial test on page load
+        window.onload = () => {
+            log('🚀 AI Assistant Connection Tester Ready', 'success');
+            log('Click the buttons above to test different connections', 'info');
+        };
+    </script>
+</body>
+</html>

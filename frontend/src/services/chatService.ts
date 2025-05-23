@@ -13,6 +13,8 @@ export interface ChatGenerateRequest {
   max_length?: number;
   temperature?: number;
   include_context?: boolean;
+  model_name?: string;
+  model_type?: string;
 }
 
 export interface ChatGenerateResponse {
@@ -162,31 +164,38 @@ class ChatService {
   }
 
   /**
-   * Send a user message and get the assistant's response using NeMo LLM
+   * Send a user message and get the assistant's response using unified LLM service
    */
   async sendMessage(chatId: string, content: string, options?: {
     max_length?: number;
     temperature?: number;
     include_context?: boolean;
+    model_name?: string;
+    model_type?: string;
   }): Promise<ChatGenerateResponse> {
     try {
+      console.log('🚀 ChatService: Sending message with options:', options);
+      
       const request: ChatGenerateRequest = {
         message: content,
         max_length: options?.max_length || 150,
         temperature: options?.temperature || 0.7,
         include_context: options?.include_context !== false, // Default to true
+        model_name: options?.model_name,
+        model_type: options?.model_type
       };
       
+      console.log('📤 ChatService: Request payload:', request);
       return await this.generateResponse(chatId, request);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ ChatService: Error sending message:", error);
       // Fallback response for error cases
       return {
-        response: "I apologize, but I'm having trouble generating a response right now. Please try again.",
+        response: "I apologize, but I'm having trouble generating a response right now. Please check the backend connection and try again.",
         user_message_id: "",
         assistant_message_id: "",
         model_info: {
-          model_name: "Error Fallback",
+          model_name: "Connection Error",
           device: "unknown",
           is_initialized: false,
           nemo_available: false,

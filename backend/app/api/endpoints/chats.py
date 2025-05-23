@@ -1,12 +1,16 @@
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ...db.database import get_db
 from ...db.repositories.chat_repository import chat_repository
 from ...schemas.chat import Chat, ChatCreate, ChatUpdate, ChatMessage, ChatMessageCreate
-from ...core.transformers_llm import generate_chat_response
+from ...services.nim_service import get_nim_service
+from ...services.llm_service import get_llm_service
 
 router = APIRouter()
 
@@ -125,6 +129,8 @@ class ChatGenerateRequest(BaseModel):
     max_length: int = 150
     temperature: float = 0.7
     include_context: bool = True
+    model_name: Optional[str] = None
+    model_type: Optional[str] = None
 
 
 class ChatGenerateResponse(BaseModel):
@@ -136,7 +142,7 @@ class ChatGenerateResponse(BaseModel):
 
 
 @router.post("/{chat_id}/generate", response_model=ChatGenerateResponse)
-def generate_chat_response_endpoint(
+async def generate_chat_response_endpoint(
     *,
     db: Session = Depends(get_db),
     chat_id: str,
@@ -144,7 +150,7 @@ def generate_chat_response_endpoint(
     background_tasks: BackgroundTasks
 ) -> Any:
     """
-    Generate AI response for a chat message using NeMo LLM.
+    Generate AI response for a chat message using NVIDIA NIM.
     """
     # Verify chat exists
     chat = chat_repository.get(db, id=chat_id)
@@ -155,8 +161,8 @@ def generate_chat_response_endpoint(
         # Save user message first
         user_message = ChatMessageCreate(
             chat_id=chat_id,
-            role="user",
-            content=request.message
+            content=request.message,
+            is_user=True
         )
         user_msg_obj = chat_repository.create_message(db, obj_in=user_message)
         
@@ -166,34 +172,64 @@ def generate_chat_response_endpoint(
             recent_messages = chat_repository.get_chat_messages(
                 db, chat_id=chat_id, skip=0, limit=10
             )
-            # Convert to format expected by NeMo LLM
+            # Convert to format expected by NIM (OpenAI-compatible)
             messages = [
-                {"role": msg.role, "content": msg.content}
+                {"role": "user" if msg.is_user else "assistant", "content": msg.content}
                 for msg in reversed(recent_messages)  # Reverse to get chronological order
             ]
         
         # Add current user message
         messages.append({"role": "user", "content": request.message})
         
-        # Generate response using NeMo LLM
-        ai_response = generate_chat_response(
+        # Generate response using Unified LLM Service
+        llm_service = get_llm_service()
+        
+        # Use specified model or get from system state
+        model_name = request.model_name
+        model_type = request.model_type
+        
+        # If no model specified, check system for active model
+        if not model_name or not model_type:
+            from ...api.endpoints.system import service_states
+            model_name = model_name or service_states.get('active_model', 'meta/llama-3.1-8b-instruct')
+            model_type = model_type or service_states.get('active_model_type', 'nvidia-nim')
+        
+        logger.info(f"Generating response using {model_name} ({model_type})...")
+        
+        # Check service health for the model type
+        health = await llm_service.health_check(model_type)
+        if not health and model_type == "nvidia-nim":
+            logger.error(f"Model service unhealthy for {model_type}")
+            raise HTTPException(
+                status_code=503, 
+                detail=f"{model_type} service is not available. Please check if the service is running."
+            )
+        
+        ai_response = await llm_service.generate_chat_response(
             messages=messages,
-            max_length=request.max_length,
-            temperature=request.temperature
+            model_name=model_name,
+            model_type=model_type,
+            temperature=request.temperature,
+            max_tokens=request.max_length
         )
+        logger.info(f"Generated response: {ai_response[:100]}...")
         
         # Save assistant message
         assistant_message = ChatMessageCreate(
             chat_id=chat_id,
-            role="assistant", 
-            content=ai_response
+            content=ai_response,
+            is_user=False
         )
         assistant_msg_obj = chat_repository.create_message(db, obj_in=assistant_message)
         
         # Get model info for response
-        from ...core.transformers_llm import get_transformers_llm
-        llm = get_transformers_llm()
-        model_info = llm.get_model_info()
+        model_info = {
+            "model": model_name,
+            "type": model_type,
+            "health": health,
+            "temperature": request.temperature,
+            "max_length": request.max_length
+        }
         
         return ChatGenerateResponse(
             response=ai_response,
@@ -203,6 +239,10 @@ def generate_chat_response_endpoint(
         )
         
     except Exception as e:
+        logger.error(f"Chat generation failed with error: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to generate response: {str(e)}"

@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # NVIDIA NIM - Text Embeddings for semantic search
+  nim-embeddings:
+    image: nvcr.io/nim/nvidia/nv-embedqa-e5-v5:latest
+    container_name: nim-embeddings
+    ports:
+      - "8081:8000"  # Map to local port 8081
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0  # Use GPU 0 (RTX 4090)
+      - NGC_API_KEY=${NGC_API_KEY}
+    volumes:
+      - nim_cache:/opt/nim/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # NVIDIA NIM - Llama 3.1 8B for fast text generation (RTX 4090 optimized)
+  nim-generation-8b:
+    image: nvcr.io/nim/meta/llama-3.1-8b-instruct:latest
+    container_name: nim-generation-8b
+    ports:
+      - "8082:8000"  # Map to local port 8082
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0  # Share GPU 0 with embeddings
+      - NGC_API_KEY=${NGC_API_KEY}
+    volumes:
+      - nim_cache:/opt/nim/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
+  # NVIDIA NIM - Llama 3.1 70B for high-quality text generation (RTX 4090)
+  nim-generation-70b:
+    image: nvcr.io/nim/meta/llama-3.1-70b-instruct:latest
+    container_name: nim-generation-70b
+    ports:
+      - "8083:8000"  # Map to local port 8083
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0  # Use GPU 0 (RTX 4090)
+      - NGC_API_KEY=${NGC_API_KEY}
+    volumes:
+      - nim_cache:/opt/nim/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: "no"  # Manual start due to high VRAM usage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 600s  # Longer startup time for 70B model
+
+volumes:
+  nim_cache:
+    driver: local
+
+networks:
+  default:
+    name: ai-assistant-network

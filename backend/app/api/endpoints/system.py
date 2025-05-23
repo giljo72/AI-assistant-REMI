@@ -8,6 +8,11 @@ import os
 import signal
 import time
 from datetime import datetime
+import logging
+import httpx
+import asyncio
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -165,70 +170,130 @@ def get_system_services() -> List[ServiceStatus]:
     return services
 
 def get_ai_models() -> List[ModelInfo]:
-    """Get AI model information"""
+    """Get AI model information - ONLY REAL DETECTED MODELS"""
     models = []
     
-    # Check for Ollama models
+    # Detect real Ollama models
     try:
-        # Try to get ollama list
-        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
-            lines = result.stdout.strip().split('\n')[1:]  # Skip header
-            for line in lines:
-                if line.strip():
-                    parts = line.split()
-                    if len(parts) >= 3:
-                        model_name = parts[0]
-                        model_size = parts[2] if len(parts) > 2 else "Unknown"
-                        models.append(ModelInfo(
-                            name=model_name,
-                            type="ollama",
-                            status="loaded",  # If listed, it's available
-                            size=model_size,
-                            parameters="Unknown",
-                            last_used="Unknown"
-                        ))
-    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
-        # Add some example models if ollama is not available
-        models.extend([
-            ModelInfo(
-                name="llama3.1:8b",
-                type="ollama",
-                status="unloaded",
-                size="4.7GB",
-                parameters="8B",
-                quantization="Q4_0"
-            ),
-            ModelInfo(
-                name="llama3.1:70b",
-                type="ollama",
-                status="unloaded",
-                size="40GB",
-                parameters="70B"
-            )
-        ])
+        # First try to check if Ollama is accessible via HTTP
+        import requests
+        response = requests.get("http://10.1.0.224:11434/api/tags", timeout=3)
+        if response.status_code == 200:
+            ollama_data = response.json()
+            for model in ollama_data.get("models", []):
+                model_name = model.get("name", "unknown")
+                model_size = model.get("size", 0)
+                size_gb = f"{model_size / (1024**3):.1f}GB" if model_size > 0 else "Unknown"
+                
+                # Extract parameters from details
+                details = model.get("details", {})
+                parameters = details.get("parameter_size", "Unknown")
+                quantization = details.get("quantization_level", "Unknown")
+                
+                models.append(ModelInfo(
+                    name=model_name,
+                    type="ollama", 
+                    status="loaded",
+                    size=size_gb,
+                    parameters=parameters,
+                    quantization=quantization,
+                    context_length=None,
+                    memory_usage=None,
+                    last_used="Available"
+                ))
+                logger.info(f"Detected Ollama model: {model_name} ({size_gb})")
+    except Exception as e:
+        logger.info(f"Ollama HTTP check failed: {e}, trying command line...")
+        
+        # Fallback to command line check
+        try:
+            result = subprocess.run(['ollama', 'list'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')[1:]  # Skip header
+                for line in lines:
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 3:
+                            model_name = parts[0]
+                            model_size = parts[2] if len(parts) > 2 else "Unknown"
+                            models.append(ModelInfo(
+                                name=model_name,
+                                type="ollama",
+                                status="loaded",
+                                size=model_size,
+                                parameters="Unknown",
+                                quantization="Unknown",
+                                context_length=None,
+                                memory_usage=None,
+                                last_used="Available"
+                            ))
+                            logger.info(f"Detected Ollama model via CLI: {model_name} ({model_size})")
+        except Exception as e2:
+            logger.info(f"Ollama command line check also failed: {e2}")
     
-    # Add embedding model
-    models.append(ModelInfo(
-        name="nomic-embed-text",
-        type="embedding",
-        status="loaded",
-        size="274MB",
-        parameters="137M",
-        memory_usage=274,
-        context_length=8192,
-        last_used="2 minutes ago"
-    ))
+    # Check for real NVIDIA NIM models
+    try:
+        # Check NIM Embeddings
+        try:
+            response = requests.get("http://localhost:8081/v1/health/ready", timeout=2)
+            if response.status_code == 200:
+                models.append(ModelInfo(
+                    name="nvidia/nv-embedqa-e5-v5",
+                    type="nvidia-nim",
+                    status="loaded",
+                    size="1.2GB",
+                    parameters="335M",
+                    quantization="FP16",
+                    context_length=512,
+                    memory_usage=1200,
+                    last_used="Active"
+                ))
+                logger.info("Detected NVIDIA NIM Embeddings model")
+        except:
+            logger.info("NVIDIA NIM Embeddings not accessible")
+        
+        # Check NIM Generation 8B
+        try:
+            response = requests.get("http://localhost:8082/v1/health/ready", timeout=2)
+            if response.status_code == 200:
+                models.append(ModelInfo(
+                    name="meta/llama-3.1-8b-instruct",
+                    type="nvidia-nim",
+                    status="loaded",
+                    size="4.2GB",
+                    parameters="8B",
+                    quantization="TensorRT",
+                    context_length=131072,
+                    memory_usage=4200,
+                    last_used="Active"
+                ))
+                logger.info("Detected NVIDIA NIM Generation 8B model")
+        except:
+            logger.info("NVIDIA NIM Generation 8B not accessible")
+        
+        # Check NIM Generation 70B
+        try:
+            response = requests.get("http://localhost:8083/v1/health/ready", timeout=2)
+            if response.status_code == 200:
+                models.append(ModelInfo(
+                    name="meta/llama-3.1-70b-instruct",
+                    type="nvidia-nim",
+                    status="loaded",
+                    size="18GB",
+                    parameters="70B",
+                    quantization="TensorRT",
+                    context_length=131072,
+                    memory_usage=18000,
+                    last_used="Active"
+                ))
+                logger.info("Detected NVIDIA NIM Generation 70B model")
+        except:
+            logger.info("NVIDIA NIM Generation 70B not accessible")
+            
+    except Exception as e:
+        logger.info(f"NVIDIA NIM check failed: {e}")
     
-    # Add NeMo model
-    models.append(ModelInfo(
-        name="NeMo Document AI",
-        type="nemo",
-        status="unloaded",
-        size="2.1GB",
-        parameters="Various"
-    ))
-    
+    logger.info(f"Total real models detected: {len(models)}")
     return models
 
 def get_environment_info() -> EnvironmentInfo:
@@ -427,13 +492,50 @@ async def load_model(request: Dict[str, Any]):
     
     try:
         if model_type == "ollama":
-            # Try to pull/load the model
-            result = subprocess.run(['ollama', 'pull', model_name], 
-                                 capture_output=True, text=True, timeout=300)
-            if result.returncode == 0:
-                message = f"Ollama model {model_name} loaded successfully"
+            # Use the Ollama service to pull the model
+            try:
+                from ...services.ollama_service import get_ollama_service
+                ollama_service = get_ollama_service()
+                
+                # Check if model already exists
+                model_exists = await ollama_service.check_model_exists(model_name)
+                
+                if model_exists:
+                    message = f"Ollama model {model_name} is already available"
+                else:
+                    # Pull the model asynchronously
+                    success = await ollama_service.pull_model(model_name)
+                    if success:
+                        message = f"Ollama model {model_name} loaded successfully"
+                    else:
+                        message = f"Loading Ollama model {model_name}... This may take several minutes."
+            except ImportError:
+                # Fallback to subprocess if service not available
+                result = subprocess.run(['ollama', 'pull', model_name], 
+                                     capture_output=True, text=True, timeout=300)
+                if result.returncode == 0:
+                    message = f"Ollama model {model_name} loaded successfully"
+                else:
+                    message = f"Loading Ollama model {model_name}... This may take a few minutes."
+        
+        elif model_type == "nvidia-nim":
+            # Start the appropriate NIM container
+            if "70b" in model_name.lower():
+                container_name = "nim-generation-70b"
+            elif "8b" in model_name.lower():
+                container_name = "nim-generation-8b"
+            elif "embed" in model_name.lower():
+                container_name = "nim-embeddings"
             else:
-                message = f"Loading Ollama model {model_name}... This may take a few minutes."
+                container_name = "nim-generation-8b"  # Default
+            
+            # Start the container
+            result = subprocess.run(['docker', 'start', container_name], 
+                                 capture_output=True, text=True, timeout=60)
+            if result.returncode == 0:
+                message = f"NVIDIA NIM model {model_name} container started successfully"
+            else:
+                message = f"Starting NVIDIA NIM model {model_name}... This may take several minutes."
         
         elif model_type == "nemo":
             # Mock NeMo loading
@@ -459,13 +561,37 @@ async def load_model(request: Dict[str, Any]):
 async def unload_model(request: Dict[str, str]):
     """Unload an AI model"""
     model_name = request.get("model_name")
+    model_type = request.get("model_type", "ollama")
     
     if not model_name:
         raise HTTPException(status_code=400, detail="model_name is required")
     
     try:
-        # For Ollama, we can't really "unload" models, but we can remove them
-        message = f"Model {model_name} unloaded from memory"
+        if model_type == "nvidia-nim":
+            # Stop the appropriate NIM container
+            if "70b" in model_name.lower():
+                container_name = "nim-generation-70b"
+            elif "8b" in model_name.lower():
+                container_name = "nim-generation-8b"
+            elif "embed" in model_name.lower():
+                container_name = "nim-embeddings"
+            else:
+                container_name = "nim-generation-8b"  # Default
+            
+            # Stop the container
+            result = subprocess.run(['docker', 'stop', container_name], 
+                                 capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                message = f"NVIDIA NIM model {model_name} container stopped successfully"
+            else:
+                message = f"NVIDIA NIM model {model_name} container stop initiated"
+        
+        elif model_type == "ollama":
+            # For Ollama, we can't really "unload" models from memory
+            message = f"Ollama model {model_name} unloaded from active use"
+        
+        else:
+            message = f"Model {model_name} unloaded from memory"
         
         return {
             "success": True,
@@ -479,6 +605,7 @@ async def unload_model(request: Dict[str, str]):
 async def switch_model(request: Dict[str, str]):
     """Switch active AI model"""
     model_name = request.get("model_name")
+    model_type = request.get("model_type", "ollama")
     
     if not model_name:
         raise HTTPException(status_code=400, detail="model_name is required")
@@ -486,8 +613,24 @@ async def switch_model(request: Dict[str, str]):
     try:
         # Store the active model preference
         service_states['active_model'] = model_name
+        service_states['active_model_type'] = model_type
         
-        message = f"Switched to model {model_name}"
+        # For NVIDIA NIM models, ensure the right container is running
+        if model_type == "nvidia-nim":
+            if "70b" in model_name.lower():
+                # Switch to 70B - stop 8B, start 70B
+                subprocess.run(['docker', 'stop', 'nim-generation-8b'], capture_output=True)
+                subprocess.run(['docker', 'start', 'nim-generation-70b'], capture_output=True)
+                message = f"Switched to high-quality model {model_name} (70B)"
+            elif "8b" in model_name.lower():
+                # Switch to 8B - stop 70B, start 8B  
+                subprocess.run(['docker', 'stop', 'nim-generation-70b'], capture_output=True)
+                subprocess.run(['docker', 'start', 'nim-generation-8b'], capture_output=True)
+                message = f"Switched to fast model {model_name} (8B)"
+            else:
+                message = f"Switched to model {model_name}"
+        else:
+            message = f"Switched to {model_type} model {model_name}"
         
         return {
             "success": True,
@@ -497,66 +640,131 @@ async def switch_model(request: Dict[str, str]):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error switching model: {str(e)}")
 
+@router.get("/ollama/health")
+async def check_ollama_health():
+    """Check Ollama service health and available models"""
+    try:
+        import requests
+        response = requests.get("http://10.1.0.224:11434/api/tags", timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "accessible": True,
+                "status": "healthy",
+                "models": data.get("models", []),
+                "message": "Ollama service is running and accessible"
+            }
+        else:
+            return {
+                "accessible": False,
+                "status": "error",
+                "message": f"Ollama responded with status {response.status_code}"
+            }
+    except Exception as e:
+        return {
+            "accessible": False,
+            "status": "error", 
+            "message": f"Cannot reach Ollama: {str(e)}"
+        }
+
 @router.get("/models/available")
 async def get_available_models():
-    """Get list of available models that can be loaded"""
+    """Get list of available NVIDIA NIM models"""
     try:
-        models = []
+        # Check NIM container status
+        nim_status = {
+            "embeddings": {"healthy": False},
+            "generation": {"healthy": False}
+        }
         
-        # Get available Ollama models
+        # Check NIM Embeddings health
         try:
-            result = subprocess.run(['ollama', 'list'], capture_output=True, text=True, timeout=5)
-            if result.returncode == 0:
-                lines = result.stdout.strip().split('\n')[1:]  # Skip header
-                for line in lines:
-                    if line.strip():
-                        parts = line.split()
-                        if len(parts) >= 3:
-                            model_name = parts[0]
-                            model_size = parts[2]
-                            models.append({
-                                "name": model_name,
-                                "type": "ollama",
-                                "status": "available",
-                                "size": model_size,
-                                "parameters": "Unknown"
-                            })
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                response = await client.get("http://localhost:8081/v1/health/ready")
+                nim_status["embeddings"]["healthy"] = response.status_code == 200
         except:
-            # Default models
-            models.extend([
-                {
-                    "name": "llama3.1:8b",
-                    "type": "ollama",
-                    "status": "unloaded",
-                    "size": "4.7GB",
-                    "parameters": "8B"
-                },
-                {
-                    "name": "llama3.1:70b",
-                    "type": "ollama",
-                    "status": "unloaded",
-                    "size": "40GB",
-                    "parameters": "70B"
-                },
-                {
-                    "name": "mistral:7b",
-                    "type": "ollama",
-                    "status": "unloaded",
-                    "size": "4.1GB",
-                    "parameters": "7B"
-                }
-            ])
+            pass
         
-        # Add NeMo models
-        models.append({
-            "name": "NeMo Document AI",
-            "type": "nemo",
-            "status": "unloaded",
-            "size": "2.1GB",
-            "parameters": "Various"
-        })
+        # Check NIM Generation health
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                response = await client.get("http://localhost:8082/v1/health/ready")
+                nim_status["generation"]["healthy"] = response.status_code == 200
+        except:
+            pass
+        
+        # Return actual NIM models with real status
+        models = [
+            {
+                "name": "meta/llama-3.1-8b-instruct",
+                "type": "NVIDIA NIM",
+                "status": "loaded" if nim_status["generation"]["healthy"] else "unloaded",
+                "size": "16GB",
+                "parameters": "8B",
+                "quantization": "TensorRT Optimized",
+                "memory_usage": 8500 if nim_status["generation"]["healthy"] else 0,
+                "context_length": 131072,
+                "last_used": "Active" if nim_status["generation"]["healthy"] else "Inactive",
+                "container": "nim-generation",
+                "port": 8082
+            },
+            {
+                "name": "nvidia/nv-embedqa-e5-v5",
+                "type": "NVIDIA NIM Embeddings", 
+                "status": "loaded" if nim_status["embeddings"]["healthy"] else "unloaded",
+                "size": "15GB",
+                "parameters": "7.9B",
+                "memory_usage": 3200 if nim_status["embeddings"]["healthy"] else 0,
+                "context_length": 32768,
+                "last_used": "Active" if nim_status["embeddings"]["healthy"] else "Inactive",
+                "container": "nim-embeddings",
+                "port": 8081
+                },
+            {
+                "name": "NeMo Document AI",
+                "type": "Document Processing",
+                "status": "unloaded",
+                "size": "2.1GB",
+                "parameters": "Hierarchical Processing",
+                "note": "Available for document structure preservation"
+            }
+        ]
         
         return models
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting available models: {str(e)}")
+
+@router.get("/nim/status")
+async def get_nim_status():
+    """Get real-time status of NVIDIA NIM containers"""
+    try:
+        nim_status = {
+            "embeddings": {"healthy": False, "model": "nvidia/nv-embedqa-e5-v5"},
+            "generation": {"healthy": False, "model": "meta/llama-3.1-8b-instruct"}
+        }
+        
+        # Check NIM Embeddings health
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                response = await client.get("http://localhost:8081/v1/health/ready")
+                nim_status["embeddings"]["healthy"] = response.status_code == 200
+                nim_status["embeddings"]["status"] = "loaded"
+        except:
+            nim_status["embeddings"]["status"] = "unloaded"
+        
+        # Check NIM Generation health
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                response = await client.get("http://localhost:8082/v1/health/ready")
+                nim_status["generation"]["healthy"] = response.status_code == 200
+                nim_status["generation"]["status"] = "loaded"
+        except:
+            nim_status["generation"]["status"] = "unloaded"
+        
+        return nim_status
+        
+    except Exception as e:
+        logger.error(f"Error checking NIM status: {e}")
+        raise HTTPException(status_code=500, detail=f"Error checking NIM status: {str(e)}")

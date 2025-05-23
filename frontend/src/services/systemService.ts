@@ -15,11 +15,11 @@ export interface ServiceStatus {
 }
 
 /**
- * AI Model information
+ * AI Model information - Updated for real multi-model system
  */
 export interface ModelInfo {
   name: string;
-  type: 'ollama' | 'nemo' | 'embedding';
+  type: 'ollama' | 'nvidia-nim' | 'nemo' | 'transformers';
   status: 'loaded' | 'unloaded' | 'loading' | 'error';
   size?: string;
   parameters?: string;
@@ -37,7 +37,6 @@ export interface EnvironmentInfo {
   node_version: string;
   cuda_version?: string;
   pytorch_version?: string;
-  tensorflow_version?: string;
   pgvector_version?: string;
   os_info: string;
   total_memory: number;
@@ -66,7 +65,7 @@ export interface SystemStatus {
  */
 export interface ModelLoadRequest {
   model_name: string;
-  model_type: 'ollama' | 'nemo';
+  model_type: 'ollama' | 'nvidia-nim' | 'nemo' | 'transformers';
   force_reload?: boolean;
 }
 
@@ -88,207 +87,103 @@ export interface SystemOperationResponse {
 }
 
 /**
- * Service for system and model management
+ * Service for system and model management - NO MORE MOCK DATA
  */
 const systemService = {
   /**
-   * Get complete system status
+   * Get complete system status - REAL DATA ONLY
    */
   getSystemStatus: async (): Promise<SystemStatus> => {
     try {
+      console.log('🔍 Fetching real system status from backend...');
       const response = await api.get('/system/status');
+      console.log('✅ Real system status received:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching system status, using mock data:', error);
-      // Return mock data if API is not available
-      return {
-        services: [
-          {
-            name: 'FastAPI Backend',
-            status: 'running',
-            version: '0.104.1',
-            port: 8000,
-            pid: 12345,
-            uptime: '2 hours 15 minutes',
-            memory_usage: 256,
-            cpu_usage: 5.2
-          },
-          {
-            name: 'PostgreSQL',
-            status: 'running',
-            version: '17.0',
-            port: 5432,
-            pid: 2468,
-            uptime: '5 hours 32 minutes',
-            memory_usage: 128,
-            cpu_usage: 1.8
-          },
-          {
-            name: 'pgvector Extension',
-            status: 'running',
-            version: '0.6.0'
-          }
-        ],
-        models: [
-          {
-            name: 'llama3.1:8b',
-            type: 'ollama',
-            status: 'loaded',
-            size: '4.7GB',
-            parameters: '8B',
-            quantization: 'Q4_0',
-            memory_usage: 4700,
-            context_length: 131072,
-            last_used: '5 minutes ago'
-          },
-          {
-            name: 'nomic-embed-text',
-            type: 'embedding',
-            status: 'loaded',
-            size: '274MB',
-            parameters: '137M',
-            memory_usage: 274,
-            context_length: 8192,
-            last_used: '2 minutes ago'
-          },
-          {
-            name: 'NeMo Document AI',
-            type: 'nemo',
-            status: 'unloaded',
-            size: '2.1GB',
-            parameters: 'Various'
-          }
-        ],
-        environment: {
-          python_version: '3.11.5',
-          node_version: '18.17.0',
-          cuda_version: '12.2',
-          pytorch_version: '2.1.0',
-          pgvector_version: '0.6.0',
-          os_info: 'Windows 11 Pro 22H2',
-          total_memory: 65536,
-          available_memory: 32768,
-          gpu_info: {
-            name: 'NVIDIA RTX 4090',
-            memory_total: 24576,
-            memory_used: 8192,
-            gpu_utilization: 15,
-            temperature: 42
-          }
-        },
-        last_updated: new Date().toISOString()
-      };
+      console.error('❌ Failed to fetch system status:', error);
+      // Instead of mock data, throw error to show real connection issues
+      throw new Error(`Cannot connect to backend API: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
   /**
-   * Load a specific model
+   * Load a specific model - REAL API ONLY
    */
   loadModel: async (request: ModelLoadRequest): Promise<SystemOperationResponse> => {
     try {
+      console.log('🚀 Loading model via real API:', request);
       const response = await api.post('/system/models/load', request);
+      console.log('✅ Model load response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error loading model, using mock response:', error);
-      // Mock response if API is not available
-      return {
-        success: true,
-        message: `Loading ${request.model_name}... This may take a few minutes.`
-      };
+      console.error('❌ Failed to load model:', error);
+      throw new Error(`Failed to load model: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
   /**
-   * Unload a specific model
+   * Unload a specific model - REAL API ONLY
    */
-  unloadModel: async (model_name: string): Promise<SystemOperationResponse> => {
+  unloadModel: async (model_name: string, model_type: string): Promise<SystemOperationResponse> => {
     try {
-      const response = await api.post('/system/models/unload', { model_name });
+      console.log('🛑 Unloading model via real API:', model_name, model_type);
+      const response = await api.post('/system/models/unload', { 
+        model_name, 
+        model_type 
+      });
+      console.log('✅ Model unload response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error unloading model, using mock response:', error);
-      // Mock response if API is not available
-      return {
-        success: true,
-        message: `Unloading ${model_name}...`
-      };
+      console.error('❌ Failed to unload model:', error);
+      throw new Error(`Failed to unload model: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
   /**
-   * Switch active model
+   * Switch active model - REAL API ONLY
    */
-  switchModel: async (model_name: string): Promise<SystemOperationResponse> => {
+  switchModel: async (model_name: string, model_type: string): Promise<SystemOperationResponse> => {
     try {
-      const response = await api.post('/system/models/switch', { model_name });
+      console.log('🔄 Switching model via real API:', model_name, model_type);
+      const response = await api.post('/system/models/switch', { 
+        model_name,
+        model_type 
+      });
+      console.log('✅ Model switch response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error switching model, using mock response:', error);
-      // Mock response if API is not available
-      return {
-        success: true,
-        message: `Switching to ${model_name}...`
-      };
+      console.error('❌ Failed to switch model:', error);
+      throw new Error(`Failed to switch model: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
   /**
-   * Control a system service
+   * Control system services - REAL API ONLY
    */
   controlService: async (request: ServiceControlRequest): Promise<SystemOperationResponse> => {
     try {
+      console.log('⚙️ Controlling service via real API:', request);
       const response = await api.post('/system/services/control', request);
+      console.log('✅ Service control response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error controlling service, using mock response:', error);
-      // Mock response if API is not available
-      return {
-        success: true,
-        message: `${request.action}ing ${request.service_name}...`
-      };
+      console.error('❌ Failed to control service:', error);
+      throw new Error(`Failed to control service: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
   /**
-   * Get available models that can be loaded
+   * Get available models - REAL API ONLY
    */
   getAvailableModels: async (): Promise<ModelInfo[]> => {
     try {
+      console.log('📋 Fetching available models from real API...');
       const response = await api.get('/system/models/available');
+      console.log('✅ Available models received:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching available models, using mock data:', error);
-      // Mock data if API is not available
-      return [
-        {
-          name: 'llama3.1:8b',
-          type: 'ollama',
-          status: 'unloaded',
-          size: '4.7GB',
-          parameters: '8B'
-        },
-        {
-          name: 'llama3.1:70b',
-          type: 'ollama',
-          status: 'unloaded',
-          size: '40GB',
-          parameters: '70B'
-        },
-        {
-          name: 'mistral:7b',
-          type: 'ollama',
-          status: 'unloaded',
-          size: '4.1GB',
-          parameters: '7B'
-        },
-        {
-          name: 'NeMo Document AI',
-          type: 'nemo',
-          status: 'unloaded',
-          size: '2.1GB',
-          parameters: 'Various'
-        }
-      ];
+      console.error('❌ Failed to fetch available models:', error);
+      throw new Error(`Failed to fetch models: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 };

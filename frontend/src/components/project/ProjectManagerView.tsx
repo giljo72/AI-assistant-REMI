@@ -179,6 +179,28 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
     }
   };
 
+  // Handler for deleting a chat
+  const handleDeleteChat = async (chatId: string) => {
+    if (!project) return;
+    
+    // Simple confirmation
+    if (!window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      // Delete chat using the API
+      await chatService.deleteChat(chatId);
+      
+      // Update local state by removing the chat
+      setProjectChats(projectChats.filter(chat => chat.id !== chatId));
+      
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      setError('Failed to delete chat. Please try again.');
+    }
+  };
+
   // Handler for opening file manager
   const handleOpenFiles = () => {
     if (onOpenFiles) {
@@ -428,7 +450,10 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
                     <button className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded">
                       Edit
                     </button>
-                    <button className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded">
+                    <button 
+                      className="text-xs px-2 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                      onClick={() => handleDeleteChat(chat.id)}
+                    >
                       Delete
                     </button>
                   </div>

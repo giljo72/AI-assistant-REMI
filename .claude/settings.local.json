@@ -5,7 +5,14 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(ls:*)",
-      "Bash(./venv_nemo/Scripts/python -m pip list)"
+      "Bash(./venv_nemo/Scripts/python -m pip list)",
+      "Bash(docker exec:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker volume:*)",
+      "Bash(mv:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
