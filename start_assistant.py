@@ -130,7 +130,7 @@ class AIAssistantLauncher:
     def check_backend(self):
         """Check if backend is running"""
         try:
-            response = requests.get("http://localhost:8000/api/health", timeout=2)
+            response = requests.get("http://localhost:8000/api/health/ping", timeout=2)
             return response.status_code == 200
         except:
             return False
@@ -143,21 +143,32 @@ class AIAssistantLauncher:
         venv_python = self.base_path / "venv_nemo" / "Scripts" / "python.exe"
         
         if not venv_python.exists():
-            self.log("Virtual environment not found. Please run setup_environment.py first.", "ERROR")
+            self.log("Virtual environment not found at: " + str(venv_python), "ERROR")
+            self.log("Please ensure venv_nemo exists in the project root.", "ERROR")
             return False
             
         try:
             # Start backend in a new window
             if sys.platform == "win32":
-                cmd = f'cd /d "{backend_path}" && "{venv_python}" -m uvicorn app.main:app --reload --port 8000'
+                # Convert Path objects to strings and ensure proper escaping
+                backend_str = str(backend_path.absolute()).replace("/", "\\")
+                venv_python_str = str(venv_python.absolute()).replace("/", "\\")
+                
+                # Use run_server.py which properly sets up the Python path
+                run_server_path = backend_path / "run_server.py"
+                cmd_parts = [
+                    "cmd", "/c", "start", '"Backend API"', "cmd", "/k",
+                    f'cd /d "{backend_str}" && "{venv_python_str}" "{run_server_path}"'
+                ]
+                
                 process = subprocess.Popen(
-                    ["cmd", "/c", "start", "Backend API", "cmd", "/k", cmd],
+                    ' '.join(cmd_parts),
                     shell=True
                 )
             else:
                 process = subprocess.Popen(
                     [str(venv_python), "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
-                    cwd=backend_path
+                    cwd=str(backend_path)
                 )
                 
             self.processes.append(process)
@@ -189,15 +200,23 @@ class AIAssistantLauncher:
         try:
             # Start frontend in a new window
             if sys.platform == "win32":
-                cmd = f'cd /d "{frontend_path}" && npm run dev'
+                # Convert Path object to string and ensure proper escaping
+                frontend_str = str(frontend_path.absolute()).replace("/", "\\")
+                
+                # Use explicit command construction to avoid issues
+                cmd_parts = [
+                    "cmd", "/c", "start", '"Frontend"', "cmd", "/k",
+                    f'cd /d "{frontend_str}" && npm run dev'
+                ]
+                
                 process = subprocess.Popen(
-                    ["cmd", "/c", "start", "Frontend", "cmd", "/k", cmd],
+                    ' '.join(cmd_parts),
                     shell=True
                 )
             else:
                 process = subprocess.Popen(
                     ["npm", "run", "dev"],
-                    cwd=frontend_path
+                    cwd=str(frontend_path)
                 )
                 
             self.processes.append(process)
@@ -233,9 +252,9 @@ class AIAssistantLauncher:
                 
                 for model in required_models:
                     if any(model in inst for inst in installed):
-                        self.log(f"✓ {model} - Installed", "SUCCESS")
+                        self.log(f"[OK] {model} - Installed", "SUCCESS")
                     else:
-                        self.log(f"✗ {model} - Not installed", "WARNING")
+                        self.log(f"[X] {model} - Not installed", "WARNING")
                         self.log(f"  Run: ollama pull {model}")
             else:
                 self.log("Could not check models - Ollama not responding", "WARNING")
@@ -329,29 +348,29 @@ class AIAssistantLauncher:
             # Start embeddings container (always needed for RAG)
             if "nim-embeddings" in containers:
                 if containers["nim-embeddings"] == "running":
-                    self.log("✓ nim-embeddings - Already running", "SUCCESS")
+                    self.log("[OK] nim-embeddings - Already running", "SUCCESS")
                 else:
                     self.log("Starting nim-embeddings container...")
                     subprocess.run(["docker-compose", "up", "-d", "nim-embeddings"], 
-                                 capture_output=True, cwd=self.base_path)
+                                 capture_output=True, cwd=str(self.base_path))
                     time.sleep(5)
-                    self.log("✓ nim-embeddings - Started", "SUCCESS")
+                    self.log("[OK] nim-embeddings - Started", "SUCCESS")
             else:
                 self.log("Creating and starting nim-embeddings container...")
                 subprocess.run(["docker-compose", "up", "-d", "nim-embeddings"], 
-                             capture_output=True, cwd=self.base_path)
+                             capture_output=True, cwd=str(self.base_path))
                 time.sleep(10)
-                self.log("✓ nim-embeddings - Created and started", "SUCCESS")
+                self.log("[OK] nim-embeddings - Created and started", "SUCCESS")
                 
             # Check but don't auto-start 70B model (high VRAM usage)
             if "nim-generation-70b" in containers:
                 if containers["nim-generation-70b"] == "running":
-                    self.log("✓ nim-generation-70b - Already running (22GB VRAM)", "SUCCESS")
+                    self.log("[OK] nim-generation-70b - Already running (22GB VRAM)", "SUCCESS")
                 else:
-                    self.log("✗ nim-generation-70b - Not running", "INFO")
+                    self.log("[X] nim-generation-70b - Not running", "INFO")
                     self.log("  To start: docker-compose up nim-generation-70b", "INFO")
             else:
-                self.log("✗ nim-generation-70b - Not created", "INFO")
+                self.log("[X] nim-generation-70b - Not created", "INFO")
                 self.log("  To create and start: docker-compose up nim-generation-70b", "INFO")
                 self.log("  Note: Requires 22GB VRAM, will unload other models", "INFO")
                 

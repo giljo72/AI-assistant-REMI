@@ -2,6 +2,10 @@
 title AI Assistant - Comprehensive Startup
 color 0A
 
+REM Check for debug mode
+if "%1"=="debug" goto :debug_mode
+if "%1"=="monitor" goto :monitor_mode
+
 REM Check for admin rights
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -35,8 +39,18 @@ if errorlevel 1 (
 
 REM Check if virtual environment exists
 if not exist "venv_nemo\Scripts\python.exe" (
-    echo ERROR: Virtual environment not found
-    echo Please run setup_environment.py first
+    echo ERROR: Virtual environment 'venv_nemo' not found
+    echo.
+    echo Current directory: %CD%
+    echo Looking for: %CD%\venv_nemo\Scripts\python.exe
+    echo.
+    echo Make sure you're running this script from the F:\Assistant directory
+    echo or that venv_nemo exists in the current directory.
+    echo.
+    echo If venv_nemo doesn't exist, you need to create it:
+    echo   python -m venv venv_nemo
+    echo   venv_nemo\Scripts\activate
+    echo   pip install -r backend\requirements.txt
     pause
     exit /b 1
 )
@@ -52,7 +66,7 @@ echo - NVIDIA NIM containers
 echo - Backend API server
 echo - Frontend development server
 echo.
-python start_assistant.py
+venv_nemo\Scripts\python.exe start_assistant.py
 
 REM If the script exits abnormally, show error
 if errorlevel 1 (
@@ -62,3 +76,22 @@ if errorlevel 1 (
     echo ================================================
     pause
 )
+exit /b
+
+:debug_mode
+echo ================================================
+echo AI Assistant - Debug Mode
+echo ================================================
+echo Starting services in separate windows for debugging...
+echo.
+call startai_debug.bat
+exit /b
+
+:monitor_mode
+echo ================================================
+echo AI Assistant - Monitor Mode
+echo ================================================
+echo Starting services with debug monitor...
+echo.
+call startai_monitor.bat
+exit /b

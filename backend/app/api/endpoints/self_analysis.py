@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 
 from app.services.llm_service import get_llm_service
-from app.services.model_orchestrator import model_orchestrator
+from app.services.model_orchestrator import orchestrator
 
 router = APIRouter(prefix="/api/self-analysis", tags=["self_analysis"])
 
@@ -20,7 +20,7 @@ class CodeAnalyzer:
     
     def __init__(self):
         self.llm_service = get_llm_service()
-        self.orchestrator = model_orchestrator
+        self.orchestrator = orchestrator
         self.analysis_model = "deepseek-coder-v2:16b-lite-instruct-q4_K_M"
         
     async def analyze_file(self, file_path: Path) -> Dict[str, Any]:
@@ -110,7 +110,7 @@ code_analyzer = CodeAnalyzer()
 @router.get("/status")
 async def get_analysis_status() -> Dict[str, Any]:
     """Get self-analysis system status"""
-    model_status = await model_orchestrator.get_model_status()
+    model_status = await orchestrator.get_model_status()
     deepseek_status = next(
         (m for m in model_status if "deepseek" in m["name"].lower()),
         None

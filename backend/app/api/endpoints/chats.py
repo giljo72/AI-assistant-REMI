@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import logging
 import json
+import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,7 @@ from ...db.repositories.chat_repository import chat_repository
 from ...schemas.chat import Chat, ChatCreate, ChatUpdate, ChatMessage, ChatMessageCreate
 from ...services.nim_service import get_nim_service
 from ...services.llm_service import get_llm_service
+from ...services.model_orchestrator import orchestrator
 
 router = APIRouter()
 
@@ -131,10 +134,12 @@ class ChatGenerateRequest(BaseModel):
     max_length: int = 4096  # Increased from 150 to allow full responses
     temperature: float = 0.7
     include_context: bool = True
+    context_messages: int = 10  # Number of previous messages to include in context
     model_name: Optional[str] = None
     model_type: Optional[str] = None
     context_mode: Optional[str] = None  # standard, project-focus, deep-research, quick-response, self-aware, custom
     custom_context: Optional[str] = None  # Custom context instructions when mode is 'custom'
+    personal_context: Optional[str] = None  # Personal profile context from frontend
 
 
 class ChatGenerateResponse(BaseModel):
@@ -194,6 +199,26 @@ async def generate_chat_response_endpoint(
         project_id = chat.project_id
         active_prompts = user_prompt_repository.get_active_for_project(db, project_id=project_id)
         
+        # Auto-activate system prompts based on model
+        from sqlalchemy import select
+        from ...db.models.user_prompt import UserPrompt
+        
+        # Check if system prompts should be activated
+        if 'deepseek-coder' in model_name.lower():
+            # Use DeepSeek Coder system prompt
+            coder_prompt = db.execute(
+                select(UserPrompt).where(UserPrompt.name == "System: DeepSeek Coder")
+            ).scalar_one_or_none()
+            if coder_prompt and not any(p.name == "System: DeepSeek Coder" for p in active_prompts):
+                active_prompts.append(coder_prompt)
+        else:
+            # Use default assistant prompt for all other models
+            default_prompt = db.execute(
+                select(UserPrompt).where(UserPrompt.name == "System: Default Assistant")
+            ).scalar_one_or_none()
+            if default_prompt and not any(p.name == "System: Default Assistant" for p in active_prompts):
+                active_prompts.append(default_prompt)
+        
         # Check if we're in self-aware mode (from context mode, not user prompts)
         is_self_aware = request.context_mode == "self-aware"
         
@@ -235,6 +260,10 @@ You can help improve your own code, debug issues, and suggest enhancements. When
             system_content += "\n\nAdditional Instructions:"
             for prompt in active_prompts:
                 system_content += f"\n- {prompt.content}"
+        
+        # Add personal profile context if provided in request
+        if hasattr(request, 'personal_context') and request.personal_context:
+            system_content += f"\n{request.personal_context}"
         
         system_message = {
             "role": "system",

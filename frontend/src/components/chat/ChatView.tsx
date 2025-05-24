@@ -14,6 +14,7 @@ import {
   MenuItem,
   FormControl,
 } from '@mui/material';
+import systemService from '../../services/systemService';
 import {
   Send as SendIcon,
   Mic as MicIcon,
@@ -63,6 +64,7 @@ const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState<string>('qwen2.5:32b-instruct-q4_K_M');
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -72,6 +74,38 @@ const ChatView: React.FC<ChatViewProps> = ({
     (state: RootState) => state.projectSettings
   );
   const { openContextControls } = useContextControls();
+
+  // Fetch active model from backend on mount
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const models = await systemService.getAvailableModels();
+        // Filter out embeddings models and keep only chat models
+        const chatModels = models.filter((m: any) => 
+          !m.name.includes('embedqa') && 
+          m.last_used !== 'Embeddings' &&
+          // Include Llama 70B even though it's NIM
+          (m.type !== 'nvidia-nim' || 
+           m.name === 'llama3.1:70b-instruct-q4_K_M' || 
+           m.name === 'meta/llama-3.1-70b-instruct')
+        );
+        setAvailableModels(chatModels);
+        
+        // Find and set the active model
+        const activeModel = models.find((m: any) => 
+          m.status === 'loaded' && 
+          !m.name.includes('embedqa') &&
+          m.last_used !== 'Embeddings'
+        );
+        if (activeModel) {
+          setSelectedModel(activeModel.name);
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+      }
+    };
+    fetchModels();
+  }, []);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -342,7 +376,23 @@ const ChatView: React.FC<ChatViewProps> = ({
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <Select
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
+              onChange={async (e) => {
+                const newModel = e.target.value;
+                setSelectedModel(newModel);
+                // Sync with backend
+                try {
+                  // Determine model type based on model name
+                  let modelType = 'ollama'; // Default to ollama
+                  if (newModel === 'llama3.1:70b-instruct-q4_K_M' || 
+                      newModel === 'meta/llama-3.1-70b-instruct' ||
+                      newModel.includes('meta/')) {
+                    modelType = 'nvidia-nim';
+                  }
+                  await systemService.switchModel(newModel, modelType);
+                } catch (error) {
+                  console.error('Failed to switch model:', error);
+                }
+              }}
               sx={{
                 backgroundColor: '#1a2b47',
                 color: '#fff',
@@ -359,17 +409,46 @@ const ChatView: React.FC<ChatViewProps> = ({
                 }
               }}
             >
-              <MenuItem value="qwen2.5:32b-instruct-q4_K_M">Qwen 2.5 32B (Default) - Full document/RAG support</MenuItem>
-              <MenuItem value="llama3.1:70b-instruct-q4_K_M">Llama 3.1 70B (Solo Mode) - Deep reasoning only</MenuItem>
-              <MenuItem value="mistral-nemo:latest">Mistral Nemo - Quick responses</MenuItem>
-              <MenuItem value="deepseek-coder-v2:16b-lite-instruct-q4_K_M">DeepSeek Coder - Self-aware coding mode</MenuItem>
+              {availableModels.map((model) => {
+                // Format model display name
+                let displayName = model.name;
+                if (model.name.includes('qwen2.5:32b')) {
+                  displayName = 'Qwen 2.5 32B (Default)';
+                } else if (model.name.includes('llama3.1:70b') || model.name === 'meta/llama-3.1-70b-instruct') {
+                  displayName = 'Llama 3.1 70B (NIM)';
+                } else if (model.name.includes('llama-3.1-70b')) {
+                  displayName = 'Llama 3.1 70B (NIM)';
+                } else if (model.name.includes('mistral-nemo')) {
+                  displayName = 'Mistral Nemo 12B';
+                } else if (model.name.includes('deepseek-coder')) {
+                  displayName = 'DeepSeek Coder 16B';
+                }
+                
+                return (
+                  <MenuItem key={model.name} value={model.name}>
+                    {displayName} - {model.size || 'Size unknown'}
+                  </MenuItem>
+                );
+              })}
             </Select>
           </FormControl>
           <Typography variant="caption" sx={{ color: '#666', flex: 1 }}>
-            {selectedModel === 'qwen2.5:32b-instruct-q4_K_M' && 'Primary model with full document/RAG support'}
-            {selectedModel === 'llama3.1:70b-instruct-q4_K_M' && 'Solo mode - All other models unloaded for max power'}
-            {selectedModel === 'mistral-nemo:latest' && 'Fast responses when speed is priority'}
-            {selectedModel === 'deepseek-coder-v2:16b-lite-instruct-q4_K_M' && 'Code generation in self-aware mode'}
+            {(() => {
+              if (selectedModel.includes('qwen2.5:32b')) {
+                return 'Primary model with full document/RAG support';
+              } else if (selectedModel.includes('llama3.1:70b') || selectedModel.includes('llama-3.1-70b')) {
+                return 'Solo mode - Maximum intelligence via NVIDIA NIM';
+              } else if (selectedModel.includes('mistral-nemo')) {
+                return 'Fast responses when speed is priority';
+              } else if (selectedModel.includes('deepseek-coder')) {
+                return 'Code generation in self-aware mode';
+              }
+              const currentModel = availableModels.find(m => m.name === selectedModel);
+              if (currentModel) {
+                return `${currentModel.parameters || 'Unknown params'} - ${currentModel.quantization || 'Unknown quantization'}`;
+              }
+              return 'Select a model to see details';
+            })()}
           </Typography>
         </Box>
         
@@ -502,9 +581,15 @@ const ChatView: React.FC<ChatViewProps> = ({
           isProjectPromptEnabled={projectPromptEnabled}
           isGlobalDataEnabled={globalDataEnabled}
           isProjectDocumentsEnabled={projectDocumentsEnabled}
+          isSystemPromptEnabled={true} // TODO: Add toggle state
+          isUserPromptEnabled={true} // TODO: Add toggle state
+          activeUserPromptName="Business Analysis" // TODO: Get from active prompts
+          selectedModel={selectedModel}
           onToggleProjectPrompt={() => dispatch(toggleProjectPrompt())}
           onToggleGlobalData={() => dispatch(toggleGlobalData())}
           onToggleProjectDocuments={() => dispatch(toggleProjectDocuments())}
+          onToggleSystemPrompt={() => {}} // TODO: Implement toggle
+          onToggleUserPrompt={() => {}} // TODO: Implement toggle
           onOpenContextControls={openContextControls}
           contextMode={contextMode}
         />

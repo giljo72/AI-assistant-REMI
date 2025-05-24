@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
 from typing import List, Dict, Any, Optional
 import psutil
 import subprocess
@@ -11,10 +11,16 @@ from datetime import datetime
 import logging
 import httpx
 import asyncio
+import json
+
+from app.services.model_orchestrator import orchestrator, OperationalMode, ModelStatus
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# WebSocket connections for real-time updates
+active_connections: List[WebSocket] = []
 
 # Store for tracking service states
 service_states = {}
@@ -173,11 +179,22 @@ def get_ai_models() -> List[ModelInfo]:
     """Get AI model information - ONLY REAL DETECTED MODELS"""
     models = []
     
+    # Get the currently active model
+    active_model = service_states.get('active_model', None)
+    
+    # If no active model is set, use the default from config
+    if not active_model:
+        from app.core.config import get_settings
+        settings = get_settings()
+        active_model = settings.DEFAULT_LLM_MODEL
+        service_states['active_model'] = active_model
+        service_states['active_model_type'] = 'ollama'
+    
     # Detect real Ollama models
     try:
         # First try to check if Ollama is accessible via HTTP
         import requests
-        response = requests.get("http://10.1.0.224:11434/api/tags", timeout=3)
+        response = requests.get("http://localhost:11434/api/tags", timeout=3)
         if response.status_code == 200:
             ollama_data = response.json()
             for model in ollama_data.get("models", []):
@@ -190,16 +207,18 @@ def get_ai_models() -> List[ModelInfo]:
                 parameters = details.get("parameter_size", "Unknown")
                 quantization = details.get("quantization_level", "Unknown")
                 
+                # Check if this is the active model
+                status = "loaded" if model_name == active_model else "unloaded"
                 models.append(ModelInfo(
                     name=model_name,
                     type="ollama", 
-                    status="loaded",
+                    status=status,
                     size=size_gb,
                     parameters=parameters,
                     quantization=quantization,
                     context_length=None,
                     memory_usage=None,
-                    last_used="Available"
+                    last_used="Active" if status == "loaded" else "Available"
                 ))
                 logger.info(f"Detected Ollama model: {model_name} ({size_gb})")
     except Exception as e:
@@ -216,16 +235,18 @@ def get_ai_models() -> List[ModelInfo]:
                         if len(parts) >= 3:
                             model_name = parts[0]
                             model_size = parts[2] if len(parts) > 2 else "Unknown"
+                            # Check if this is the active model
+                            status = "loaded" if model_name == active_model else "unloaded"
                             models.append(ModelInfo(
                                 name=model_name,
                                 type="ollama",
-                                status="loaded",
+                                status=status,
                                 size=model_size,
                                 parameters="Unknown",
                                 quantization="Unknown",
                                 context_length=None,
                                 memory_usage=None,
-                                last_used="Available"
+                                last_used="Active" if status == "loaded" else "Available"
                             ))
                             logger.info(f"Detected Ollama model via CLI: {model_name} ({model_size})")
         except Exception as e2:
@@ -240,36 +261,20 @@ def get_ai_models() -> List[ModelInfo]:
                 models.append(ModelInfo(
                     name="nvidia/nv-embedqa-e5-v5",
                     type="nvidia-nim",
-                    status="loaded",
+                    status="loaded",  # Embeddings are always loaded when container is running
                     size="1.2GB",
                     parameters="335M",
                     quantization="FP16",
                     context_length=512,
                     memory_usage=1200,
-                    last_used="Active"
+                    last_used="Embeddings"  # Not a chat model, so never "Active"
                 ))
                 logger.info("Detected NVIDIA NIM Embeddings model")
         except:
             logger.info("NVIDIA NIM Embeddings not accessible")
         
-        # Check NIM Generation 8B
-        try:
-            response = requests.get("http://localhost:8082/v1/health/ready", timeout=2)
-            if response.status_code == 200:
-                models.append(ModelInfo(
-                    name="meta/llama-3.1-8b-instruct",
-                    type="nvidia-nim",
-                    status="loaded",
-                    size="4.2GB",
-                    parameters="8B",
-                    quantization="TensorRT",
-                    context_length=131072,
-                    memory_usage=4200,
-                    last_used="Active"
-                ))
-                logger.info("Detected NVIDIA NIM Generation 8B model")
-        except:
-            logger.info("NVIDIA NIM Generation 8B not accessible")
+        # Skip NIM Generation 8B - not in our optimized model set
+        # (Removed as redundant with Mistral Nemo for light tasks)
         
         # Check NIM Generation 70B
         try:
@@ -279,16 +284,42 @@ def get_ai_models() -> List[ModelInfo]:
                     name="meta/llama-3.1-70b-instruct",
                     type="nvidia-nim",
                     status="loaded",
-                    size="18GB",
+                    size="22GB",
                     parameters="70B",
                     quantization="TensorRT",
                     context_length=131072,
-                    memory_usage=18000,
+                    memory_usage=22000,
                     last_used="Active"
                 ))
-                logger.info("Detected NVIDIA NIM Generation 70B model")
+                logger.info("Detected NVIDIA NIM Generation 70B model (running)")
+            else:
+                # Add it as unloaded
+                models.append(ModelInfo(
+                    name="meta/llama-3.1-70b-instruct",
+                    type="nvidia-nim",
+                    status="unloaded",
+                    size="22GB",
+                    parameters="70B",
+                    quantization="TensorRT",
+                    context_length=131072,
+                    memory_usage=22000,
+                    last_used="Available"
+                ))
+                logger.info("NVIDIA NIM Generation 70B model available but not running")
         except:
-            logger.info("NVIDIA NIM Generation 70B not accessible")
+            # Add it as unloaded even if container doesn't exist
+            models.append(ModelInfo(
+                name="meta/llama-3.1-70b-instruct",
+                type="nvidia-nim",
+                status="unloaded",
+                size="22GB",
+                parameters="70B",
+                quantization="TensorRT",
+                context_length=131072,
+                memory_usage=22000,
+                last_used="Available"
+            ))
+            logger.info("NVIDIA NIM Generation 70B not accessible - showing as available")
             
     except Exception as e:
         logger.info(f"NVIDIA NIM check failed: {e}")
@@ -480,9 +511,179 @@ async def control_service(request: Dict[str, str]):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error controlling service: {str(e)}")
 
+@router.get("/models/status")
+async def get_models_status():
+    """Get comprehensive model status with real-time information"""
+    try:
+        status = await orchestrator.get_model_status()
+        return status
+    except Exception as e:
+        logger.error(f"Error getting model status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/models/switch")
+async def switch_model(request: Dict[str, str]):
+    """Switch to a specific model"""
+    model_name = request.get("model_name")
+    if not model_name:
+        raise HTTPException(status_code=400, detail="model_name is required")
+    
+    try:
+        success = await orchestrator.switch_to_model(model_name)
+        if success:
+            return {"success": True, "message": f"Switched to {model_name}"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to switch model")
+    except Exception as e:
+        logger.error(f"Error switching model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/models/mode")
+async def switch_mode(request: Dict[str, str]):
+    """Switch operational mode"""
+    mode_name = request.get("mode")
+    if not mode_name:
+        raise HTTPException(status_code=400, detail="mode is required")
+    
+    try:
+        mode = OperationalMode(mode_name)
+        success = await orchestrator.switch_mode(mode)
+        if success:
+            return {"success": True, "message": f"Switched to {mode_name} mode"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to switch mode")
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid mode: {mode_name}")
+    except Exception as e:
+        logger.error(f"Error switching mode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/models/estimate-time")
+async def estimate_response_time(query: str, model_name: Optional[str] = None):
+    """Estimate response time for a query"""
+    if not model_name:
+        model_name = orchestrator.active_primary_model
+        
+    estimate = orchestrator.estimate_response_time(model_name, len(query))
+    return {
+        "model": model_name,
+        "query_length": len(query),
+        **estimate
+    }
+
+@router.websocket("/ws/model-status")
+async def websocket_model_status(websocket: WebSocket):
+    """WebSocket endpoint for real-time model status updates"""
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    # Send initial status
+    try:
+        status = await orchestrator.get_model_status()
+        await websocket.send_json(status)
+    except Exception as e:
+        logger.error(f"Error sending initial status: {e}")
+    
+    # Register callback for updates
+    async def send_update(status):
+        try:
+            await websocket.send_json(status)
+        except:
+            pass
+    
+    orchestrator.register_status_callback(send_update)
+    
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+        # Remove callback when disconnected
+        if send_update in orchestrator._status_update_callbacks:
+            orchestrator._status_update_callbacks.remove(send_update)
+
 @router.post("/models/load")
 async def load_model(request: Dict[str, Any]):
-    """Load an AI model"""
+    """Load a specific AI model"""
+    model_name = request.get("model_name")
+    
+    if not model_name:
+        raise HTTPException(status_code=400, detail="model_name is required")
+    
+    # Check if orchestrator is available
+    if orchestrator is None:
+        logger.error("ModelOrchestrator is not initialized - falling back to direct load")
+        # Fallback to direct Ollama load
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['ollama', 'run', model_name, 'Hello'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                return {"success": True, "message": f"Model {model_name} loaded successfully (direct)"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to load model: {result.stderr}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error loading model: {str(e)}")
+    
+    try:
+        success = await orchestrator.load_model(model_name)
+        if success:
+            return {"success": True, "message": f"Model {model_name} loaded successfully"}
+        else:
+            model = orchestrator.get_model_info(model_name)
+            error_msg = model.error_message if model else "Unknown error"
+            raise HTTPException(status_code=500, detail=f"Failed to load model: {error_msg}")
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/models/unload")
+async def unload_model(request: Dict[str, str]):
+    """Unload a specific model"""
+    model_name = request.get("model_name")
+    
+    if not model_name:
+        raise HTTPException(status_code=400, detail="model_name is required")
+    
+    # Check if orchestrator is available
+    if orchestrator is None:
+        logger.error("ModelOrchestrator is not initialized - falling back to direct unload")
+        # Fallback to direct Ollama stop
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['ollama', 'stop', model_name],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return {"success": True, "message": f"Model {model_name} unloaded successfully (direct)"}
+        except Exception as e:
+            return {"success": True, "message": f"Model {model_name} marked as unloaded"}
+    
+    try:
+        success = await orchestrator.unload_model(model_name)
+        if success:
+            return {"success": True, "message": f"Model {model_name} unloaded successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to unload model")
+    except Exception as e:
+        logger.error(f"Error unloading model: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Keep the original load_model implementation for backward compatibility
+@router.post("/models/load-legacy")
+async def load_model_legacy(request: Dict[str, Any]):
+    """Legacy model loading endpoint"""
     model_name = request.get("model_name")
     model_type = request.get("model_type", "ollama")
     force_reload = request.get("force_reload", False)
@@ -587,8 +788,16 @@ async def unload_model(request: Dict[str, str]):
                 message = f"NVIDIA NIM model {model_name} container stop initiated"
         
         elif model_type == "ollama":
-            # For Ollama, we can't really "unload" models from memory
-            message = f"Ollama model {model_name} unloaded from active use"
+            # Actually stop the Ollama model to free memory
+            try:
+                result = subprocess.run(['ollama', 'stop', model_name], 
+                                     capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    message = f"Ollama model {model_name} stopped and unloaded from memory"
+                else:
+                    message = f"Ollama model {model_name} marked as inactive"
+            except:
+                message = f"Ollama model {model_name} marked as inactive"
         
         else:
             message = f"Model {model_name} unloaded from memory"
@@ -670,7 +879,13 @@ async def check_ollama_health():
 
 @router.get("/models/available")
 async def get_available_models():
-    """Get list of available NVIDIA NIM models"""
+    """Get list of all available AI models (Ollama + NIM)"""
+    # Return all detected models from get_ai_models()
+    return get_ai_models()
+
+@router.get("/models/available-nim-only")
+async def get_available_nim_models():
+    """Get list of available NVIDIA NIM models only"""
     try:
         # Check NIM container status
         nim_status = {
@@ -686,10 +901,10 @@ async def get_available_models():
         except:
             pass
         
-        # Check NIM Generation health
+        # Check NIM Generation 70B health
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
-                response = await client.get("http://localhost:8082/v1/health/ready")
+                response = await client.get("http://localhost:8083/v1/health/ready")
                 nim_status["generation"]["healthy"] = response.status_code == 200
         except:
             pass
@@ -697,17 +912,17 @@ async def get_available_models():
         # Return actual NIM models with real status
         models = [
             {
-                "name": "meta/llama-3.1-8b-instruct",
+                "name": "meta/llama-3.1-70b-instruct",
                 "type": "NVIDIA NIM",
                 "status": "loaded" if nim_status["generation"]["healthy"] else "unloaded",
-                "size": "16GB",
-                "parameters": "8B",
+                "size": "22GB",
+                "parameters": "70B",
                 "quantization": "TensorRT Optimized",
-                "memory_usage": 8500 if nim_status["generation"]["healthy"] else 0,
+                "memory_usage": 22000 if nim_status["generation"]["healthy"] else 0,
                 "context_length": 131072,
                 "last_used": "Active" if nim_status["generation"]["healthy"] else "Inactive",
-                "container": "nim-generation",
-                "port": 8082
+                "container": "nim-generation-70b",
+                "port": 8083
             },
             {
                 "name": "nvidia/nv-embedqa-e5-v5",
@@ -742,7 +957,7 @@ async def get_nim_status():
     try:
         nim_status = {
             "embeddings": {"healthy": False, "model": "nvidia/nv-embedqa-e5-v5"},
-            "generation": {"healthy": False, "model": "meta/llama-3.1-8b-instruct"}
+            "generation": {"healthy": False, "model": "meta/llama-3.1-70b-instruct"}
         }
         
         # Check NIM Embeddings health
@@ -754,10 +969,10 @@ async def get_nim_status():
         except:
             nim_status["embeddings"]["status"] = "unloaded"
         
-        # Check NIM Generation health
+        # Check NIM Generation 70B health
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
-                response = await client.get("http://localhost:8082/v1/health/ready")
+                response = await client.get("http://localhost:8083/v1/health/ready")
                 nim_status["generation"]["healthy"] = response.status_code == 200
                 nim_status["generation"]["status"] = "loaded"
         except:

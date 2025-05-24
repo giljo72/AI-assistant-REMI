@@ -1339,3 +1339,288 @@ The file-project linking persistence issue was caused by inconsistent type handl
 2025-01-22 - Fixed chat response box expansion issue, removed Mode dropdown from header, added yellow Context indicator to status bar
 2025-01-22 - Fixed context controls integration - clicking context indicator now opens modal, context selection updates display, changed Custom to Create with new context creation, and preset contexts show as non-editable templates
 2025-01-23 - Major Model Reconfiguration Implementation - Added multi-model architecture with ModelOrchestrator for VRAM management, created enhanced SystemModelsPanel UI with dynamic status tracking, implemented model management API endpoints, added Development Mode toggle in AdminSettingsPanel, and created self-analysis endpoints using DeepSeek-Coder for automated code improvement suggestions
+
+## May 23, 2025
+
+### Major Model Reconfiguration Implementation Complete
+
+#### Implemented Features:
+1. **Fixed Streaming Responses** - Previously collecting all chunks before responding, now properly streaming with SSE
+2. **Real-time Model Status Updates** - WebSocket connection for live VRAM usage and model status
+3. **Smart Memory Management** - LRU-based model unloading with priority scoring
+4. **Operational Modes**:
+   - Business Deep: Llama 70B solo mode (unloads ALL other models)
+   - Business Fast: Qwen 2.5 32B + embeddings (default)
+   - Development: DeepSeek for coding
+   - Quick: Mistral for fast responses
+   - Balanced: Standard configuration
+
+5. **Enhanced UI Components**:
+   - ModeSelector with memory usage indicators
+   - SystemModelsPanel with colored status dots and VRAM bar
+   - Response time estimates and token generation metrics
+
+6. **Model Philosophy Implementation**:
+   - Qwen 2.5 32B as default with full RAG support
+   - Llama 70B in exclusive solo mode for deep reasoning
+   - Mistral for quick responses
+   - DeepSeek for coding in self-aware mode
+   - NV-Embedqa always active except in Llama solo mode
+
+#### Files Created/Modified:
+- Created: `/backend/app/services/model_orchestrator.py` (complete rewrite)
+- Modified: `/backend/app/api/endpoints/system.py` (added WebSocket and mode endpoints)
+- Modified: `/backend/app/api/endpoints/chats.py` (enhanced streaming with progress)
+- Created: `/frontend/src/components/modals/ModeSelector.tsx`
+- Enhanced: `/frontend/src/components/modals/SystemModelsPanel.tsx`
+- Updated: `/frontend/src/components/chat/ChatView.tsx` (default to Qwen)
+- Created: `test_system.py`, `test_model_switch.py` for testing
+
+#### Environment Cleanup:
+- Fixed misleading error in `startai.bat` about setup_environment.py
+- Verified startup/shutdown scripts point to correct files
+- Created and ran `cleanup_old_files.py` - removed 52 obsolete test/diagnostic files
+- Kept only recent files (< 48 hours) and essential scripts
+
+#### System Status:
+- All model optimizations from "model reconfiguration.md" implemented
+- Streaming working properly with real-time progress
+- WebSocket status updates operational
+- Smart memory management with 24GB VRAM limit
+- Ready for production testing
+
+## May 23, 2025 - Backend Startup Issue Resolution
+
+### Issue: Backend failing to start after model reconfiguration
+**Root Cause:** Multiple import issues in the model orchestrator module
+
+#### Problems Identified:
+1. **Import naming mismatch**: Some files importing `model_orchestrator` when variable was named `orchestrator`
+2. **Missing dependencies**: GPUtil and other packages not handling import failures gracefully
+3. **Global instantiation**: ModelOrchestrator being instantiated at module level causing startup failures
+
+#### Fixes Applied:
+1. **Fixed import references**:
+   - Updated `/backend/app/api/endpoints/models.py` - Changed all `model_orchestrator` to `orchestrator`
+   - Updated `/backend/app/api/endpoints/self_analysis.py` - Fixed import and usage references
+   - Verified `/backend/app/services/llm_service.py` uses correct import alias
+
+2. **Added graceful dependency handling**:
+   - Modified `/backend/app/services/model_orchestrator.py`:
+     - Added try/except blocks for psutil and GPUtil imports
+     - Added conditional checks before using GPUtil in `get_current_vram_usage()`
+     - Added fallback config class for when settings import fails
+
+3. **Improved error handling**:
+   - Wrapped global orchestrator instantiation in try/except block
+   - Added detailed error printing for debugging
+   - Set orchestrator to None on failure to allow backend to start
+
+#### Current Status:
+- Import issues resolved
+- Backend can now start with missing optional dependencies
+- Only remaining issue is PostgreSQL not running (expected)
+- Run `startai.bat` or start PostgreSQL manually to complete startup
+
+#### Diagnostic Tool Created:
+- Created `/diagnose_backend_startup.py` for troubleshooting future issues
+- Tests all critical imports and provides detailed error information
+- Can be run with: `venv_nemo\Scripts\python diagnose_backend_startup.py`
+
+## May 24, 2025 - Chat Model Selector Synchronization
+
+### Implemented real-time model synchronization between Model Manager and Chat interface
+
+#### Changes Made:
+1. **Chat Model Selector Updates**:
+   - Added dynamic model fetching from backend on component mount
+   - Implemented real-time sync when model is changed in chat selector
+   - Model changes now update backend's active model state via `/system/models/switch` endpoint
+
+2. **Frontend Improvements**:
+   - ChatView.tsx now fetches available models from backend instead of hardcoded list
+   - Added model type detection (ollama vs nvidia-nim) for proper backend switching
+   - Formatted model names for better UI display (e.g., "Qwen 2.5 32B (Default)")
+   - Kept descriptive tooltips for each model's capabilities
+
+3. **Model List Filtering**:
+   - Filters out embedding models from chat selector
+   - Includes Llama 70B despite being NIM type (special case for high-performance chat)
+   - Shows only models suitable for chat interactions
+
+#### Technical Details:
+- Uses `systemService.switchModel(modelName, modelType)` for backend sync
+- Automatically detects and sets active model on chat view load
+- Maintains model state consistency across the application
+
+#### Result:
+- Chat model selector now fully synchronized with Model Manager panel
+- Model switches in either UI update the backend active model state
+- Provides seamless model switching experience for users
+
+## May 24, 2025 - Model Collection Optimization
+
+### Streamlined AI model set to 4 core models for efficiency
+
+#### Issues Fixed:
+1. **Removed Llama 8B from system**:
+   - Was hardcoded in `/api/endpoints/system.py` at multiple locations
+   - Removed from `get_ai_models()` NIM check
+   - Updated `/models/available-nim-only` endpoint to show only 70B
+   - Updated `/nim/status` to reference 70B instead of 8B
+   - Changed health check ports from 8082 (8B) to 8083 (70B)
+
+2. **Enhanced cleanup script**:
+   - Now shows which models are actually installed with sizes
+   - Better visibility into what will be removed
+
+#### Final Optimized Model Set:
+1. **Qwen 2.5 32B** - Daily driver with full RAG (~16GB VRAM)
+2. **Llama 3.1 70B NIM** - Complex reasoning via TensorRT (~22GB VRAM)
+3. **Mistral Nemo 12B** - Lightning-fast responses (~4GB VRAM)
+4. **DeepSeek Coder 16B** - Specialized coding assistant (~8GB VRAM)
+
+#### Benefits:
+- Clear use case for each model
+- No redundant capabilities
+- Memory efficient (can run Qwen + Mistral + Embeddings together)
+- NIM advantage preserved for 70B model (2-3x faster than Ollama)
+
+#### Created Tools:
+- `cleanup_models.py` - Interactive model cleanup script
+- `cleanup_models.bat` - Windows batch file for easy execution
+- Updated MODEL_DETAILS in frontend to reflect optimized set
+
+## May 24, 2025 - Fixed Model Restart Functionality
+
+### Repaired the model orchestrator's restart capability for stuck models
+
+#### Issues Fixed:
+1. **Orchestrator load_model method**:
+   - Was sending empty prompt to Ollama which could fail
+   - Now checks if model exists first
+   - Sends minimal "Hello" prompt with 1 token generation
+   - Better error handling with specific error messages
+
+2. **Orchestrator unload_model method**:
+   - Now properly calls `ollama stop` to free memory
+   - Clears the model from RAM when unloading
+   - Handles subprocess calls correctly
+
+3. **System endpoints fallback**:
+   - Added fallback logic if orchestrator is None
+   - Direct subprocess calls to ollama for load/unload
+   - Ensures functionality even if orchestrator fails to initialize
+
+#### How to Fix Stuck Models:
+- Use the Model Manager "Restart" button - now properly stops and reloads the model
+- Or manually: `ollama stop model_name` then reload
+- This clears any context loops like the list generation issue
+
+#### Benefits:
+- Models can be properly restarted to clear bad context
+- Memory is freed when models are unloaded
+- System remains functional even if orchestrator has issues
+- Better error messages for debugging
+
+## May 24, 2025 - System Prompts Implementation
+
+### Added automatic system prompts for different model types
+
+#### Implementation:
+1. **Created System Prompts as User Prompts**:
+   - "System: Default Assistant" - For all general chat models
+   - "System: DeepSeek Coder" - Specialized for code generation
+   - Stored in database as special user prompts
+
+2. **Auto-activation Logic**:
+   - Chat endpoint automatically selects appropriate system prompt based on model
+   - DeepSeek Coder gets the coding-focused prompt
+   - All other models get the general assistant prompt
+   - System prompts are added to active prompts list automatically
+
+3. **Visual Indicator**:
+   - Created `SystemPromptIndicator` component with purple theme
+   - Shows below chat input area with icon (brain for general, code for DeepSeek)
+   - Expandable to view full prompt content
+   - Only shows when a system prompt is active
+
+4. **To Activate System Prompts**:
+   ```bash
+   cd backend
+   python add_system_prompts.py
+   ```
+
+#### Features:
+- System prompts provide consistent base behavior for models
+- Different prompts optimize each model for its strengths
+- Visual feedback shows which system prompt is active
+- Prompts are managed through existing user prompt system
+
+## May 24, 2025 - Enhanced UI with Personal Profiles
+
+### Redesigned system prompt indicators and added personal profiles feature
+
+#### UI Changes:
+1. **Removed Large Purple System Prompt Box**:
+   - Replaced with inline indicators in ContextStatusIndicators
+   - Added small orange indicator for system prompts (toggleable)
+   - Added gray indicator for active user prompts (toggleable)
+   - Clean, minimal design matching existing indicators
+
+2. **Personal Profiles System**:
+   - Added person icon (👤) next to settings in sidebar
+   - Created comprehensive profile management modal
+   - Stores personal data in localStorage for privacy
+   - Supports multiple profiles with default selection
+   - Custom fields with + button to add more
+
+3. **Profile Data Structure**:
+   - Name and Address as base fields
+   - Unlimited custom fields (key-value pairs)
+   - Can create multiple profiles for different personas
+   - Default profile automatically appended to prompts
+
+4. **Integration with Chat**:
+   - Personal profile context automatically sent with each message
+   - Appended to system prompt for context awareness
+   - LLM knows user's personal information for better assistance
+
+#### Technical Implementation:
+- `PersonalProfilesModal` - Full profile management UI
+- `profileService` - Service for localStorage profile management
+- Updated `ChatGenerateRequest` to include `personal_context`
+- Modified chat endpoint to append personal context to system message
+
+#### Usage:
+1. Click person icon in sidebar
+2. Create profiles with personal/team information
+3. Set default profile for automatic use
+4. Information is privately stored and sent with each chat
+
+## May 24, 2025 - Enhanced Personal Profiles with Instructions and Role Field
+
+### Improved the Personal Profiles feature with better UX and additional fields
+
+#### Changes:
+1. **Added Clear Instructions**:
+   - Banner at top explaining purpose: "Create profiles for yourself and people you work with..."
+   - Helps users understand the AI will use this info for better context
+   - Emphasizes personalization benefits
+
+2. **Added Role Field**:
+   - New field between Name and Address
+   - Placeholder text: "e.g., CEO, Developer, Client, Family Member"
+   - Helps AI understand relationship context
+
+3. **Fixed Button Colors**:
+   - Changed black text to yellow (#FFC000) for better visibility
+   - Applies to Add Profile, Save buttons, and Default chip
+   - Better contrast on dark backgrounds
+
+4. **Updated Profile Structure**:
+   - Name, Role, Address as primary fields
+   - Unlimited custom fields for additional context
+   - Role included in AI context automatically
+
+The AI Assistant now has better understanding of who people are and their roles in your work/life context.

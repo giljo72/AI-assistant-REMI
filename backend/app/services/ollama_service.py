@@ -14,10 +14,10 @@ class OllamaService:
     """Service for Ollama local model inference"""
     
     def __init__(self, base_url: str = None):
-        # Since you're running everything in Windows, but we're coding in WSL2
-        # Always use the Windows IP for Ollama
+        # Use localhost for backend-to-backend communication
+        # The frontend can still use 10.1.0.224 for browser access
         if base_url is None:
-            base_url = "http://10.1.0.224:11434"
+            base_url = "http://localhost:11434"
         self.base_url = base_url.rstrip('/')
         self.client = httpx.AsyncClient(timeout=300.0)  # 5 minute timeout for large models
         

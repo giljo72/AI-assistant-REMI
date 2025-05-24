@@ -6,11 +6,18 @@ import logging
 from typing import List, Dict, Any, Optional, AsyncGenerator
 import json
 import aiohttp
-from .nim_service import get_nim_service, NIMGenerationService
-from .ollama_service import get_ollama_service, OllamaService
-from .model_orchestrator import model_orchestrator
 
 logger = logging.getLogger(__name__)
+
+from .nim_service import get_nim_service, NIMGenerationService
+from .ollama_service import get_ollama_service, OllamaService
+
+# Import model orchestrator with error handling
+try:
+    from .model_orchestrator import orchestrator as model_orchestrator
+except ImportError as e:
+    logger.warning(f"Could not import model orchestrator: {e}")
+    model_orchestrator = None
 
 class UnifiedLLMService:
     """Unified service to route requests to different LLM backends with orchestration"""
@@ -58,19 +65,24 @@ class UnifiedLLMService:
         
         # Select model if not specified
         if not model_name:
-            model_name = await self.orchestrator.select_model(
-                request_type=request_type,
-                complexity=complexity,
-                domain=domain,
-                context_size=len(str(messages))
-            )
+            if self.orchestrator:
+                model_name = await self.orchestrator.select_model(
+                    request_type=request_type,
+                    complexity=complexity,
+                    domain=domain,
+                    context_size=len(str(messages))
+                )
+            else:
+                # Default model when orchestrator is not available
+                model_name = "qwen2.5:32b-instruct-q4_K_M"
+                model_type = "ollama"
             
         if not model_name:
             raise ValueError("No suitable model available")
             
         # Get model info
-        model_info = self.orchestrator.models.get(model_name)
-        if not model_info:
+        model_info = self.orchestrator.models.get(model_name) if self.orchestrator else None
+        if not model_info and self.orchestrator:
             # Try to find a similar model
             for name, info in self.orchestrator.models.items():
                 if model_name in name or name in model_name:
@@ -79,10 +91,21 @@ class UnifiedLLMService:
                     break
                     
         if not model_info:
-            raise ValueError(f"Model {model_name} not found")
+            # Fallback when orchestrator is not available
+            if not self.orchestrator:
+                # Use default Ollama backend
+                logger.warning(f"Model orchestrator not available, using default Ollama backend for {model_name}")
+                async for chunk in self._generate_ollama_stream(
+                    model_name, messages, temperature, max_tokens, None
+                ):
+                    yield chunk
+                return
+            else:
+                raise ValueError(f"Model {model_name} not found")
             
         # Mark model as in use
-        self.orchestrator.mark_model_used(model_name)
+        if self.orchestrator:
+            self.orchestrator.mark_model_used(model_name)
         
         try:
             # Route to appropriate backend
@@ -101,7 +124,8 @@ class UnifiedLLMService:
                 
         finally:
             # Release model
-            self.orchestrator.release_model(model_name)
+            if self.orchestrator:
+                self.orchestrator.release_model(model_name)
     
     async def _generate_ollama_stream(
         self,
@@ -183,11 +207,17 @@ class UnifiedLLMService:
     
     async def get_model_status(self) -> List[Dict[str, Any]]:
         """Get status of all models from orchestrator"""
-        return await self.orchestrator.get_model_status()
+        if self.orchestrator:
+            return await self.orchestrator.get_model_status()
+        else:
+            return []
     
     async def switch_mode(self, mode: str) -> Dict[str, bool]:
         """Switch operational mode"""
-        return await self.orchestrator.switch_mode(mode)
+        if self.orchestrator:
+            return await self.orchestrator.switch_mode(mode)
+        else:
+            return {"success": False, "error": "orchestrator not available"}
     
     async def close(self):
         """Close all service connections"""

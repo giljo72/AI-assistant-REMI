@@ -11,13 +11,14 @@ alembic==1.12.1
 pgvector>=0.1.0
 
 # Data validation and configuration
-pydantic==2.4.2
+pydantic>=2.7.0
 python-dotenv==1.0.0
 numpy==1.26.2
 
 # System monitoring and utilities
 psutil==5.9.6
 gputil==1.4.0
+colorama>=0.4.6
 
 # HTTP clients for service integration
 httpx>=0.25.0

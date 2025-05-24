@@ -14,7 +14,19 @@
       "Bash(python:*)",
       "Bash(grep:*)",
       "Bash(ollama pull:*)",
-      "Bash(/mnt/f/assistant/venv_nemo/bin/python:*)"
+      "Bash(/mnt/f/assistant/venv_nemo/bin/python:*)",
+      "Bash(./venv_nemo/Scripts/python.exe debug_paths.py)",
+      "Bash(../venv_nemo/Scripts/python.exe -m uvicorn app.main:app --version)",
+      "Bash(rm:*)",
+      "Bash(./venv_nemo/Scripts/pip.exe install aiohttp)",
+      "Bash(../venv_nemo/Scripts/pip.exe install -r requirements.txt)",
+      "Bash(./venv_nemo/Scripts/pip.exe install pydantic-settings)",
+      "Bash(../venv_nemo/bin/python:*)",
+      "Bash(find:*)",
+      "Bash(if [ -n \"$NGC_API_KEY\" ])",
+      "Bash(then echo \"NGC_API_KEY is set (hidden for security)\")",
+      "Bash(else echo \"NGC_API_KEY is NOT set\")",
+      "Bash(fi)"
     ],
     "deny": []
   }

@@ -5,9 +5,15 @@ type ContextStatusIndicatorsProps = {
   isProjectPromptEnabled: boolean;
   isGlobalDataEnabled: boolean;
   isProjectDocumentsEnabled: boolean;
+  isSystemPromptEnabled?: boolean;
+  isUserPromptEnabled?: boolean;
+  activeUserPromptName?: string;
+  selectedModel?: string;
   onToggleProjectPrompt: () => void;
   onToggleGlobalData: () => void;
   onToggleProjectDocuments: () => void;
+  onToggleSystemPrompt?: () => void;
+  onToggleUserPrompt?: () => void;
   onOpenContextControls?: () => void;
   contextMode?: string;
 };
@@ -16,9 +22,15 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
   isProjectPromptEnabled,
   isGlobalDataEnabled,
   isProjectDocumentsEnabled,
+  isSystemPromptEnabled = true,
+  isUserPromptEnabled = false,
+  activeUserPromptName = '',
+  selectedModel = '',
   onToggleProjectPrompt,
   onToggleGlobalData,
   onToggleProjectDocuments,
+  onToggleSystemPrompt = () => {},
+  onToggleUserPrompt = () => {},
   onOpenContextControls,
   contextMode = 'standard'
 }) => {
@@ -47,6 +59,36 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
         <span className="w-2 h-2 rounded-full mr-2 bg-yellow-400"></span>
         Context: <span className="font-semibold ml-1">{getContextModeDisplay(contextMode)}</span>
       </button>
+
+      {/* System Prompt Indicator - Orange */}
+      <button
+        onClick={onToggleSystemPrompt}
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
+          isSystemPromptEnabled
+            ? 'bg-orange-900/30 text-orange-400'
+            : 'bg-gray-800 text-gray-400'
+        }`}
+        title={selectedModel.includes('deepseek') ? 'DeepSeek Coder System Prompt' : 'Default Assistant System Prompt'}
+      >
+        <span className={`w-2 h-2 rounded-full mr-2 ${isSystemPromptEnabled ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
+        System Prompt {isSystemPromptEnabled ? 'Enabled' : 'Disabled'}
+      </button>
+
+      {/* Active User Prompt Indicator - Gray */}
+      {activeUserPromptName && (
+        <button
+          onClick={onToggleUserPrompt}
+          className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
+            isUserPromptEnabled
+              ? 'bg-gray-700/50 text-gray-300'
+              : 'bg-gray-800 text-gray-500'
+          }`}
+          title={`User Prompt: ${activeUserPromptName}`}
+        >
+          <span className={`w-2 h-2 rounded-full mr-2 ${isUserPromptEnabled ? 'bg-gray-400' : 'bg-gray-600'}`}></span>
+          {activeUserPromptName} {isUserPromptEnabled ? 'Active' : 'Inactive'}
+        </button>
+      )}
 
       {/* Project Prompt Indicator */}
       <button

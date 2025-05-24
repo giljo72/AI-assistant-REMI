@@ -1,4 +1,5 @@
 import api from './api';
+import { profileService } from './profileService';
 
 export interface ChatMessage {
   id: string;
@@ -52,6 +53,17 @@ export interface ChatMessageCreate {
   content: string;
   role: 'user' | 'assistant' | 'system';
   chat_id: string;
+}
+
+interface ChatGenerateRequest {
+  message: string;
+  max_length?: number;
+  temperature?: number;
+  include_context?: boolean;
+  model_name?: string;
+  model_type?: string;
+  context_mode?: string;
+  personal_context?: string;
 }
 
 /**
@@ -184,7 +196,8 @@ class ChatService {
         include_context: options?.include_context !== false, // Default to true
         model_name: options?.model_name,
         model_type: options?.model_type,
-        context_mode: options?.context_mode
+        context_mode: options?.context_mode,
+        personal_context: profileService.getDefaultProfilePrompt()
       };
       
       console.log('📤 ChatService: Request payload:', request);
@@ -246,7 +259,8 @@ class ChatService {
       include_context: options?.include_context !== false,
       model_name: options?.model_name,
       model_type: options?.model_type,
-      context_mode: options?.context_mode
+      context_mode: options?.context_mode,
+      personal_context: profileService.getDefaultProfilePrompt()
     };
 
     const response = await fetch(`${api.defaults.baseURL}/chats/${chatId}/generate-stream`, {
