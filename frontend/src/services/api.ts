@@ -12,7 +12,7 @@ const getApiUrl = () => {
   return `http://${host}:8000/api`;
 };
 
-const API_BASE_URL = getApiUrl();
+export const API_BASE_URL = getApiUrl();
 
 // Create axios instance with default config
 const api = axios.create({

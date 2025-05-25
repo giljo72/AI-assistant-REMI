@@ -90,19 +90,33 @@ async def clear_uploaded_files():
 @router.post("/reset/database", response_model=Dict[str, Any])
 async def reset_database(
     background_tasks: BackgroundTasks,
-    tables: Optional[list] = None,
+    preserve_prompts: bool = True,
     db: Session = Depends(get_db)
 ):
     """
-    Reset the database by truncating all tables.
-    If tables list is provided, only those tables will be reset.
+    Reset the database by truncating project-related tables.
+    By default, preserves system prompts, user prompts, and personal profiles.
     """
+    # Tables to preserve when preserve_prompts is True
+    preserved_tables = ['system_prompts', 'user_prompts', 'personal_profiles', 'user_preferences']
+    
+    # Get all tables and filter out preserved ones if needed
+    result = db.execute(text(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+    ))
+    all_tables = [row[0] for row in result]
+    
+    if preserve_prompts:
+        tables_to_reset = [t for t in all_tables if t not in preserved_tables]
+    else:
+        tables_to_reset = all_tables
+    
     # This is a potentially destructive operation, so we run it in the background
-    background_tasks.add_task(reset_database_tables, db, tables)
+    background_tasks.add_task(reset_database_tables, db, tables_to_reset)
     
     return {
         "success": True, 
-        "message": "Database reset initiated in the background"
+        "message": f"Database reset initiated. {'Preserving prompts and profiles.' if preserve_prompts else 'Clearing ALL data.'}"
     }
 
 @router.post("/reset/vector-store", response_model=Dict[str, Any])

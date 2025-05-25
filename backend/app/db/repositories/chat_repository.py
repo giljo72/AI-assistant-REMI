@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
 from .base_repository import BaseRepository
 from ..models.chat import Chat, ChatMessage
+from ..models.message_context import MessageContext
 from ...schemas.chat import ChatCreate, ChatUpdate, ChatMessageCreate
 
 class ChatRepository(BaseRepository[Chat, ChatCreate, ChatUpdate]):
@@ -22,9 +23,9 @@ class ChatRepository(BaseRepository[Chat, ChatCreate, ChatUpdate]):
                 .limit(limit)\
                 .all()
 
-    def create_message(self, db: Session, *, obj_in: ChatMessageCreate) -> ChatMessage:
+    def create_message(self, db: Session, *, obj_in: ChatMessageCreate, context_data: Optional[Dict[str, Any]] = None) -> ChatMessage:
         """
-        Create a new chat message.
+        Create a new chat message with optional context tracking.
         """
         # Ensure the chat exists
         chat = db.query(Chat).filter(Chat.id == obj_in.chat_id).first()
@@ -40,6 +41,23 @@ class ChatRepository(BaseRepository[Chat, ChatCreate, ChatUpdate]):
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
+        
+        # Create message context if provided
+        if context_data and not obj_in.is_user:  # Only track context for assistant messages
+            message_context = MessageContext(
+                message_id=db_obj.id,
+                active_prompt_ids=context_data.get("active_prompt_ids", []),
+                active_document_ids=context_data.get("active_document_ids", []),
+                personal_profile_id=context_data.get("personal_profile_id"),
+                model_name=context_data.get("model_name", "unknown"),
+                model_settings=context_data.get("model_settings", {}),
+                system_prompt=context_data.get("system_prompt"),
+                user_prompts=context_data.get("user_prompts", []),
+                document_chunks=context_data.get("document_chunks", [])
+            )
+            db.add(message_context)
+            db.commit()
+        
         return db_obj
     
     def get_chat_messages(

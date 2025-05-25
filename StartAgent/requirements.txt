@@ -1,0 +1,4 @@
+# StartAgent Launcher Dependencies
+# These should already be installed in venv_nemo
+psutil>=5.9.0
+requests>=2.31.0

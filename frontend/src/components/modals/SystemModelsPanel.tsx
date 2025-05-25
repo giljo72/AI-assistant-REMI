@@ -24,7 +24,6 @@ import {
   Timer as TimerIcon
 } from '@mui/icons-material';
 import systemService, { SystemStatus, ServiceStatus, ModelInfo, EnvironmentInfo } from '../../services/systemService';
-import { ModeSelector } from './ModeSelector';
 
 interface SystemModelsPanelProps {
   isOpen: boolean;
@@ -111,7 +110,6 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
   const [activeTab, setActiveTab] = useState<'services' | 'models' | 'environment'>('models');
   const [operationStatus, setOperationStatus] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [currentMode, setCurrentMode] = useState<string>('balanced');
   const wsRef = useRef<WebSocket | null>(null);
 
   // WebSocket connection for real-time updates
@@ -130,9 +128,6 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
         try {
           const status = JSON.parse(event.data);
           setModelsStatus(status);
-          if (status.system) {
-            setCurrentMode(status.system.mode);
-          }
         } catch (e) {
           console.error('Failed to parse WebSocket message:', e);
         }
@@ -180,36 +175,12 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
       if (response.ok) {
         const status = await response.json();
         setModelsStatus(status);
-        if (status.system) {
-          setCurrentMode(status.system.mode);
-        }
       }
     } catch (err) {
       console.error('Error fetching models status:', err);
     }
   };
 
-  const handleModeChange = async (mode: string) => {
-    setActionLoading('mode-change');
-    try {
-      const response = await fetch('/api/system/models/mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode })
-      });
-      
-      if (response.ok) {
-        setOperationStatus({ message: 'Mode changed successfully', type: 'success' });
-        setCurrentMode(mode);
-      } else {
-        throw new Error('Failed to change mode');
-      }
-    } catch (err) {
-      setOperationStatus({ message: 'Failed to change mode', type: 'error' });
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const handleModelAction = async (modelName: string, action: 'load' | 'unload') => {
     setActionLoading(`${modelName}-${action}`);
@@ -262,14 +233,6 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
 
     return (
       <Box>
-        {/* Mode Selector */}
-        <Box sx={{ mb: 3 }}>
-          <ModeSelector
-            currentMode={currentMode}
-            onModeChange={handleModeChange}
-            disabled={actionLoading === 'mode-change'}
-          />
-        </Box>
 
         {/* Memory Usage Bar */}
         <Box sx={{ mb: 3 }}>

@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import userPromptsReducer from './userPromptsSlice';
+import systemPromptsReducer from './systemPromptsSlice';
 import projectSettingsReducer from './projectSettingsSlice';
 import navigationReducer from './navigationSlice';
 import typedMessagesReducer from './typedMessagesSlice';
@@ -7,6 +8,7 @@ import typedMessagesReducer from './typedMessagesSlice';
 export const store = configureStore({
   reducer: {
     userPrompts: userPromptsReducer,
+    systemPrompts: systemPromptsReducer,
     projectSettings: projectSettingsReducer,
     navigation: navigationReducer,
     typedMessages: typedMessagesReducer,

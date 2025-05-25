@@ -1,5 +1,103 @@
 # AI Assistant Dev Log
 
+## January 24, 2025 - Production Database Implementation & UI Enhancements
+
+### Major Accomplishments:
+1. **Personal Profiles Database Integration**
+   - Created `personal_profiles` table with privacy settings
+   - Migrated from localStorage to PostgreSQL
+   - Added user_id based authentication
+   - Implemented soft delete and default profile management
+   - Added team sharing capabilities
+
+2. **User Preferences System**
+   - Created `user_preferences` table for per-project settings
+   - Stores active prompts, documents, and UI preferences
+   - Tracks preferred models per project
+   - Enables persistent context across sessions
+
+3. **Message Context Tracking**
+   - Created `message_contexts` table for audit trail
+   - Tracks all context used for each AI response
+   - Stores model settings, prompts, and documents used
+   - Links to personal profiles used in generation
+
+4. **API Endpoints Created**
+   - `/api/personal-profiles/` - Full CRUD for profiles
+   - `/api/preferences/` - User preferences management
+   - Automatic migration from localStorage on first use
+   - Privacy controls and team sharing options
+
+5. **Frontend Updates**
+   - PersonalProfilesModal now uses database
+   - Added loading states and error handling
+   - Automatic migration from localStorage
+   - Real-time sync across browser tabs
+
+### Technical Implementation:
+- **Database Models**: SQLAlchemy with PostgreSQL/pgvector
+- **Privacy**: User-scoped queries with team sharing options
+- **Migration**: Automatic localStorage → DB migration
+- **Performance**: Async API calls with proper error handling
+
+### Benefits:
+- ✅ Profiles sync across all devices/browsers
+- ✅ Persistent storage with backups
+- ✅ Team collaboration features
+- ✅ Full audit trail of AI interactions
+- ✅ Context preferences per project
+
+### Additional Improvements:
+1. **System Prompts Implementation**
+   - Added default assistant prompt for all models
+   - Added specialized DeepSeek Coder prompt
+   - Auto-activation based on selected model
+   - Stored as user prompts with "System:" prefix
+
+2. **UI/UX Enhancements**
+   - Removed large purple SystemPromptIndicator box
+   - Added inline indicators (orange for system, gray for user prompts)
+   - PersonalProfilesModal redesigned with yellow color scheme
+   - Removed "New Profile" default text
+   - Added role field with clear labeling
+   - Removed address field, replaced with "+ Add Field" button
+   - Changed instruction banner to blue (rgb(59, 130, 246))
+   - All text made readable with proper contrast
+
+3. **Model Management Fixes**
+   - Fixed model restart functionality with proper unload
+   - Added Llama 70B NIM model to chat selector
+   - Improved Ollama model loading with existence checks
+   - Added `ollama stop` command for memory clearing
+
+4. **Bug Fixes**
+   - Fixed project ID type mismatch (UUID vs String)
+   - Fixed Pydantic v2 compatibility (orm_mode → from_attributes)
+   - Fixed import errors (apiClient → api)
+   - Fixed Dict[str, any] → Dict[str, Any] type hints
+
+### Migration Steps:
+```bash
+# 1. Create system prompts
+cd backend
+python add_system_prompts.py
+
+# 2. Run database migration for new tables
+python -m app.db.migrations.add_production_tables
+
+# 3. Restart backend and frontend
+```
+
+### Current Status:
+- ✅ Database models created and integrated
+- ✅ Frontend using database for profiles
+- ✅ System prompts auto-activate by model
+- ✅ UI cleaned up with better visibility
+- ✅ Model management improved
+- ⏳ Ready for testing after migration
+
+# AI Assistant Dev Log
+
 ## January 23, 2025 - NIM Integration and Multi-Model Implementation Complete
 
 ### Major Accomplishments:
@@ -1624,3 +1722,131 @@ The file-project linking persistence issue was caused by inconsistent type handl
    - Role included in AI context automatically
 
 The AI Assistant now has better understanding of who people are and their roles in your work/life context.
+
+## May 25, 2025 - System Prompts Feature Implementation
+
+### Created a dedicated System Prompts management feature separate from User Prompts
+
+#### Changes:
+1. **Database Architecture**:
+   - Created new `system_prompts` table with dedicated model
+   - Added fields: name, content, description, category, is_active, is_default
+   - Implemented database trigger to ensure only one active system prompt
+   - Added migration script for table creation
+
+2. **Backend Implementation**:
+   - Created `SystemPromptRepository` for CRUD operations
+   - Added comprehensive API endpoints at `/api/system-prompts`
+   - Implemented protection for default prompts (cannot edit/delete)
+   - Added activation/deactivation functionality
+
+3. **System Prompt Defaults**:
+   - Default Assistant: General-purpose helpful AI
+   - Coding Assistant: Specialized for programming tasks
+   - Both seeded as default prompts on first run
+
+4. **UI/UX Improvements Planning**:
+   - Created `promptStyles.ts` for consistent styling
+   - Reduced font sizes for better space utilization
+   - Improved padding and spacing throughout
+
+#### Technical Details:
+- Separate from User Prompts to maintain clear distinction
+- System prompts define AI behavior globally
+- User prompts add user-specific instructions
+- Only one system prompt can be active at a time
+
+#### Frontend Components Created:
+- `SystemPromptManager`: Main management component with list view
+- `SystemPromptsPanel`: Collapsible panel matching UserPromptsPanel design
+- `SystemPromptModal`: Add/edit modal with category support
+- `systemPromptService`: API service layer
+- `systemPromptsSlice`: Redux state management
+
+#### Integration Points:
+- System prompts automatically fetched on app startup
+- Active system prompt used in chat generation endpoint
+- Frontend displays active prompt indicator in collapsed state
+- Improved font sizes and spacing across all prompt panels
+
+#### Next Steps:
+- Consider project-specific system prompts
+- Add more default prompts for different use cases
+- Implement prompt templates/examples
+
+## January 25, 2025 - Documentation Alignment and Vision Clarity
+
+### Comprehensive Documentation Review:
+1. **Vision Alignment Analysis**
+   - Reviewed user's vision for granular context controls (6 individual toggles)
+   - Documented gap between vision and current implementation (mode-based selection)
+   - Created Context_Controls_Implementation_Status.md for clarity
+
+2. **Scope.md Updates**
+   - Updated implementation status to reflect reality (95% complete)
+   - Clarified context controls as simplified mode-based (not granular toggles)
+   - Added clear distinction between current implementation and original vision
+   - Marked context controls backend as not implemented
+   - Updated all phases to show accurate completion status
+
+3. **Implementation.md Updates**
+   - Changed status to "PRODUCTION READY (with minor gaps)"
+   - Documented actual model count (4 production models + embeddings)
+   - Added implementation gaps section highlighting:
+     - Context controls backend missing
+     - Personal profiles still in localStorage
+     - Simplified document processing
+   - Added section on features built beyond original scope:
+     - System prompts management
+     - Personal profiles system
+     - Streaming responses
+     - Model orchestrator
+
+### Key Findings:
+- System is production-ready but simplified from original vision
+- Context controls use modes instead of granular toggles
+- This simplification works well for current use cases
+- Backend processing of context settings is the main gap
+- Many features added that weren't in original scope
+
+### Recommendation Status:
+✅ Documented what's ACTUALLY implemented for context controls
+✅ Updated scope.md to reflect current reality vs future plans
+✅ Updated implementation.md to show Complete items accurately
+⚠️ User needs to decide: Continue with simplified modes or implement full granular controls?
+
+
+## 2025-01-25 - Elegant Startup GUI
+
+### Created StartAgent Launcher
+- Built elegant GUI launcher in StartAgent/launcher.py
+- Native Windows application using tkinter
+- Shows real-time service status with visual indicators:
+  - PostgreSQL (required)
+  - Ollama (required)
+  - Docker (optional)
+  - NIM Embeddings (optional)
+- Features:
+  - Color-coded status indicators (green/red/orange)
+  - Retry button for failed services
+  - Start AI Assistant button when all required services ready
+  - Real-time log display
+  - Dark theme matching the AI Assistant aesthetic
+- Updated startai_monitor.bat to launch the GUI instead of console monitoring
+- Provides clear visibility into what's starting and any failures
+
+### Project Cleanup
+- Deleted 12 obsolete Python files (diagnostics, tests, one-time scripts)
+- Deleted 16 redundant .bat files
+- Kept only essential files for production use
+- Project is now much cleaner and more maintainable
+
+## January 25, 2025 - Mode Selector Removal
+- Removed Mode Selector dropdown visualization from chat interface
+  - Deleted ModeSelector.tsx component file
+  - Removed Mode dropdown from ChatView header
+  - Removed ModeSelector import and usage from SystemModelsPanel
+  - Cleaned up contextMode state from Redux store (projectSettingsSlice)
+  - Removed contextMode prop from ContextStatusIndicators component
+  - Removed Context Mode Indicator button from chat interface
+  - This simplifies the UI as context and prompts now handle behavior configuration

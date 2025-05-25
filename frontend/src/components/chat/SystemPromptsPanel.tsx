@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Collapse,
@@ -11,32 +11,22 @@ import {
 import {
   ChevronRight as ChevronRightIcon,
   ChevronLeft as ChevronLeftIcon,
-  Add as AddIcon
+  Settings as SettingsIcon
 } from '@mui/icons-material';
-import UserPromptManager, { UserPrompt } from './UserPromptManager';
-import UserPromptIndicator from './UserPromptIndicator';
+import SystemPromptManager from './SystemPromptManager';
 import { RootState } from '../../store';
-import {
-  addPrompt,
-  updatePrompt,
-  deletePrompt,
-  activatePrompt,
-  deactivatePrompt
-} from '../../store/userPromptsSlice';
 import { promptPanelStyles, promptColors } from '../common/promptStyles';
 
-interface UserPromptsPanelProps {
+interface SystemPromptsPanelProps {
   expanded?: boolean;
   onToggleExpand?: () => void;
 }
 
-const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
+const SystemPromptsPanel: React.FC<SystemPromptsPanelProps> = ({
   expanded = false,
   onToggleExpand
 }) => {
-  const dispatch = useDispatch();
-  const { prompts } = useSelector((state: RootState) => state.userPrompts);
-  const activePrompt = prompts.find((p: UserPrompt) => p.active) || null;
+  const { activePrompt } = useSelector((state: RootState) => state.systemPrompts);
   
   // Local expanding state if not controlled externally
   const [localExpanded, setLocalExpanded] = useState(expanded);
@@ -47,32 +37,6 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
       onToggleExpand();
     } else {
       setLocalExpanded(!localExpanded);
-    }
-  };
-  
-  const handleAddPrompt = (newPrompt: Omit<typeof prompts[0], 'id'>) => {
-    dispatch(addPrompt(newPrompt));
-  };
-  
-  const handleUpdatePrompt = (updatedPrompt: typeof prompts[0]) => {
-    dispatch(updatePrompt(updatedPrompt));
-  };
-  
-  const handleDeletePrompt = (id: string) => {
-    dispatch(deletePrompt(id));
-  };
-  
-  const handleActivatePrompt = (id: string, active: boolean) => {
-    if (active) {
-      dispatch(activatePrompt(id));
-    } else {
-      dispatch(deactivatePrompt(id));
-    }
-  };
-  
-  const handleDeactivatePrompt = () => {
-    if (activePrompt) {
-      dispatch(deactivatePrompt(activePrompt.id));
     }
   };
 
@@ -88,7 +52,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
                 color: promptColors.gold,
               }}
             >
-              User Prompts
+              System Prompts
             </Typography>
             
             {activePrompt && (
@@ -105,21 +69,21 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
           </Box>
           
           <Box>
-            <Tooltip title="Add User Prompt">
+            <Tooltip title="Configure System Prompts">
               <IconButton
                 size="small"
-                onClick={() => handleToggleExpand()}
+                onClick={handleToggleExpand}
                 sx={{ 
                   ...promptPanelStyles.iconButton,
                   color: promptColors.gold,
                   marginRight: 0.5
                 }}
               >
-                <AddIcon fontSize="small" />
+                <SettingsIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             
-            <Tooltip title="Expand User Prompts Panel">
+            <Tooltip title="Expand System Prompts Panel">
               <IconButton
                 size="small"
                 onClick={handleToggleExpand}
@@ -135,12 +99,39 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
         </Box>
       )}
 
-      {/* User Prompt Indicator (when not expanded but a prompt is active) */}
+      {/* Active prompt indicator (when collapsed) */}
       {!isExpanded && activePrompt && (
-        <UserPromptIndicator
-          activePrompt={activePrompt}
-          onDeactivate={handleDeactivatePrompt}
-        />
+        <Box sx={{ 
+          mb: 1.5, 
+          px: 1, 
+          py: 0.5, 
+          backgroundColor: 'rgba(212, 175, 55, 0.1)', 
+          borderRadius: 1,
+          border: `1px solid ${promptColors.gold}`,
+        }}>
+          <Typography sx={{ 
+            fontSize: '0.75rem', 
+            color: promptColors.gold,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5
+          }}>
+            <Box component="span" sx={{ fontWeight: 'bold' }}>Active:</Box>
+            {activePrompt.name}
+            {activePrompt.category && (
+              <Box 
+                component="span" 
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  opacity: 0.8,
+                  ml: 0.5 
+                }}
+              >
+                ({activePrompt.category})
+              </Box>
+            )}
+          </Typography>
+        </Box>
       )}
 
       {/* Expanded Panel */}
@@ -148,7 +139,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
         <Paper elevation={3} sx={promptPanelStyles.paper}>
           <Box sx={promptPanelStyles.panelHeader}>
             <Typography sx={{ ...promptPanelStyles.headerTitle, color: promptColors.gold }}>
-              User Prompts
+              System Prompts
             </Typography>
             
             <Tooltip title="Collapse Panel">
@@ -162,13 +153,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
           </Box>
           
           <Box sx={{ padding: 2 }}>
-            <UserPromptManager
-              prompts={prompts}
-              onAddPrompt={handleAddPrompt}
-              onUpdatePrompt={handleUpdatePrompt}
-              onDeletePrompt={handleDeletePrompt}
-              onActivatePrompt={handleActivatePrompt}
-            />
+            <SystemPromptManager />
           </Box>
         </Paper>
       </Collapse>
@@ -176,4 +161,4 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
   );
 };
 
-export default UserPromptsPanel;
+export default SystemPromptsPanel;

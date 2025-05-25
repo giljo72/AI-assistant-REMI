@@ -26,7 +26,8 @@
       "Bash(if [ -n \"$NGC_API_KEY\" ])",
       "Bash(then echo \"NGC_API_KEY is set (hidden for security)\")",
       "Bash(else echo \"NGC_API_KEY is NOT set\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(source:*)"
     ],
     "deny": []
   }

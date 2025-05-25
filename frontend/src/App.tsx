@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { useState, useEffect } from 'react';
-import { Provider, useSelector } from 'react-redux';
-import { store, RootState } from './store';
+import React, { useState, useEffect, useRef } from 'react';
+import { Provider, useSelector, useDispatch } from 'react-redux';
+import { store, RootState, AppDispatch } from './store';
 import MainLayout from './components/layout/MainLayout';
 import ProjectManagerView from './components/project/ProjectManagerView';
 import ChatView from './components/chat/ChatView';
@@ -15,6 +15,7 @@ import type { Chat as ChatType, ChatMessage } from './services';
 import { ProjectProvider } from './context/ProjectContext';
 import { ContextControlsProvider } from './context/ContextControlsContext';
 import { useNavigation } from './hooks/useNavigation';
+import { fetchSystemPrompts, seedDefaultSystemPrompts } from './store/systemPromptsSlice';
 
 // Adapted chat message type to match UI needs
 interface UIMessage {
@@ -35,6 +36,7 @@ const initialMessages: UIMessage[] = [];
 function AppContent() {
   // Use the navigation hook for state management
   const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
   
   // Get context mode from Redux store
   const { contextMode } = useSelector((state: RootState) => state.projectSettings);
@@ -49,6 +51,30 @@ function AppContent() {
   // State for file search and upload
   const [isTagAndAddModalOpen, setIsTagAndAddModalOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  
+  // Ref to track previous chat ID
+  const previousChatIdRef = useRef<string | null>(null);
+  
+  // Effect to initialize system prompts on app startup
+  useEffect(() => {
+    const initializeSystemPrompts = async () => {
+      try {
+        // First fetch existing system prompts
+        await dispatch(fetchSystemPrompts()).unwrap();
+        
+        // Get the state to check if we have prompts
+        const state = store.getState();
+        if (state.systemPrompts.prompts.length === 0) {
+          // No prompts exist, seed the defaults
+          await dispatch(seedDefaultSystemPrompts()).unwrap();
+        }
+      } catch (error) {
+        console.error('Failed to initialize system prompts:', error);
+      }
+    };
+    
+    initializeSystemPrompts();
+  }, [dispatch]);
   
   // Effect to load projects and update project names
   useEffect(() => {
@@ -117,9 +143,14 @@ function AppContent() {
   
   // Effect to load chat messages when the active chat changes
   useEffect(() => {
+    // Only clear messages if we're actually changing chats
+    if (previousChatIdRef.current !== navigation.activeChatId && navigation.activeChatId) {
+      setChatMessages([]);
+    }
+    previousChatIdRef.current = navigation.activeChatId;
+    
     const loadChatMessages = async () => {
       if (!navigation.activeChatId) {
-        setChatMessages([]);
         return;
       }
       
@@ -138,7 +169,7 @@ function AppContent() {
         setChatMessages(uiMessages);
       } catch (error) {
         console.error('Failed to load chat messages:', error);
-        setChatMessages([]);
+        // Don't clear messages on error - preserve what we have
       }
     };
     
@@ -247,6 +278,9 @@ function AppContent() {
         )
       );
       setIsProcessing(false);
+      
+      // Important: Don't let errors clear the chat or navigation state
+      // This prevents the UI from going blank on errors
     }
   };
 

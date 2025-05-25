@@ -1,5 +1,5 @@
 import api from './api';
-import { profileService } from './profileService';
+import personalProfileService from './personalProfileService';
 
 export interface ChatMessage {
   id: string;
@@ -197,7 +197,7 @@ class ChatService {
         model_name: options?.model_name,
         model_type: options?.model_type,
         context_mode: options?.context_mode,
-        personal_context: profileService.getDefaultProfilePrompt()
+        personal_context: await this.getPersonalContext()
       };
       
       console.log('📤 ChatService: Request payload:', request);
@@ -260,7 +260,7 @@ class ChatService {
       model_name: options?.model_name,
       model_type: options?.model_type,
       context_mode: options?.context_mode,
-      personal_context: profileService.getDefaultProfilePrompt()
+      personal_context: await this.getPersonalContext()
     };
 
     const response = await fetch(`${api.defaults.baseURL}/chats/${chatId}/generate-stream`, {
@@ -323,6 +323,21 @@ class ChatService {
         }
       }
     }
+  }
+
+  /**
+   * Get personal context from the default profile
+   */
+  private async getPersonalContext(): Promise<string | undefined> {
+    try {
+      const defaultProfile = await personalProfileService.getDefaultProfile();
+      if (defaultProfile) {
+        return personalProfileService.formatProfileForPrompt(defaultProfile);
+      }
+    } catch (error) {
+      console.error('Error fetching personal profile:', error);
+    }
+    return undefined;
   }
 }
 

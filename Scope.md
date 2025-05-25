@@ -17,11 +17,14 @@ The core philosophy remains that powerful AI assistance should not require surre
 
 **🎉 PROJECT COMPLETE** - The AI Assistant is now fully operational with production-ready multi-model architecture:
 
-### ✅ **Core System (100% Complete)**
+### ✅ **Core System (95% Complete)**
 * ✅ **UI Shell & Navigation**: Complete frontend structure with project sidebar, chat interface, and document management
 * ✅ **Project-Centered Architecture**: Implemented project containment with proper navigation flows
 * ✅ **User Prompts System**: Created user prompt functionality for custom assistant instructions
-* ✅ **Context Controls UI**: Implemented context settings panel with project/global toggle controls
+* ✅ **System Prompts Management**: Database-backed system prompt selection with auto-activation by model type
+* ⚠️ **Context Controls UI**: Implemented simplified mode-based selection (not granular toggles as originally envisioned)
+* ❌ **Context Controls Backend**: Not implemented - UI exists but backend doesn't process context settings
+* ✅ **Personal Profiles System**: Local storage of personal/team information for enhanced context (migrating to DB)
 * ✅ **File Management UI**: Developed project file management and global file system with proper flow and robust file-project linking persistence
 * ✅ **Universal Search Interface**: Implemented comprehensive search with 3-checkbox system (Chats, Knowledge Base, Documents)
 * ✅ **System Management Architecture**: Complete separation between system monitoring (❓) and admin controls (⚙️)
@@ -107,20 +110,33 @@ Projects serve as the primary organizational unit, acting as self-contained know
 
 This containment approach mirrors real-world workflows, creates intuitive knowledge boundaries, and enables performance optimization by limiting context scope.
 
-### Tiered Memory System with Prioritization
-Users can control both the scope and prioritization of knowledge:
+### Context Control System - Current vs. Original Vision
 
-* **Document Sources**:
-  * Project Documents Only (focused, fastest)
-  * Prioritize Project Documents (balanced, project documents given higher weight)
-  * All Documents Equally (comprehensive)
+#### What's Actually Implemented:
+* **Mode-Based Selection**: Choose operational modes that configure context automatically
+  * Self-Aware Mode: Can read codebase files
+  * Standard Mode: Basic chat without file access
+  * Business Analysis Mode: Enhanced reasoning patterns
+  * Custom Mode: User-defined context configurations
+* **Visual Feedback**: Yellow context indicator in status bar shows active mode
+* **Modal Interface**: Click indicator to change modes and create custom contexts
+* **Automatic Context Assembly**: System prompts + User prompts + Personal profiles
 
-* **Memory Scope**:
-  * Current Chat Only (focused, fastest)
-  * Project Chats (balanced)
-  * All Conversations (comprehensive)
+#### Original Vision (Future Enhancement):
+The system was envisioned with granular control via individual toggles:
+* Context: Standard/Extended/Custom selector
+* System Prompt: Enabled/Disabled toggle
+* Business Analysis: Active/Inactive toggle  
+* Project Prompt: Enabled/Disabled toggle
+* Global Data: Enabled/Disabled toggle
+* Project Documents: Enabled/Disabled toggle
 
-This tiered system allows selective expansion of context beyond project boundaries when needed, while maintaining project containment as the default.
+#### Current Implementation Gap:
+* ✅ Mode-based context selection works well for most use cases
+* ❌ No backend processing of context control settings
+* ❌ No granular toggles for individual context sources
+* ⚠️ Document context only available in Self-Aware mode (not toggleable)
+* ✅ Project containment works through database relationships
 
 ### Intelligent Model Selection Strategy
 The system provides specialized AI models for different use cases:
@@ -277,31 +293,43 @@ The system is designed around a philosophy of "containment by default, expansion
 * Implements context controls with adaptive reasoning modes
 * Provides project-centered file and chat management
 
-### 2. FastAPI Backend Layer (In Progress)
-* Exposes RESTful API endpoints for all functionality
-* Implements business logic in service layer
-* Manages data access through repository pattern
-* Handles document processing and vector operations
-* Integrates with Ollama and TensorRT for LLM generation
-* Implements performance optimizations for hardware
+### 2. FastAPI Backend Layer (Completed)
+* ✅ Exposes RESTful API endpoints for all functionality
+* ✅ Implements business logic in service layer
+* ✅ Manages data access through repository pattern
+* ✅ Handles document processing and vector operations
+* ✅ Integrates with Ollama and NVIDIA NIM for LLM generation
+* ✅ Implements streaming responses with SSE
+* ✅ Model orchestrator with intelligent VRAM management
+* ❌ Context controls backend processing not implemented
 
-### 3. Database & Storage Layer (To Be Implemented)
-* PostgreSQL database with pgvector extension
-* Manages document storage and metadata
-* Stores vector embeddings with hierarchical information
-* Handles project and chat organization
-* Maintains user settings and preferences
-* Optimized for performance on target hardware
+### 3. Database & Storage Layer (Completed)
+* ✅ PostgreSQL database with pgvector extension
+* ✅ Manages document storage and metadata
+* ✅ Stores vector embeddings for semantic search
+* ✅ Handles project and chat organization
+* ✅ Maintains user settings and preferences
+* ✅ System prompts and user prompts persistence
+* ✅ Message context tracking for audit trail
+* ⚠️ Personal profiles still in localStorage (migration planned)
 
-### 4. NVIDIA NIM Inference Layer (To Be Implemented)
-* **Dual NIM Architecture:** Separate containers for embeddings and generation
-  * **NV-Embed-v1 (7.9B):** Enterprise-grade document understanding and semantic search
-  * **MegatronGPT-20B:** Production-optimized text generation and reasoning
-* **Offline Operation:** Complete local processing with no external dependencies
-* **TensorRT Acceleration:** Hardware-optimized inference for RTX 4090
-* **Smart Document Processing:** Hybrid approach using NeMo Document AI for structure preservation
-* **Context-Aware Retrieval:** Advanced embedding model for accurate knowledge retrieval
-* **Production-Grade Responses:** 20B parameter model for sophisticated reasoning and synthesis
+### 4. AI Model Infrastructure (Completed)
+* ✅ **Multi-Model Architecture:** Unified LLM service routing to appropriate backends
+  * **NVIDIA NIM Integration:** 
+    - NV-Embedqa-E5-v5: Always-on embeddings (except in solo mode)
+    - Llama 3.1 70B: TensorRT-optimized for deep reasoning
+  * **Ollama Models:**
+    - Qwen 2.5 32B: Default model with full RAG support
+    - Mistral-Nemo 12B: Quick responses
+    - DeepSeek Coder V2 16B: Self-aware coding mode
+* ✅ **Intelligent Model Management:** 
+  - Automatic VRAM management with 24GB limit
+  - Solo mode for Llama 70B (unloads all other models)
+  - Smart model switching based on use case
+* ✅ **Production Features:**
+  - Streaming responses with real-time progress
+  - Model status monitoring and health checks
+  - Automatic failover and error handling
 
 ## UI Design Guidelines
 
@@ -351,42 +379,51 @@ The system is designed around a philosophy of "containment by default, expansion
 * Implement UserPromptIndicator for active prompt display
 * Create UserPromptsPanel for sidebar integration
 
-### Phase 4: Context Controls & Memory System (In Progress)
-* Implement ContextControlsPanel component
-* Create ContextStatusIndicators for quick toggle access
-* Build context controls with preset modes
-* Implement document source selection (project vs all)
+### Phase 4: Context Controls & Memory System (Partially Complete)
+* ✅ Implemented ContextControlsPanel component with mode-based selection
+* ✅ Created ContextStatusIndicators showing active mode and prompts inline
+* ✅ Built preset modes (Self-Aware, Standard, Business Analysis)
+* ✅ Personal Profiles system for additional context
+* ❌ Backend context processing not implemented
+* ❌ Granular document source selection not implemented (simplified to modes)
+* ❓ Decision needed: Continue with simplified modes or implement full granular controls?
 
-### Phase 5: Basic Backend Services (To Be Implemented)
-* Setup FastAPI application structure
-* Implement database models with containment relationships
-* Create repositories for project-centered data access
-* Build API endpoints for project-centered CRUD operations
+### Phase 5: Basic Backend Services (Completed)
+* ✅ Setup FastAPI application structure
+* ✅ Implemented database models with containment relationships
+* ✅ Created repositories for project-centered data access
+* ✅ Built API endpoints for all CRUD operations
+* ✅ Added streaming chat responses with SSE
+* ✅ Implemented model orchestration service
 
-### Phase 6: Document Processing & RAG (To Be Implemented)
-* Implement hierarchical document processors with NeMo
-* Create multi-level chunking strategies
-* Implement metadata extraction and storage
-* Setup structure preservation for document context
+### Phase 6: Document Processing & RAG (Completed)
+* ✅ Implemented document processing with embeddings
+* ✅ Created chunking strategies for documents
+* ✅ Metadata extraction and storage in PostgreSQL
+* ✅ Vector embeddings with NV-Embedqa-E5-v5
+* ✅ Semantic search with pgvector
+* ⚠️ Hierarchical document structure preservation simplified
 
-### Phase 7: NVIDIA NIM Integration & Optimization (To Be Implemented)
-* **Deploy NVIDIA NIM Containers:** 
-  * NV-Embed-v1 for enterprise-grade embeddings
-  * MegatronGPT-20B for production text generation
-* **Hybrid Architecture Integration:**
-  * Keep existing NeMo Document AI for hierarchical processing
-  * Integrate NIM inference endpoints for embeddings and generation
-  * Configure dual-container orchestration with Docker Compose
-* **Hardware Optimization:**
-  * TensorRT acceleration through NIM (built-in)
-  * Memory management for dual RTX 4090 workloads
-  * API load balancing between containers
+### Phase 7: NVIDIA NIM Integration & Optimization (Completed)
+* ✅ **Deployed NVIDIA NIM Containers:** 
+  * NV-Embedqa-E5-v5 for embeddings (always active)
+  * Llama 3.1 70B for deep reasoning (TensorRT optimized)
+* ✅ **Multi-Model Integration:**
+  * Unified routing through LLM service
+  * Automatic model selection based on mode
+  * Docker Compose orchestration configured
+* ✅ **Hardware Optimization:**
+  * TensorRT acceleration active
+  * Smart VRAM management for RTX 4090 (24GB)
+  * Automatic model loading/unloading
 
-### Phase 8: Testing and Refinement (To Be Implemented)
-* Comprehensive testing of all features
-* Performance optimization for target hardware
-* UI/UX refinement based on testing
-* Bug fixing and issue resolution
+### Phase 8: Future Enhancements
+* 🎯 **Context Controls Backend**: Implement backend processing for context settings
+* 🎯 **Granular Context Toggles**: Add individual control over context sources (if needed)
+* 🎯 **Personal Profiles Database Migration**: Move from localStorage to PostgreSQL
+* 🎯 **Enhanced Document Processing**: Hierarchical structure preservation
+* 🎯 **External API Integration**: Optional Claude/ChatGPT verification
+* 🎯 **Voice Input**: Whisper integration for transcription
 
 ## Future Expansion: External API & Web Integration
 

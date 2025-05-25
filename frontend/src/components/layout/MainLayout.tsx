@@ -3,11 +3,11 @@ import React, { ReactNode, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import ProjectSidebar from '../sidebar/ProjectSidebar';
 import UserPromptsPanel from '../chat/UserPromptsPanel';
+import SystemPromptsPanel from '../chat/SystemPromptsPanel';
 import ContextControlsPanel from '../modals/ContextControlsPanel';
 import { RootState } from '../../store';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useContextControls } from '../../context/ContextControlsContext';
-import { setContextMode } from '../../store/projectSettingsSlice';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -41,6 +41,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           >
             <span className="mr-1">⚙</span> Context Settings
           </button>
+          
+          {/* System Prompts Panel */}
+          <SystemPromptsPanel expanded={false} />
           
           {/* User Prompts Panel */}
           <UserPromptsPanel expanded={false} />

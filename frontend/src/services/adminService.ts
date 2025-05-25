@@ -56,9 +56,11 @@ const adminService = {
   /**
    * Reset database tables
    */
-  resetDatabase: async (options?: DatabaseResetOptions): Promise<AdminOperationResponse> => {
+  resetDatabase: async (preservePrompts: boolean = true): Promise<AdminOperationResponse> => {
     try {
-      const response = await api.post('/admin/reset/database', options);
+      const response = await api.post('/admin/reset/database', null, {
+        params: { preserve_prompts: preservePrompts }
+      });
       return response.data;
     } catch (error) {
       console.error('[ADMIN] Error resetting database:', error);

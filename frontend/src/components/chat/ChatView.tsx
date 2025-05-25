@@ -63,7 +63,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   onStopGeneration
 }) => {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState<string>('qwen2.5:32b-instruct-q4_K_M');
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -99,6 +99,11 @@ const ChatView: React.FC<ChatViewProps> = ({
         );
         if (activeModel) {
           setSelectedModel(activeModel.name);
+        } else if (chatModels.length > 0) {
+          // If no active model, set the first available chat model
+          // Prefer Qwen if available
+          const defaultModel = chatModels.find((m: any) => m.name.includes('qwen2.5:32b')) || chatModels[0];
+          setSelectedModel(defaultModel.name);
         }
       } catch (error) {
         console.error('Failed to fetch models:', error);
@@ -174,31 +179,6 @@ const ChatView: React.FC<ChatViewProps> = ({
           >
             {projectName} / {chatName}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Typography variant="caption" sx={{ color: '#999' }}>Mode:</Typography>
-            <Select
-              size="small"
-              value="balanced"
-              sx={{
-                backgroundColor: '#1a2b47',
-                color: '#d4af37',
-                fontSize: '0.75rem',
-                height: '24px',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  border: 'none',
-                },
-                '& .MuiSelect-select': {
-                  padding: '2px 8px',
-                }
-              }}
-            >
-              <MenuItem value="balanced">Balanced</MenuItem>
-              <MenuItem value="business_deep">Business Deep</MenuItem>
-              <MenuItem value="business_fast">Business Fast</MenuItem>
-              <MenuItem value="development">Development</MenuItem>
-              <MenuItem value="quick">Quick Response</MenuItem>
-            </Select>
-          </Box>
         </Box>
       </Paper>
       

@@ -1,6 +1,7 @@
 import api from './api';
 import projectService from './projectService';
 import userPromptService from './userPromptService';
+import { systemPromptService } from './systemPromptService';
 import fileService from './fileService';
 import { chatService } from './chatService';
 import systemService from './systemService';
@@ -9,6 +10,7 @@ export {
   api,
   projectService,
   userPromptService,
+  systemPromptService,
   fileService,
   chatService,
   systemService,
@@ -16,6 +18,7 @@ export {
 
 export type { Project, CreateProjectRequest, UpdateProjectRequest } from './projectService';
 export type { UserPrompt, CreateUserPromptRequest, UpdateUserPromptRequest } from './userPromptService';
+export type { SystemPrompt, CreateSystemPromptData, UpdateSystemPromptData } from './systemPromptService';
 export type { 
   File, 
   FileWithMetadata,

@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import UserPromptModal from '../modals/UserPromptModal';
 import { userPromptService, UserPrompt } from '../../services';
+import { promptPanelStyles, promptColors } from '../common/promptStyles';
 
 interface UserPromptManagerProps {
   projectId?: string; // Optional project ID for project-specific prompts
@@ -170,37 +171,15 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
 
   return (
     <Box>
-      <Paper
-        elevation={3}
-        sx={{
-          backgroundColor: '#1a2b47', // Navy background
-          color: '#ffffff',
-          borderRadius: '8px',
-          overflow: 'hidden'
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: '#152238', // Darker navy for header
-            padding: '12px 16px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-          }}
-        >
-          <Typography variant="h6">User Prompts</Typography>
+      <Paper elevation={3} sx={promptPanelStyles.paper}>
+        <Box sx={promptPanelStyles.panelHeader}>
+          <Typography sx={promptPanelStyles.headerTitle}>User Prompts</Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleOpenAddModal}
-            sx={{
-              backgroundColor: '#d4af37', // Gold button
-              color: '#000000',
-              '&:hover': {
-                backgroundColor: '#b4941f', // Darker gold on hover
-              }
-            }}
+            size="small"
+            sx={promptPanelStyles.addButton}
           >
             Add Prompt
           </Button>
@@ -208,15 +187,18 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
 
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', padding: 3 }}>
-            <CircularProgress size={24} sx={{ color: '#d4af37' }} />
+            <CircularProgress size={24} sx={{ color: promptColors.gold }} />
           </Box>
         ) : (
-          <List sx={{ maxHeight: '300px', overflow: 'auto' }}>
+          <List sx={promptPanelStyles.list}>
             {prompts.length === 0 ? (
-              <ListItem>
+              <ListItem sx={promptPanelStyles.listItem}>
                 <ListItemText 
-                  primary="No prompts created yet" 
-                  sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                  primary={
+                    <Typography sx={{ ...promptPanelStyles.listItemPrimary, color: 'rgba(255, 255, 255, 0.7)' }}>
+                      No prompts created yet
+                    </Typography>
+                  }
                 />
               </ListItem>
             ) : (
@@ -224,6 +206,7 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
                 <React.Fragment key={prompt.id}>
                   {index > 0 && <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />}
                   <ListItem
+                    sx={promptPanelStyles.listItem}
                     secondaryAction={
                       <Box>
                         <Tooltip title="Edit Prompt">
@@ -231,7 +214,7 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
                             edge="end" 
                             aria-label="edit"
                             onClick={() => handleOpenEditModal(prompt)}
-                            sx={{ color: '#d4af37' }}
+                            sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
                           >
                             <EditIcon />
                           </IconButton>
@@ -246,7 +229,7 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
                                 handleDeletePrompt();
                               }
                             }}
-                            sx={{ color: '#f44336' }}
+                            sx={{ ...promptPanelStyles.iconButton, color: promptColors.danger }}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -259,37 +242,23 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
                         edge="start"
                         checked={prompt.is_active}
                         onChange={() => handleToggleActive(prompt)}
-                        sx={{
-                          color: 'rgba(255, 255, 255, 0.7)',
-                          '&.Mui-checked': {
-                            color: '#d4af37',
-                          },
-                        }}
+                        sx={promptPanelStyles.checkbox}
                       />
                     </ListItemIcon>
                     <ListItemText
                       primary={
                         <Typography 
                           sx={{ 
+                            ...promptPanelStyles.listItemPrimary,
                             fontWeight: prompt.is_active ? 'bold' : 'normal',
-                            color: prompt.is_active ? '#d4af37' : '#ffffff'
+                            color: prompt.is_active ? promptColors.gold : '#ffffff'
                           }}
                         >
                           {prompt.name}
                         </Typography>
                       }
                       secondary={
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: 'vertical',
-                          }}
-                        >
+                        <Typography sx={promptPanelStyles.listItemSecondary}>
                           {prompt.content}
                         </Typography>
                       }

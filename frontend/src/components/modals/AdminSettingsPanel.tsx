@@ -11,7 +11,10 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'reset' | 'development'>('info');
-  const [developmentMode, setDevelopmentMode] = useState<boolean>(false);
+  const [developmentMode, setDevelopmentMode] = useState<boolean>(() => {
+    // Load development mode from localStorage
+    return localStorage.getItem('developmentMode') === 'true';
+  });
   const [resetAction, setResetAction] = useState<string>('');
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
   const [operationStatus, setOperationStatus] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -22,6 +25,15 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
       fetchSystemInfo();
     }
   }, [isOpen]);
+
+  const handleDevelopmentModeToggle = () => {
+    const newValue = !developmentMode;
+    setDevelopmentMode(newValue);
+    localStorage.setItem('developmentMode', newValue.toString());
+    
+    // You could also send this to the backend if needed
+    // await adminService.setDevelopmentMode(newValue);
+  };
 
   const fetchSystemInfo = async () => {
     setLoading(true);
@@ -52,7 +64,8 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
       
       switch (resetAction) {
         case 'database':
-          response = await adminService.resetDatabase();
+          // Reset project data but preserve prompts and profiles
+          response = await adminService.resetDatabase(true);
           break;
         case 'vector':
           response = await adminService.resetVectorStore();
@@ -61,7 +74,12 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
           response = await adminService.resetFiles();
           break;
         case 'all':
-          response = await adminService.resetEverything();
+          // Reset EVERYTHING including prompts and profiles
+          // First reset database without preserving anything
+          await adminService.resetDatabase(false);
+          await adminService.resetVectorStore();
+          await adminService.resetFiles();
+          response = { message: 'Complete system reset performed. All data cleared.' };
           break;
         default:
           throw new Error('Invalid reset action');
@@ -231,9 +249,9 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                   className={`p-4 rounded-md border transition-colors cursor-pointer ${resetAction === 'database' ? 'bg-navy border-gold' : 'bg-navy-lighter border-navy-lighter hover:border-gray-500'}`}
                   onClick={() => setResetAction('database')}
                 >
-                  <h4 className="font-semibold text-gold mb-1">Reset Database</h4>
+                  <h4 className="font-semibold text-gold mb-1">Reset Project Data</h4>
                   <p className="text-sm text-gray-400">
-                    Clears all database tables while preserving the schema. This will remove all projects, documents, and chats.
+                    Clears projects, documents, chats, and project-specific prompts. Preserves system prompts, user prompts, and personal profiles.
                   </p>
                 </div>
                 
@@ -258,12 +276,12 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                 </div>
                 
                 <div 
-                  className={`p-4 rounded-md border transition-colors cursor-pointer ${resetAction === 'all' ? 'bg-navy border-gold' : 'bg-navy-lighter border-navy-lighter hover:border-gray-500'}`}
+                  className={`p-4 rounded-md border-2 transition-colors cursor-pointer ${resetAction === 'all' ? 'bg-red-900 bg-opacity-30 border-red-600' : 'bg-red-900 bg-opacity-10 border-red-800 hover:border-red-600'}`}
                   onClick={() => setResetAction('all')}
                 >
-                  <h4 className="font-semibold text-gold mb-1">Reset Everything</h4>
-                  <p className="text-sm text-gray-400">
-                    Completely resets the system by clearing the database, vector store, and all files. This is a clean slate reset.
+                  <h4 className="font-semibold text-red-400 mb-1">🚨 RESET EVERYTHING</h4>
+                  <p className="text-sm text-red-300">
+                    ⚠️ DANGER: Completely wipes ALL data including system prompts, user prompts, personal profiles, and all customizations. Returns to factory defaults.
                   </p>
                 </div>
               </div>
@@ -295,7 +313,7 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                       </p>
                     </div>
                     <button
-                      onClick={() => setDevelopmentMode(!developmentMode)}
+                      onClick={handleDevelopmentModeToggle}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                         developmentMode ? 'bg-gold' : 'bg-gray-600'
                       }`}
@@ -320,26 +338,38 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                         <div className="p-3 bg-navy-lighter rounded-md">
                           <h5 className="font-medium text-gold mb-2">Available Development Features:</h5>
                           <ul className="list-disc list-inside text-sm text-gray-400 space-y-1">
-                            <li>Enhanced error messages with stack traces</li>
-                            <li>API request/response logging</li>
-                            <li>Model performance metrics</li>
-                            <li>Database query monitoring</li>
-                            <li>Memory usage tracking</li>
-                            <li>Self-analysis endpoints for code improvement</li>
+                            <li>Self-analysis endpoints for code improvement ✅</li>
+                            <li className="opacity-50">Enhanced error messages with stack traces (Coming Soon)</li>
+                            <li className="opacity-50">API request/response logging (Coming Soon)</li>
+                            <li className="opacity-50">Model performance metrics (Coming Soon)</li>
+                            <li className="opacity-50">Database query monitoring (Coming Soon)</li>
+                            <li className="opacity-50">Memory usage tracking (Coming Soon)</li>
                           </ul>
                         </div>
                         
                         <div className="p-3 bg-navy-lighter rounded-md">
                           <h5 className="font-medium text-gold mb-2">Quick Actions:</h5>
                           <div className="space-y-2">
-                            <button className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left">
-                              📊 View Performance Metrics
+                            <button 
+                              className="w-full px-3 py-2 bg-gray-800 text-gray-500 rounded text-sm text-left cursor-not-allowed opacity-50"
+                              disabled
+                            >
+                              📊 View Performance Metrics (Coming Soon)
                             </button>
-                            <button className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left">
-                              🔍 Run Self-Analysis
+                            <button 
+                              onClick={() => {
+                                // TODO: Implement self-analysis
+                                alert('Self-analysis feature coming soon! This will analyze your codebase and suggest improvements.');
+                              }}
+                              className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left"
+                            >
+                              🔍 Run Self-Analysis (Available via API)
                             </button>
-                            <button className="w-full px-3 py-2 bg-navy hover:bg-navy-light text-white rounded text-sm text-left">
-                              📝 Export Debug Logs
+                            <button 
+                              className="w-full px-3 py-2 bg-gray-800 text-gray-500 rounded text-sm text-left cursor-not-allowed opacity-50"
+                              disabled
+                            >
+                              📝 Export Debug Logs (Coming Soon)
                             </button>
                           </div>
                         </div>

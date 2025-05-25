@@ -199,25 +199,23 @@ async def generate_chat_response_endpoint(
         project_id = chat.project_id
         active_prompts = user_prompt_repository.get_active_for_project(db, project_id=project_id)
         
-        # Auto-activate system prompts based on model
-        from sqlalchemy import select
-        from ...db.models.user_prompt import UserPrompt
+        # Get active system prompt
+        from ...db.repositories.system_prompt_repository import SystemPromptRepository
+        system_prompt_repo = SystemPromptRepository()
+        active_system_prompt = system_prompt_repo.get_active(db)
         
-        # Check if system prompts should be activated
-        if 'deepseek-coder' in model_name.lower():
-            # Use DeepSeek Coder system prompt
-            coder_prompt = db.execute(
-                select(UserPrompt).where(UserPrompt.name == "System: DeepSeek Coder")
-            ).scalar_one_or_none()
-            if coder_prompt and not any(p.name == "System: DeepSeek Coder" for p in active_prompts):
-                active_prompts.append(coder_prompt)
-        else:
-            # Use default assistant prompt for all other models
+        # If no active system prompt, try to activate default
+        if not active_system_prompt:
+            from sqlalchemy import select
+            from ...db.models.system_prompt import SystemPrompt
             default_prompt = db.execute(
-                select(UserPrompt).where(UserPrompt.name == "System: Default Assistant")
+                select(SystemPrompt).where(
+                    SystemPrompt.name == "Default Assistant",
+                    SystemPrompt.is_default == True
+                )
             ).scalar_one_or_none()
-            if default_prompt and not any(p.name == "System: Default Assistant" for p in active_prompts):
-                active_prompts.append(default_prompt)
+            if default_prompt:
+                active_system_prompt = system_prompt_repo.set_active(db, default_prompt.id)
         
         # Check if we're in self-aware mode (from context mode, not user prompts)
         is_self_aware = request.context_mode == "self-aware"
@@ -226,17 +224,23 @@ async def generate_chat_response_endpoint(
         from datetime import datetime
         current_date = datetime.now().strftime("%A, %B %d, %Y")
         
-        # Base system prompt
-        system_content = f"""You are {model_name}, an AI assistant running via {model_type}. Today's date is {current_date}.
+        # Start with active system prompt content or fallback
+        if active_system_prompt:
+            system_content = active_system_prompt.content
+        else:
+            # Fallback if no system prompt is active
+            system_content = """You are a helpful AI assistant designed to provide accurate, thoughtful, and practical assistance.
 
-You are part of an AI Assistant system with the following capabilities:
-- Multiple AI models available: {model_list}
-- Currently active model: {model_name} ({model_type})
-- Document processing and semantic search
-- Project-based knowledge containment
-- Custom user prompts for behavior modification
-
-You are a helpful, friendly, and knowledgeable assistant. Be concise but thorough in your responses."""
+Core behaviors:
+- Answer questions directly and comprehensively
+- Admit uncertainty rather than guessing
+- Ask clarifying questions when requests are ambiguous
+- Provide step-by-step reasoning for complex topics
+- Cite sources or indicate when information may be dated
+- Maintain a professional yet conversational tone"""
+        
+        # Add model and system information
+        system_content += f"\n\nSystem Information:\n- Model: {model_name} ({model_type})\n- Date: {current_date}\n- Available models: {model_list}"
 
         if is_self_aware:
             # Self-aware mode - add project structure knowledge
