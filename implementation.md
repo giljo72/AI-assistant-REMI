@@ -353,6 +353,13 @@ async def verify_system_health():
 
 ## Current Implementation Gaps
 
+### Knowledge/RAG Architecture Harmonization 🚨
+- **Critical Gap**: Knowledge, memory, vectors, and RAG not fully integrated
+- **Current State**: Basic vector search exists but not harmonized with prompt system
+- **Model Balance Issue**: May have overloaded LLM capabilities at expense of RAG/vector
+- **Missing**: Unified knowledge retrieval that respects project boundaries and prompts
+- **Impact**: Not achieving the full potential of context-aware responses
+
 ### Context Controls Backend ❌
 - **UI Implemented**: Mode-based selection with visual indicators
 - **Backend Missing**: No processing of context control settings
@@ -369,6 +376,44 @@ async def verify_system_health():
 - **Simplified**: Basic chunking without structure preservation
 - **Original Vision**: Multi-level document understanding
 - **Current**: Flat embedding generation works well
+
+### UI/UX Polish ⚠️
+- **Loading States**: No spinner when entering chats (poor UX)
+- **Icons**: Still using emoji instead of proper SVG icons
+- **Prompt UI**: Configuration interface needs redesign
+- **Performance Monitoring**: No visual indicators for system resources
+
+## Proposed Architecture Improvements
+
+### Unified Knowledge System
+**Goal**: Create a harmonized system where prompts, knowledge, and context work seamlessly together.
+
+1. **Project Prompt Simplification**
+   - Convert project prompts to just be project descriptions
+   - Descriptions automatically become part of the context
+   - Reduces confusion between "prompt" and "description"
+   - More intuitive for users
+
+2. **Knowledge Hierarchy**
+   ```
+   System Prompt (base behavior)
+   └── User Prompts (user preferences)
+       └── Project Description (as context)
+           └── Document Context (RAG retrieval)
+               └── Chat History (immediate context)
+   ```
+
+3. **Smart Context Assembly**
+   - Respect project boundaries by default
+   - Expand to global only when explicitly requested
+   - Weight relevance based on hierarchy
+   - Optimize token usage with smart truncation
+
+4. **Model Architecture Rebalancing**
+   - Consider dedicated embedding model (not just NV-EmbedQA)
+   - Separate reasoning model from retrieval model
+   - Optimize VRAM allocation between models
+   - Implement proper retrieval-augmented generation flow
 
 ## Additional Implemented Features Not in Original Scope
 

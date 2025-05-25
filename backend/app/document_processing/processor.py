@@ -18,10 +18,11 @@ DEFAULT_CHUNK_OVERLAP = 200
 class DocumentProcessor:
     """Handles document processing, chunking, and embedding generation."""
     
-    def __init__(self, upload_dir: str, processed_dir: str):
+    def __init__(self, upload_dir: str, processed_dir: str, embedding_service=None):
         """Initialize the document processor."""
         self.upload_dir = upload_dir
         self.processed_dir = processed_dir
+        self.embedding_service = embedding_service
         
         # Create directories if they don't exist
         os.makedirs(upload_dir, exist_ok=True)
@@ -187,7 +188,7 @@ class DocumentProcessor:
         
         return chunks
     
-    def generate_embeddings(self, chunks: List[Dict[str, Any]], db_session=None) -> List[Dict[str, Any]]:
+    async def generate_embeddings(self, chunks: List[Dict[str, Any]], db_session=None) -> List[Dict[str, Any]]:
         """
         Generate embeddings for text chunks.
         
@@ -203,14 +204,14 @@ class DocumentProcessor:
             from ..rag.vector_store import get_vector_store
             
             if db_session:
-                # Get the vector store
-                vector_store = get_vector_store(db_session)
+                # Get the vector store with embedding service
+                vector_store = get_vector_store(db_session, self.embedding_service)
                 
                 # Generate embeddings for each chunk
                 for chunk in chunks:
                     # Generate embedding
                     text = chunk["content"]
-                    embedding = vector_store.generate_mock_embedding(text)
+                    embedding = await vector_store.generate_embedding(text)
                     
                     # Store the embedding as a string
                     chunk["embedding"] = json.dumps(embedding)
@@ -254,6 +255,7 @@ class DocumentProcessor:
 
 
 # Create a singleton instance for the application
+# Will be initialized with embedding service in main.py
 document_processor = DocumentProcessor(
     upload_dir=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "uploads"),
     processed_dir=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "processed")

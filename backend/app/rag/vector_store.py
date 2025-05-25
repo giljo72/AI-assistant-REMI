@@ -21,15 +21,17 @@ class VectorStore:
     for efficient vector similarity search.
     """
     
-    def __init__(self, db_session: Session, embedding_dimensions: int = EMBEDDING_DIMENSIONS):
+    def __init__(self, db_session: Session, embedding_service=None, embedding_dimensions: int = EMBEDDING_DIMENSIONS):
         """
         Initialize the vector store.
         
         Args:
             db_session: SQLAlchemy database session
+            embedding_service: Optional embedding service instance
             embedding_dimensions: Dimension of the embedding vectors
         """
         self.db = db_session
+        self.embedding_service = embedding_service
         self.embedding_dimensions = embedding_dimensions
         
         # Ensure pgvector extension is available
@@ -230,6 +232,26 @@ class VectorStore:
             logger.error(f"Error in similarity search: {str(e)}")
             return []
     
+    async def generate_embedding(self, text: str) -> List[float]:
+        """
+        Generate an embedding for the given text.
+        
+        Uses the embedding service if available, otherwise falls back to mock embeddings.
+        
+        Args:
+            text: Text to generate an embedding for
+            
+        Returns:
+            Embedding vector
+        """
+        if self.embedding_service:
+            try:
+                return await self.embedding_service.embed_text(text)
+            except Exception as e:
+                logger.warning(f"Failed to generate real embedding, falling back to mock: {e}")
+        
+        return self.generate_mock_embedding(text)
+    
     def generate_mock_embedding(self, text: str) -> List[float]:
         """
         Generate a mock embedding for testing purposes.
@@ -265,14 +287,15 @@ class VectorStore:
 
 
 # Create a factory function to get the vector store
-def get_vector_store(db_session: Session) -> VectorStore:
+def get_vector_store(db_session: Session, embedding_service=None) -> VectorStore:
     """
     Get a VectorStore instance.
     
     Args:
         db_session: SQLAlchemy database session
+        embedding_service: Optional embedding service instance
         
     Returns:
         Initialized VectorStore
     """
-    return VectorStore(db_session)
+    return VectorStore(db_session, embedding_service)

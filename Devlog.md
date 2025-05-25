@@ -1780,7 +1780,7 @@ The AI Assistant now has better understanding of who people are and their roles 
 1. **Vision Alignment Analysis**
    - Reviewed user's vision for granular context controls (6 individual toggles)
    - Documented gap between vision and current implementation (mode-based selection)
-   - Created Context_Controls_Implementation_Status.md for clarity
+   - Created context_status.md documenting the implementation gap
 
 2. **Scope.md Updates**
    - Updated implementation status to reflect reality (95% complete)
@@ -1841,7 +1841,9 @@ The AI Assistant now has better understanding of who people are and their roles 
 - Kept only essential files for production use
 - Project is now much cleaner and more maintainable
 
-## January 25, 2025 - Mode Selector Removal
+## January 25, 2025 - Mode Selector Removal & System Improvements
+
+### UI Simplification
 - Removed Mode Selector dropdown visualization from chat interface
   - Deleted ModeSelector.tsx component file
   - Removed Mode dropdown from ChatView header
@@ -1850,3 +1852,111 @@ The AI Assistant now has better understanding of who people are and their roles 
   - Removed contextMode prop from ContextStatusIndicators component
   - Removed Context Mode Indicator button from chat interface
   - This simplifies the UI as context and prompts now handle behavior configuration
+
+### Bug Fixes
+- Fixed system prompts loading errors (CORS and 404 issues)
+  - Corrected double `/api/api/` path in systemPromptService
+  - Fixed system_prompts router registration in backend
+  - Fixed seed-defaults endpoint response format mismatch
+- Fixed chat message caching when switching between chats
+  - Messages now clear immediately when changing chats
+  - Added useRef to track previous chat ID
+  - Prevents ghost messages from previous conversations
+- Fixed MUI warning about out-of-range model selector value
+  - Model selector now starts empty until models load
+
+### Database Reset Enhancement
+- Updated Reset Database functionality to preserve important data
+  - "Reset Project Data" now preserves system prompts, user prompts, and personal profiles
+  - Added "RESET EVERYTHING" option in red with danger styling for complete wipe
+  - Backend now accepts `preserve_prompts` parameter
+  - Better logical structure: least to most destructive options
+
+### Development Tab Updates
+- Clarified which features are implemented vs planned
+  - Marked unimplemented features as "Coming Soon"
+  - Added persistent development mode toggle (saves to localStorage)
+  - Disabled placeholder buttons for unimplemented features
+  - Self-analysis marked as available (API exists)
+
+### Major Architectural Consideration - Knowledge/RAG Harmonization
+**Critical Gap Identified**: The knowledge retrieval, memory, vector search, and RAG systems are not fully integrated with the prompt hierarchy. This is preventing the system from achieving its full potential of context-aware, project-bounded responses.
+
+**Proposed Solution**:
+1. Simplify project prompts to just be descriptions that get added as context
+2. Create unified knowledge hierarchy: System → User → Project → Documents → Chat
+3. Implement smart context assembly that respects boundaries and optimizes tokens
+4. Consider model architecture rebalancing (may have overloaded LLM at expense of RAG)
+
+### TODO Items:
+
+#### Critical Architecture Work:
+- [ ] **Harmonize Knowledge/RAG/Vector/Memory Systems** (HIGH PRIORITY)
+  - [ ] Integrate vector search with prompt hierarchy
+  - [ ] Implement proper retrieval-augmented generation flow
+  - [ ] Create unified context assembly respecting project boundaries
+  - [ ] Simplify project prompts to descriptions
+  - [ ] Evaluate model balance (LLM vs embedding/retrieval models)
+  - [ ] Test different embedding models beyond NV-EmbedQA
+  - [ ] Implement smart token optimization for context
+
+#### UI/UX Improvements:
+- [ ] Add loading spinner when entering chat (currently has delay with no feedback)
+- [ ] Replace remaining emoji/text with proper SVG icons throughout UI
+- [ ] Improve prompt configuration UI (current design is "ugly")
+- [ ] Add toggleable prompts functionality (ability to quickly enable/disable prompts)
+- [ ] Add "highlights" feature for prompts (visual emphasis on important prompts)
+
+#### Performance Monitoring Dashboard:
+- [ ] Add performance gauges next to "AI Assistant" header:
+  - [ ] GPU VRAM speedometer gauge (usage and available)
+  - [ ] GPU processing percentage indicator
+  - [ ] CPU usage gauge
+  - [ ] RAM usage indicator
+  - [ ] F: drive HDD space monitor
+- [ ] Add GPU usage indicator on file manager pages during processing
+- [ ] Show real-time metrics when processing documents
+
+#### Feature Implementation:
+- [ ] Connect self-analysis button to actual `/api/self-analysis` endpoints
+- [ ] Implement Whisper integration for voice input
+- [ ] Test and fix file uploads and memory handling
+- [ ] Review Claude AI vision summary implementation for ideas
+- [ ] Fix developer mode functionality (beyond just the toggle)
+- [ ] Add API request/response logging when development mode is enabled
+- [ ] Implement debug log export functionality
+
+#### Production Considerations:
+- [ ] Consider hiding "Reset Files" option in production mode
+- [ ] Add actual functionality for development mode features
+- [ ] Implement performance metrics collection backend
+
+### January 26, 2025
+
+#### Knowledge/RAG/Vector Harmonization Phase 1 - Embedding Service Foundation
+- Created real embedding service (`backend/app/services/embedding_service.py`)
+  - Implemented with sentence-transformers library
+  - Using all-mpnet-base-v2 model for 768-dimensional embeddings
+  - Added async support for non-blocking operations
+  - Includes batch processing and caching capabilities
+- Updated vector store to use real embeddings
+  - Modified `vector_store.py` to accept embedding service
+  - Added `generate_embedding` method with fallback to mock
+- Fixed broken `search_chat_context` function in chat endpoint
+  - Removed undefined function import
+  - Implemented direct vector search integration
+  - Document context now properly added to chat messages
+- Updated semantic search endpoints to use real embeddings
+  - Both `/semantic_search` and `/chat-context` now async
+  - Generate real embeddings for queries
+- Updated document processor for real embeddings
+  - Added embedding service parameter
+  - Made `generate_embeddings` async
+  - Background processing now uses real embeddings
+- Added sentence-transformers to requirements.txt
+- Created test script (`test_embedding_service.py`) to verify implementation
+
+**Next Steps:**
+- Run tests to verify embedding service works
+- Install sentence-transformers in production environment
+- Begin Phase 2: Document Processing Enhancement

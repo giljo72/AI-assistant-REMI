@@ -290,32 +290,36 @@ You can help improve your own code, debug issues, and suggest enhancements. When
         if not is_self_aware and request.include_context:
             try:
                 # Search for relevant documents in the project
-                from ...api.endpoints.semantic_search import search_chat_context
-                from ...schemas.chat import ChatContextRequest
+                from ...services.embedding_service import get_embedding_service
+                from ...rag.vector_store import get_vector_store
                 
-                context_request = ChatContextRequest(
-                    query=request.message,
+                # Get embedding service and vector store
+                embedding_service = get_embedding_service()
+                vector_store = get_vector_store(db, embedding_service)
+                
+                # Generate embedding for the query
+                query_embedding = await vector_store.generate_embedding(request.message)
+                
+                # Search for relevant chunks
+                chunks = vector_store.similarity_search(
+                    query_embedding=query_embedding,
                     project_id=project_id,
-                    top_k=3  # Get top 3 most relevant chunks
+                    limit=3,  # Get top 3 most relevant chunks
+                    similarity_threshold=0.6
                 )
                 
-                search_results = await search_chat_context(
-                    request=context_request,
-                    db=db
-                )
-                
-                if search_results.results:
+                if chunks:
                     # Add document context as a system message
                     doc_context = "\n\nRelevant Document Context:\n"
-                    for idx, result in enumerate(search_results.results):
-                        doc_context += f"\n[{idx+1}] From '{result.filename}':\n{result.content}\n"
+                    for idx, chunk in enumerate(chunks):
+                        doc_context += f"\n[{idx+1}] From '{chunk['filename']}':\n{chunk['content']}\n"
                     
                     doc_message = {
                         "role": "system",
                         "content": doc_context
                     }
                     messages.append(doc_message)
-                    logger.info(f"Added {len(search_results.results)} document chunks to context")
+                    logger.info(f"Added {len(chunks)} document chunks to context")
             except Exception as e:
                 logger.warning(f"Failed to add document context: {e}")
         

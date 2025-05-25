@@ -32,6 +32,9 @@ transformers>=4.30.0
 accelerate>=0.20.0
 sentencepiece>=0.1.99
 
+# Embeddings generation
+sentence-transformers>=2.2.0
+
 # NVIDIA NIM API client dependencies
 # (Containers are managed via Docker)
 

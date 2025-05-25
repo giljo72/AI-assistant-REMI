@@ -30,7 +30,7 @@ class SearchResult(BaseModel):
 
 
 @router.post("/", response_model=List[SearchResult])
-def semantic_search(
+async def semantic_search(
     search_request: SemanticSearchRequest,
     db: Session = Depends(get_db)
 ) -> Any:
@@ -38,11 +38,13 @@ def semantic_search(
     Perform a semantic search using vector embeddings.
     """
     try:
-        # Get the vector store
-        vector_store = get_vector_store(db)
+        # Get embedding service and vector store
+        from ...services.embedding_service import get_embedding_service
+        embedding_service = get_embedding_service()
+        vector_store = get_vector_store(db, embedding_service)
         
         # Generate embedding for the query
-        query_embedding = vector_store.generate_mock_embedding(search_request.query)
+        query_embedding = await vector_store.generate_embedding(search_request.query)
         
         # Perform similarity search
         results = vector_store.similarity_search(
@@ -75,7 +77,7 @@ def semantic_search(
 
 
 @router.post("/chat-context")
-def get_chat_context(
+async def get_chat_context(
     query: str = Body(..., embed=True),
     project_id: Optional[str] = Body(None, embed=True),
     limit: Optional[int] = Body(5, embed=True),
@@ -85,11 +87,13 @@ def get_chat_context(
     Get relevant document chunks as context for a chat message.
     """
     try:
-        # Get the vector store
-        vector_store = get_vector_store(db)
+        # Get embedding service and vector store
+        from ...services.embedding_service import get_embedding_service
+        embedding_service = get_embedding_service()
+        vector_store = get_vector_store(db, embedding_service)
         
         # Generate embedding for the query
-        query_embedding = vector_store.generate_mock_embedding(query)
+        query_embedding = await vector_store.generate_embedding(query)
         
         # Perform similarity search
         results = vector_store.similarity_search(

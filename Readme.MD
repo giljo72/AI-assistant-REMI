@@ -10,8 +10,8 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 ## 🎯 Key Features
 
 ### 🚀 **Multi-Model AI Architecture**
-- **6 Specialized Models**: Mistral-Nemo 12B, CodeLlama 13B, Llama 3.1 8B/70B, NVIDIA Embeddings, NeMo Document AI
-- **Unified Interface**: Single API routing to NVIDIA NIM, Ollama, Transformers, and NeMo backends
+- **4 Production AI Models + Always-On Embeddings**: Qwen 2.5 32B, Llama 3.1 70B (NIM), Mistral-Nemo 12B, DeepSeek-Coder 16B + NVIDIA Embeddings
+- **Unified Interface**: Single API routing to NVIDIA NIM and Ollama backends
 - **Intelligent Routing**: Automatic service selection based on model type and performance requirements
 - **Real-time Management**: Load, unload, and switch between models with live status monitoring
 

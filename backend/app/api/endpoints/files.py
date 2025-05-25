@@ -22,12 +22,13 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Define function for background processing of documents
-def process_document_background(db: Session, document_id: str, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
+async def process_document_background(db: Session, document_id: str, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
     """Background task to process a document and generate embeddings."""
     # Import here to avoid circular imports
     from ...document_processing.processor import document_processor
     from ...document_processing.status_tracker import status_tracker
     from ...db.models.document import DocumentChunk
+    from ...services.embedding_service import get_embedding_service
     import time
     import random
     
@@ -57,8 +58,12 @@ def process_document_background(db: Session, document_id: str, chunk_size: Optio
         # Simulate GPU activity
         status_tracker.set_gpu_usage(random.uniform(30, 80))
         
+        # Set up embedding service for document processor
+        embedding_service = get_embedding_service()
+        document_processor.embedding_service = embedding_service
+        
         # Generate embeddings for the chunks using pgvector
-        chunks_with_embeddings = document_processor.generate_embeddings(chunks, db_session=db)
+        chunks_with_embeddings = await document_processor.generate_embeddings(chunks, db_session=db)
         
         # Update progress
         status_tracker.update_progress(document_id, 80)
