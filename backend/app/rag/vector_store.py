@@ -104,23 +104,23 @@ class VectorStore:
             True if successful, False otherwise
         """
         try:
-            # Format embedding for pgvector
-            embedding_str = self.format_for_pgvector(embedding)
+            # For pgvector, we can pass the list directly
+            # SQLAlchemy with pgvector handles the conversion
+            from ..db.models.document import DocumentChunk
             
-            # Update the document chunk with the embedding
-            query = text("""
-                UPDATE document_chunks
-                SET embedding = :embedding::vector
-                WHERE id = :chunk_id AND document_id = :document_id
-            """)
+            chunk = self.db.query(DocumentChunk).filter_by(
+                id=chunk_id,
+                document_id=document_id
+            ).first()
             
-            self.db.execute(
-                query, 
-                {"chunk_id": chunk_id, "document_id": document_id, "embedding": embedding_str}
-            )
-            self.db.commit()
-            
-            return True
+            if chunk:
+                chunk.embedding = embedding  # pgvector handles list -> vector conversion
+                self.db.commit()
+                return True
+            else:
+                logger.error(f"Chunk not found: {chunk_id}")
+                return False
+                
         except Exception as e:
             logger.error(f"Error updating document embedding: {str(e)}")
             self.db.rollback()
@@ -146,8 +146,8 @@ class VectorStore:
             List of document chunks with similarity scores
         """
         try:
-            # Format query embedding for pgvector
-            query_vector = self.format_for_pgvector(query_embedding)
+            # For pgvector with SQLAlchemy, we pass the list directly
+            # No need to format as string
             
             # Build the similarity search query
             if project_id:
@@ -162,23 +162,27 @@ class VectorStore:
                         d.filename,
                         d.filetype,
                         pd.priority,
-                        1 - (dc.embedding <=> :query_vector::vector) as similarity
+                        1 - (dc.embedding <=> :query_vector) as similarity
                     FROM document_chunks dc
                     JOIN documents d ON dc.document_id = d.id
                     JOIN project_documents pd ON d.id = pd.document_id
                     WHERE 
                         pd.project_id = :project_id
                         AND pd.is_active = true
-                        AND 1 - (dc.embedding <=> :query_vector::vector) > :similarity_threshold
+                        AND 1 - (dc.embedding <=> :query_vector) > :similarity_threshold
                     ORDER BY 
-                        pd.priority * (1 - (dc.embedding <=> :query_vector::vector)) DESC
+                        pd.priority * (1 - (dc.embedding <=> :query_vector)) DESC
                     LIMIT :limit
                 """)
                 
+                # Need to format query properly for pgvector
+                formatted_query = query.bindparams(
+                    query_vector=text(f"'{self.format_for_pgvector(query_embedding)}'::vector")
+                )
+                
                 result = self.db.execute(
-                    query, 
+                    formatted_query, 
                     {
-                        "query_vector": query_vector, 
                         "project_id": project_id,
                         "similarity_threshold": similarity_threshold,
                         "limit": limit
@@ -195,11 +199,11 @@ class VectorStore:
                         dc.meta_data,
                         d.filename,
                         d.filetype,
-                        1 - (dc.embedding <=> :query_vector::vector) as similarity
+                        1 - (dc.embedding <=> :query_vector) as similarity
                     FROM document_chunks dc
                     JOIN documents d ON dc.document_id = d.id
                     WHERE 
-                        1 - (dc.embedding <=> :query_vector::vector) > :similarity_threshold
+                        1 - (dc.embedding <=> :query_vector) > :similarity_threshold
                     ORDER BY 
                         similarity DESC
                     LIMIT :limit
@@ -208,7 +212,7 @@ class VectorStore:
                 result = self.db.execute(
                     query, 
                     {
-                        "query_vector": query_vector, 
+                        "query_vector": self.format_for_pgvector(query_embedding), 
                         "similarity_threshold": similarity_threshold,
                         "limit": limit
                     }

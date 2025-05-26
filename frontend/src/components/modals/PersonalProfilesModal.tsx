@@ -18,14 +18,10 @@ import {
   Alert
 } from '@mui/material';
 import {
-  Close as CloseIcon,
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Person as PersonIcon,
-  Save as SaveIcon
+  Person as PersonIcon
 } from '@mui/icons-material';
 import personalProfileService, { PersonalProfile } from '../../services/personalProfileService';
+import { Icon, HelpIcon } from '../common/Icon';
 
 interface PersonalProfilesModalProps {
   isOpen: boolean;
@@ -208,9 +204,13 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, o
           <PersonIcon sx={{ color: '#d4af37' }} />
           <Typography variant="h6" sx={{ color: '#FFFFFF' }}>Personal Profiles</Typography>
         </Box>
-        <IconButton onClick={onClose} size="small" sx={{ color: '#FFC000' }}>
-          <CloseIcon />
-        </IconButton>
+        <Icon 
+          name="close" 
+          size={24} 
+          onClick={onClose}
+          tooltip="Close"
+          style={{ color: '#FFC000' }}
+        />
       </DialogTitle>
       
       <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', minHeight: '500px' }}>
@@ -245,7 +245,7 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, o
             <Button
               fullWidth
               variant="contained"
-              startIcon={<AddIcon />}
+              startIcon={<Icon name="add" size={20} />}
               onClick={handleAddProfile}
               disabled={loading}
               sx={{
@@ -323,7 +323,7 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, o
                     <>
                       <Button
                         size="small"
-                        startIcon={<EditIcon />}
+                        startIcon={<Icon name="userEdit" size={16} />}
                         onClick={() => setEditMode(true)}
                         sx={{ color: '#FFC000' }}
                       >
@@ -338,19 +338,19 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, o
                           Set as Default
                         </Button>
                       )}
-                      <IconButton
-                        size="small"
+                      <Icon
+                        name="userDelete"
+                        size={20}
                         onClick={() => handleDeleteProfile(selectedProfile.id)}
-                        sx={{ color: '#FFC000' }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                        tooltip="Delete Profile"
+                        style={{ color: '#FFC000', marginLeft: '8px' }}
+                      />
                     </>
                   ) : (
                     <>
                       <Button
                         size="small"
-                        startIcon={<SaveIcon />}
+                        startIcon={<Icon name="save" size={16} />}
                         onClick={handleSaveProfile}
                         sx={{ 
                           backgroundColor: '#4ade80',
@@ -454,11 +454,12 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, o
                 <Box>
                   {editMode && (
                     <Button
-                      startIcon={<AddIcon />}
+                      startIcon={<Icon name="add" size={16} />}
                       onClick={handleAddCustomField}
                       sx={{ color: '#FFC000' }}
                     >
-                      + Add Field
+                      Add Field
+                      <HelpIcon tooltip="Add custom fields like department, skills, or preferences" />
                     </Button>
                   )}
                   
@@ -529,12 +530,13 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, o
                         }}
                       />
                       {editMode && (
-                        <IconButton
+                        <Icon
+                          name="delete"
+                          size={20}
                           onClick={() => handleRemoveCustomField(index)}
-                          sx={{ color: '#FFC000' }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                          tooltip="Remove field"
+                          style={{ color: '#FFC000', cursor: 'pointer' }}
+                        />
                       )}
                     </Box>
                   ))}

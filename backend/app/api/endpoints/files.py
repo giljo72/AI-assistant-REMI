@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse, FileResponse
@@ -16,6 +17,8 @@ from ...schemas.document import (
 )
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 # Define upload directory
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "data", "uploads")
@@ -70,12 +73,25 @@ async def process_document_background(db: Session, document_id: str, chunk_size:
         
         # Store chunks in the database
         for chunk_data in chunks_with_embeddings:
+            # Parse the embedding if it's a JSON string
+            embedding_data = chunk_data.get("embedding")
+            if embedding_data and isinstance(embedding_data, str):
+                import json
+                try:
+                    # Parse JSON string to list
+                    embedding_list = json.loads(embedding_data)
+                    # pgvector expects a list of floats directly
+                    embedding_data = embedding_list
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning(f"Failed to parse embedding for chunk {chunk_data['chunk_index']}")
+                    embedding_data = None
+            
             chunk = DocumentChunk(
                 document_id=document.id,
                 content=chunk_data["content"],
                 chunk_index=chunk_data["chunk_index"],
                 meta_data=chunk_data["meta_data"],
-                embedding=chunk_data.get("embedding")
+                embedding=embedding_data  # Now properly formatted for pgvector
             )
             db.add(chunk)
         
@@ -1174,3 +1190,52 @@ def get_all_tags(
     # In a real implementation, this would query unique tags from the database
     # For now, return a mock list
     return ["document", "report", "code", "research", "presentation"]
+
+
+@router.get("/debug/project-documents/{project_id}")
+def debug_project_documents(
+    project_id: str,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Debug endpoint to check document status for a project.
+    """
+    from ...db.models.document import Document, DocumentChunk
+    from ...db.models.project import ProjectDocument
+    
+    # Get all documents for the project
+    documents = db.query(Document).join(ProjectDocument).filter(
+        ProjectDocument.project_id == project_id
+    ).all()
+    
+    result = {
+        "project_id": project_id,
+        "total_documents": len(documents),
+        "documents": []
+    }
+    
+    for doc in documents:
+        # Count chunks
+        chunk_count = db.query(DocumentChunk).filter(
+            DocumentChunk.document_id == doc.id
+        ).count()
+        
+        # Check if chunks have embeddings
+        chunks_with_embeddings = db.query(DocumentChunk).filter(
+            DocumentChunk.document_id == doc.id,
+            DocumentChunk.embedding != None
+        ).count()
+        
+        doc_info = {
+            "id": doc.id,
+            "filename": doc.filename,
+            "filetype": doc.filetype,
+            "is_processed": doc.is_processed,
+            "is_processing_failed": doc.is_processing_failed,
+            "chunk_count": chunk_count,
+            "chunks_with_embeddings": chunks_with_embeddings,
+            "created_at": doc.created_at.isoformat() if doc.created_at else None
+        }
+        result["documents"].append(doc_info)
+    
+    return result

@@ -1,21 +1,49 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-import { UserPrompt } from '../components/UserPromptManager';
+
+interface UserPrompt {
+  id: string;
+  name: string;
+  content: string;
+  description?: string;
+  is_active: boolean;
+  project_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 
 interface UserPromptsState {
   prompts: UserPrompt[];
   activePromptId: string | null;
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: UserPromptsState = {
   prompts: [],
-  activePromptId: null
+  activePromptId: null,
+  loading: false,
+  error: null
 };
 
 export const userPromptsSlice = createSlice({
   name: 'userPrompts',
   initialState,
   reducers: {
+    setPrompts: (state, action: PayloadAction<UserPrompt[]>) => {
+      state.prompts = action.payload;
+      // Find the active prompt
+      const activePrompt = action.payload.find(p => p.is_active);
+      state.activePromptId = activePrompt?.id || null;
+    },
+    
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+    },
     addPrompt: (state, action: PayloadAction<Omit<UserPrompt, 'id'>>) => {
       const id = uuidv4();
       const newPrompt = {
@@ -26,11 +54,11 @@ export const userPromptsSlice = createSlice({
       state.prompts.push(newPrompt);
       
       // If this prompt is set to active, update activePromptId
-      if (newPrompt.active) {
+      if (newPrompt.is_active) {
         // Deactivate any currently active prompt
         state.prompts.forEach(prompt => {
-          if (prompt.id !== id && prompt.active) {
-            prompt.active = false;
+          if (prompt.id !== id && prompt.is_active) {
+            prompt.is_active = false;
           }
         });
         
@@ -44,11 +72,11 @@ export const userPromptsSlice = createSlice({
         state.prompts[index] = action.payload;
         
         // Update active prompt status
-        if (action.payload.active) {
+        if (action.payload.is_active) {
           // Deactivate other prompts
           state.prompts.forEach(prompt => {
-            if (prompt.id !== action.payload.id && prompt.active) {
-              prompt.active = false;
+            if (prompt.id !== action.payload.id && prompt.is_active) {
+              prompt.is_active = false;
             }
           });
           
@@ -76,7 +104,7 @@ export const userPromptsSlice = createSlice({
       
       // Deactivate all prompts first
       state.prompts.forEach(prompt => {
-        prompt.active = (prompt.id === id);
+        prompt.is_active = (prompt.id === id);
       });
       
       state.activePromptId = id;
@@ -87,7 +115,7 @@ export const userPromptsSlice = createSlice({
       
       const prompt = state.prompts.find(p => p.id === id);
       if (prompt) {
-        prompt.active = false;
+        prompt.is_active = false;
       }
       
       if (state.activePromptId === id) {
@@ -97,7 +125,7 @@ export const userPromptsSlice = createSlice({
     
     deactivateAllPrompts: (state) => {
       state.prompts.forEach(prompt => {
-        prompt.active = false;
+        prompt.is_active = false;
       });
       
       state.activePromptId = null;
@@ -106,6 +134,9 @@ export const userPromptsSlice = createSlice({
 });
 
 export const {
+  setPrompts,
+  setLoading,
+  setError,
   addPrompt,
   updatePrompt,
   deletePrompt,

@@ -5,6 +5,7 @@ import { Project } from '../../services/projectService';
 import { useNavigation } from '../../hooks/useNavigation';
 import { ProjectId, normalizeProjectId, isFileLinkedToProject } from '../../types/common';
 import TagAndAddFileModal from '../modals/TagAndAddFileModal';
+import { Icon } from '../common/Icon';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -204,6 +205,8 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
   // Upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   
   // Selection state
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -414,12 +417,46 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
     window.addEventListener('mockFileAdded', handleFileChange);
     window.addEventListener('mockFileDeleted', handleFileChange);
     
-    // Clean up event listeners when component unmounts
+    // Clean up
     return () => {
       window.removeEventListener('mockFileAdded', handleFileChange);
       window.removeEventListener('mockFileDeleted', handleFileChange);
     };
   }, [projectId]);
+
+  // Separate effect for polling processing status
+  useEffect(() => {
+    // Get list of processing file IDs
+    const processingFileIds = projectFiles
+      .filter(file => !file.processed && !file.processingFailed)
+      .map(file => file.id);
+    
+    if (processingFileIds.length > 0) {
+      console.log(`[PROJECTFILEMANAGER] ${processingFileIds.length} files are processing, starting polling...`);
+      const pollInterval = setInterval(async () => {
+        console.log("[PROJECTFILEMANAGER] Polling for processing status updates...");
+        
+        // Fetch updated data
+        await fetchProjectData();
+      }, 2000); // Poll every 2 seconds
+      
+      // Clean up
+      return () => {
+        console.log("[PROJECTFILEMANAGER] Stopping polling");
+        clearInterval(pollInterval);
+      };
+    } else {
+      console.log("[PROJECTFILEMANAGER] All files processed, no polling needed");
+    }
+    
+    // Only re-run when the processing status changes, not on every render
+  }, [
+    // Create a string key based on processing file IDs to detect actual status changes
+    projectFiles
+      .filter(file => !file.processed && !file.processingFailed)
+      .map(file => file.id)
+      .join(',')
+  ]);
 
   // Show file details panel
   const showFileDetails = (file: LocalFile) => {
@@ -457,6 +494,13 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
         )
       );
     }
+  };
+
+  // Handle dropped files
+  const handleDroppedFiles = (droppedFiles: File[]) => {
+    // Store the dropped files and open the modal for description
+    setDroppedFiles(droppedFiles);
+    setShowUploadModal(true);
   };
 
   // Handle file detachment from project
@@ -527,11 +571,38 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
       
       {/* File Upload Area */}
       <div className="bg-navy-light p-4 mb-4 rounded-lg">
-        <div className="border-2 border-dashed border-navy-lighter rounded-lg p-6 text-center">
-          <div className="mb-4">
-            <div className="mx-auto w-12 h-12 bg-navy-lighter rounded-full flex items-center justify-center">
-              <span className="text-gold text-2xl">+</span>
-            </div>
+        <div 
+          className={`border-2 border-dashed border-navy-lighter rounded-lg p-6 text-center transition-colors ${
+            isDragging ? 'border-gold bg-gold/10' : ''
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(true);
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+            
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+              handleDroppedFiles(files);
+            }
+          }}
+        >
+          <div className="mb-4 flex justify-center">
+            <Icon name="add" size={32} className="text-gold" />
           </div>
           <p className="text-gray-400 mb-2">Drag and drop files here</p>
           <p className="text-gray-500 text-sm mb-4">or</p>
@@ -730,10 +801,10 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
                     className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
                     title="View file details"
                   >
-                    👁️
+                    <Icon name="view" size={16} />
                   </button>
                   
-                  {/* Download Button - Using ⬇️ as placeholder for download icon */}
+                  {/* Download Button */}
                   <button 
                     onClick={async () => {
                       try {
@@ -813,7 +884,7 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
                     className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
                     title="Download file"
                   >
-                    ⬇️
+                    <Icon name="download" size={16} />
                   </button>
                   
                   {/* Detach Button - Keeping as text for clarity */}
@@ -846,7 +917,7 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-navy/50"
                 title="Close details"
               >
-                ✕
+                <Icon name="close" size={16} />
               </button>
             </div>
             
@@ -970,7 +1041,11 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
       {/* File Upload Modal using TagAndAddFileModal */}
       <TagAndAddFileModal
         isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
+        onClose={() => {
+          setShowUploadModal(false);
+          setDroppedFiles([]); // Clear dropped files when closing
+        }}
+        preDroppedFiles={droppedFiles}
         onProcessFiles={async (selectedFiles) => {
           console.log("Processing files from TagAndAddFileModal in ProjectFileManager:", selectedFiles);
           setIsUploading(true);
@@ -1026,6 +1101,9 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
             }
             
             console.log(`Successfully processed ${selectedFiles.length} files`);
+            
+            // Clear dropped files after successful processing
+            setDroppedFiles([]);
           } catch (error) {
             console.error('Error uploading files:', error);
             setError('Failed to upload one or more files. Please try again.');

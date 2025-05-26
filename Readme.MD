@@ -29,9 +29,18 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 
 ### 🔍 **Advanced Search & Retrieval**
 - **Universal Search**: Search across chats, knowledge base, and documents simultaneously
-- **Semantic Understanding**: pgvector-powered similarity search with enterprise embeddings
+- **Real Embeddings**: Sentence-transformers (all-mpnet-base-v2) with GPU acceleration
+- **Semantic Understanding**: pgvector-powered similarity search with 768-dimensional embeddings
 - **Relevance Scoring**: 0-100% probability scores for all results
 - **Context Expansion**: Expandable result snippets with full document access
+
+### 🎨 **Enhanced Visual Interface**
+- **Custom SVG Icons**: Complete icon system with hover effects and animations
+- **Yellow Theme**: Cohesive yellow scrollbars and accent colors
+- **Responsive Design**: Optimized for desktop and large screens
+- **Visual Indicators**: Clear status indicators for prompts, models, and system state
+- **Chat Context Controls**: Per-chat settings with visual feedback and hover effects
+- **Prompt Management**: System (orange) and user (gray) prompt indicators
 
 ## 🏗️ Architecture Overview
 

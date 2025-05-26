@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts
+from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast
 from .endpoints.fix_files import router as fix_files_router
 
 api_router = APIRouter()
@@ -37,3 +37,6 @@ api_router.include_router(preferences.router, prefix="/preferences", tags=["pref
 
 # Add system prompts endpoints
 api_router.include_router(system_prompts.router, prefix="/system-prompts", tags=["system_prompts"])
+
+# Add fast system endpoints for UI responsiveness
+api_router.include_router(system_fast.router, prefix="/system", tags=["system"])

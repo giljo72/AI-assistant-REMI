@@ -11,10 +11,7 @@ import {
   IconButton,
   CircularProgress
 } from '@mui/material';
-import { 
-  Close as CloseIcon,
-  Delete as DeleteIcon
-} from '@mui/icons-material';
+import { Icon } from '../common/Icon';
 
 interface UserPromptModalProps {
   open: boolean;
@@ -109,7 +106,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
           disabled={isSaving}
           sx={{ color: '#ffffff' }}
         >
-          <CloseIcon />
+          <Icon name="close" size={24} />
         </IconButton>
       </DialogTitle>
 
@@ -247,7 +244,7 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
             <Button
               variant="outlined"
               color="error"
-              startIcon={<DeleteIcon />}
+              startIcon={<Icon name="trash" size={16} />}
               onClick={handleDelete}
               disabled={isSaving}
               sx={{

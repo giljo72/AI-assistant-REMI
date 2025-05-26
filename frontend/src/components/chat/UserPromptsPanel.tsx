@@ -8,14 +8,10 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
-import {
-  ChevronRight as ChevronRightIcon,
-  ChevronLeft as ChevronLeftIcon,
-  Add as AddIcon
-} from '@mui/icons-material';
 import UserPromptManager, { UserPrompt } from './UserPromptManager';
 import UserPromptIndicator from './UserPromptIndicator';
 import { RootState } from '../../store';
+import { Icon } from '../common/Icon';
 import {
   addPrompt,
   updatePrompt,
@@ -115,7 +111,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
                   marginRight: 0.5
                 }}
               >
-                <AddIcon fontSize="small" />
+                <Icon name="add" size={18} />
               </IconButton>
             </Tooltip>
             
@@ -128,7 +124,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
                   color: promptColors.gold 
                 }}
               >
-                <ChevronRightIcon fontSize="small" />
+                <Icon name="dropdownClose" size={18} />
               </IconButton>
             </Tooltip>
           </Box>
@@ -156,7 +152,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
                 onClick={handleToggleExpand}
                 sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
               >
-                <ChevronLeftIcon />
+                <Icon name="dropdownOpen" size={18} />
               </IconButton>
             </Tooltip>
           </Box>

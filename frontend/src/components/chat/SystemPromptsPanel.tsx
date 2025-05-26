@@ -8,14 +8,10 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
-import {
-  ChevronRight as ChevronRightIcon,
-  ChevronLeft as ChevronLeftIcon,
-  Settings as SettingsIcon
-} from '@mui/icons-material';
 import SystemPromptManager from './SystemPromptManager';
 import { RootState } from '../../store';
 import { promptPanelStyles, promptColors } from '../common/promptStyles';
+import { Icon } from '../common/Icon';
 
 interface SystemPromptsPanelProps {
   expanded?: boolean;
@@ -79,7 +75,7 @@ const SystemPromptsPanel: React.FC<SystemPromptsPanelProps> = ({
                   marginRight: 0.5
                 }}
               >
-                <SettingsIcon fontSize="small" />
+                <Icon name="add" size={18} />
               </IconButton>
             </Tooltip>
             
@@ -92,7 +88,7 @@ const SystemPromptsPanel: React.FC<SystemPromptsPanelProps> = ({
                   color: promptColors.gold 
                 }}
               >
-                <ChevronRightIcon fontSize="small" />
+                <Icon name="dropdownClose" size={18} />
               </IconButton>
             </Tooltip>
           </Box>
@@ -147,7 +143,7 @@ const SystemPromptsPanel: React.FC<SystemPromptsPanelProps> = ({
                 onClick={handleToggleExpand}
                 sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
               >
-                <ChevronLeftIcon />
+                <Icon name="dropdownOpen" size={18} />
               </IconButton>
             </Tooltip>
           </Box>

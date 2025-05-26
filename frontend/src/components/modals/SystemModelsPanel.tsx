@@ -15,14 +15,13 @@ import {
   Paper
 } from '@mui/material';
 import {
-  Close as CloseIcon,
-  Refresh as RefreshIcon,
   PlayArrow as PlayIcon,
   Stop as StopIcon,
   Memory as MemoryIcon,
   Speed as SpeedIcon,
   Timer as TimerIcon
 } from '@mui/icons-material';
+import { Icon } from '../common/Icon';
 import systemService, { SystemStatus, ServiceStatus, ModelInfo, EnvironmentInfo } from '../../services/systemService';
 
 interface SystemModelsPanelProps {
@@ -510,7 +509,7 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
                       disabled={!!actionLoading}
                       sx={{ color: '#ff9800' }}
                     >
-                      <RefreshIcon />
+                      <Icon name="refresh" size={20} />
                     </IconButton>
                     <IconButton
                       size="small"
@@ -616,12 +615,16 @@ const SystemModelsPanel: React.FC<SystemModelsPanelProps> = ({ isOpen, onClose }
           System & Models
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton onClick={fetchSystemStatus} disabled={loading} sx={{ color: '#d4af37' }}>
-            <RefreshIcon />
-          </IconButton>
-          <IconButton onClick={onClose} sx={{ color: '#ffffff' }}>
-            <CloseIcon />
-          </IconButton>
+          <Tooltip title="Refresh">
+            <IconButton onClick={fetchSystemStatus} disabled={loading} sx={{ color: '#d4af37' }}>
+              <Icon name="refresh" size={24} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Close">
+            <IconButton onClick={onClose} sx={{ color: '#ffffff' }}>
+              <Icon name="close" size={24} />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
 

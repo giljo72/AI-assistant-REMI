@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import systemService from '../../services/systemService';
+import { Icon } from '../common/Icon';
 
 interface ElegantSystemModelsPanelProps {
   isOpen: boolean;
@@ -207,13 +208,14 @@ const ElegantSystemModelsPanel: React.FC<ElegantSystemModelsPanelProps> = ({ isO
                 className="text-gray-400 hover:text-white disabled:opacity-50 transition-colors"
                 title="Refresh"
               >
-                {loading ? '⏳' : '🔄'}
+                <Icon name="refresh" size={20} />
               </button>
               <button 
                 onClick={onClose}
                 className="text-gray-400 hover:text-white transition-colors"
+                title="Close"
               >
-                ✕
+                <Icon name="close" size={20} />
               </button>
             </div>
           </div>

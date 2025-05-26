@@ -4,6 +4,7 @@ import { File, FileFilterOptions, FileSortOptions, ProcessingStats, FileSearchRe
 import { useNavigation } from '../../hooks/useNavigation';
 import { ProjectId, normalizeProjectId, isFileLinkedToProject } from '../../types/common';
 import TagAndAddFileModal from '../modals/TagAndAddFileModal';
+import { Icon, HelpIcon } from '../common/Icon';
 
 // Local interface for mapped files from API response
 interface LocalFile {
@@ -43,28 +44,28 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'pdf':
       return {
         color: 'red',
-        icon: '📄',
+        icon: 'view',
         description: 'Adobe PDF Document'
       };
     case 'docx':
     case 'doc':
       return {
         color: 'blue',
-        icon: '📝',
+        icon: 'view',
         description: 'Microsoft Word Document'
       };
     case 'xlsx':
     case 'xls':
       return {
         color: 'green',
-        icon: '📊',
+        icon: 'view',
         description: 'Microsoft Excel Spreadsheet'
       };
     case 'pptx':
     case 'ppt':
       return {
         color: 'orange',
-        icon: '📋',
+        icon: 'view',
         description: 'Microsoft PowerPoint Presentation'
       };
     case 'png':
@@ -74,20 +75,20 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'bmp':
       return {
         color: 'purple',
-        icon: '🖼️',
+        icon: 'view',
         description: 'Image File'
       };
     case 'txt':
       return {
         color: 'gray',
-        icon: '📄',
+        icon: 'view',
         description: 'Text Document'
       };
     case 'md':
     case 'markdown':
       return {
         color: 'cyan',
-        icon: '📝',
+        icon: 'view',
         description: 'Markdown Document'
       };
     case 'json':
@@ -96,13 +97,13 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'yml':
       return {
         color: 'yellow',
-        icon: '⚙️',
+        icon: 'save',
         description: 'Data/Configuration File'
       };
     case 'csv':
       return {
         color: 'green',
-        icon: '📊',
+        icon: 'view',
         description: 'Comma-Separated Values'
       };
     case 'zip':
@@ -112,7 +113,7 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'gz':
       return {
         color: 'amber',
-        icon: '📦',
+        icon: 'download',
         description: 'Compressed Archive'
       };
     case 'html':
@@ -121,13 +122,13 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'js':
       return {
         color: 'indigo',
-        icon: '🌐',
+        icon: 'view',
         description: 'Web Document'
       };
     default:
       return {
         color: 'gray',
-        icon: '📄',
+        icon: 'view',
         description: 'Document'
       };
   }
@@ -792,10 +793,8 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             }
           }}
         >
-          <div className="mb-4">
-            <div className="mx-auto w-12 h-12 bg-navy-lighter rounded-full flex items-center justify-center">
-              <span className="text-gold text-2xl">+</span>
-            </div>
+          <div className="mb-4 flex justify-center">
+            <Icon name="add" size={32} className="text-gold" />
           </div>
           <p className="text-gray-400 mb-2">Drag and drop files here</p>
           <p className="text-gray-500 text-sm mb-4">or</p>
@@ -859,7 +858,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             <span className="absolute left-3 text-gold">
               {isLoading && isSearching ? 
                 <span className="animate-spin inline-block h-4 w-4 border-2 border-gold border-r-transparent rounded-full"/> : 
-                "🔍"
+                <Icon name="search" size={16} style={{ color: '#d4af37' }} />
               }
             </span>
             <button 
@@ -870,8 +869,11 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
               {isLoading && isSearching ? 'Searching...' : 'Search'}
             </button>
             {searchTerm && (
-              <button 
-                className="absolute right-[85px] text-sm text-gray-400 hover:text-gray-200"
+              <Icon 
+                name="close"
+                size={14}
+                className="absolute right-[85px]"
+                tooltip="Clear search"
                 onClick={() => {
                   setSearchTerm('');
                   if (isSearching) {
@@ -879,9 +881,8 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     setSearchResults([]);
                   }
                 }}
-              >
-                ✕
-              </button>
+                style={{ cursor: 'pointer', opacity: 0.6 }}
+              />
             )}
           </div>
         </div>
@@ -1202,7 +1203,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                 className="w-8 h-8 flex items-center justify-center bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
                 title="Clear search"
               >
-                ✕
+                <Icon name="close" size={16} />
               </button>
             )}
           </div>
@@ -1217,7 +1218,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
           </div>
         ) : error ? (
           <div className="p-6 text-center text-red-400">
-            <div className="text-lg mb-2">⚠️</div>
+            <Icon name="question" size={24} className="mb-2 mx-auto" style={{ color: '#f87171' }} />
             <div>{error}</div>
             <button 
               onClick={() => window.location.reload()}
@@ -1263,7 +1264,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     {/* Enhanced file type icon */}
                     <div className={`w-12 h-12 bg-${getFileTypeColor(file.type)}-500/20 rounded-lg flex flex-col items-center justify-center mr-3`} 
                       title={getFileTypeMetadata(file.type).description}>
-                      <span className="text-xl">{getFileTypeMetadata(file.type).icon}</span>
+                      <Icon name={getFileTypeMetadata(file.type).icon as any} size={20} />
                       <span className={`text-${getFileTypeColor(file.type)}-400 text-xs mt-1`}>{file.type}</span>
                     </div>
                     
@@ -1375,7 +1376,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                         className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
                         title="Retry processing"
                       >
-                        🔄
+                        <Icon name="refresh" size={16} />
                       </button>
                     )}
                     
@@ -1385,10 +1386,10 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
                       title="View file details"
                     >
-                      👁️
+                      <Icon name="view" size={16} />
                     </button>
                     
-                    {/* Assign/Link Button - Using 🔗 as placeholder for link icon */}
+                    {/* Assign/Link Button */}
                     <button 
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent clicking from bubbling up to the document
@@ -1401,10 +1402,10 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded project-dropdown-toggle"
                       title="Assign to project"
                     >
-                      🔗
+                      <Icon name="link" size={16} />
                     </button>
                     
-                    {/* Modify Button - Using ⚙️ as placeholder for gear/settings icon */}
+                    {/* Modify Button */}
                     <button 
                       onClick={() => {
                         // Show modify modal for this file
@@ -1496,7 +1497,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
                       title="Modify file details"
                     >
-                      ⚙️
+                      <Icon name="settings" size={16} />
                     </button>
                     
                     {/* Project assignment dropdown */}
@@ -1592,7 +1593,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       </div>
                     </div>
                     
-                    {/* Download Button - Using ⬇️ as placeholder for download icon */}
+                    {/* Download Button */}
                     <button 
                       onClick={async () => {
                         try {
@@ -1673,9 +1674,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       className="w-8 h-8 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold rounded"
                       title="Download file"
                     >
-                      ⬇️
+                      <Icon name="download" size={16} />
                     </button>
-                    {/* Delete Button - Using 🗑️ as placeholder for trash/delete icon */}
+                    {/* Delete Button */}
                     <button 
                       className="w-8 h-8 flex items-center justify-center bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
                       onClick={() => {
@@ -1685,7 +1686,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       }}
                       title="Delete file"
                     >
-                      🗑️
+                      <Icon name="trash" size={16} />
                     </button>
                   </div>
                 </div>
@@ -1702,7 +1703,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
               </div>
             ) : (
               <div>
-                <div className="text-4xl mb-2">📄</div>
+                <Icon name="view" size={48} className="mb-2 mx-auto" style={{ opacity: 0.5 }} />
                 <div className="text-gray-400 mb-2">No files have been added yet.</div>
                 <div className="text-xs text-gray-500">Upload files using the panel above to get started.</div>
               </div>
@@ -1718,19 +1719,19 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-navy">
               <h3 className="text-lg font-medium text-gold">File Details</h3>
-              <button 
+              <Icon 
+                name="close"
+                size={20}
                 onClick={closeDetailsPanel}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-navy/50"
-                title="Close details"
-              >
-                ✕
-              </button>
+                tooltip="Close details"
+                style={{ cursor: 'pointer' }}
+              />
             </div>
             
             {/* File preview */}
             <div className="mb-4 bg-navy rounded-lg p-4 flex flex-col items-center">
               <div className={`w-16 h-16 bg-${getFileTypeColor(selectedFileDetails.type)}-500/20 rounded-lg flex flex-col items-center justify-center mb-2`}>
-                <span className="text-2xl">{getFileTypeMetadata(selectedFileDetails.type).icon}</span>
+                <Icon name={getFileTypeMetadata(selectedFileDetails.type).icon as any} size={24} />
                 <span className={`text-${getFileTypeColor(selectedFileDetails.type)}-400 text-xs mt-1`}>{selectedFileDetails.type}</span>
               </div>
               <h4 className="text-center font-medium text-gold mt-2 break-words w-full">{selectedFileDetails.name}</h4>
@@ -1833,6 +1834,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                 }}
                 className="px-3 py-1.5 bg-gold/20 hover:bg-gold/30 text-gold rounded text-sm flex-1 mr-2"
               >
+                <Icon name="download" size={16} className="inline mr-1" />
                 Download
               </button>
               

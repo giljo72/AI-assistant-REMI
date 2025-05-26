@@ -69,6 +69,28 @@ class UserPromptRepository(BaseRepository[UserPrompt, UserPromptCreate, UserProm
         except SQLAlchemyError as e:
             db.rollback()
             raise e
+    
+    def activate_global_prompt(self, db: Session, prompt_id: str) -> UserPrompt:
+        """
+        Activate a global prompt and deactivate all other global prompts.
+        """
+        try:
+            # Deactivate all global prompts (where project_id is None)
+            db.query(UserPrompt).filter(
+                UserPrompt.project_id == None,
+                UserPrompt.is_active == True
+            ).update({"is_active": False})
+            
+            # Activate the requested prompt
+            prompt = db.query(UserPrompt).filter(UserPrompt.id == prompt_id).first()
+            prompt.is_active = True
+            
+            db.commit()
+            db.refresh(prompt)
+            return prompt
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise e
 
 
 user_prompt_repository = UserPromptRepository()

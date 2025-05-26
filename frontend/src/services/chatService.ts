@@ -122,15 +122,8 @@ class ChatService {
       };
     } catch (error) {
       console.error("Error creating chat:", error);
-      // Generate a client-side chat object for fallback
-      return {
-        id: Date.now().toString(),
-        name: chat.name,
-        project_id: chat.project_id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        messages: []
-      };
+      // Don't create a fallback chat - throw the error instead
+      throw error;
     }
   }
 

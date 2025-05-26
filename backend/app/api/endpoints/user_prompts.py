@@ -122,16 +122,23 @@ def activate_user_prompt(
     user_prompt_id: str
 ) -> Any:
     """
-    Activate a specific user prompt and deactivate all others for the same project.
+    Activate a specific user prompt and deactivate all others.
+    For project prompts: deactivates other prompts in the same project.
+    For global prompts: deactivates all other global prompts.
     """
     user_prompt = user_prompt_repository.get(db, id=user_prompt_id)
     if not user_prompt:
         raise HTTPException(status_code=404, detail="User prompt not found")
     
-    if not user_prompt.project_id:
-        raise HTTPException(status_code=400, detail="Cannot activate a global prompt")
+    if user_prompt.project_id:
+        # Project-specific prompt
+        user_prompt = user_prompt_repository.activate_prompt(
+            db, prompt_id=user_prompt_id, project_id=user_prompt.project_id
+        )
+    else:
+        # Global prompt - deactivate all other global prompts
+        user_prompt = user_prompt_repository.activate_global_prompt(
+            db, prompt_id=user_prompt_id
+        )
     
-    user_prompt = user_prompt_repository.activate_prompt(
-        db, prompt_id=user_prompt_id, project_id=user_prompt.project_id
-    )
     return user_prompt

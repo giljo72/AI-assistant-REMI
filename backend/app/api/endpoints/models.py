@@ -9,9 +9,14 @@ from app.services.model_orchestrator import orchestrator
 router = APIRouter(prefix="/api/models", tags=["models"])
 
 @router.get("/status")
-async def get_models_status() -> List[Dict[str, Any]]:
-    """Get status of all available models"""
+async def get_models_status() -> Dict[str, Any]:
+    """Get comprehensive status of all available models"""
     return await orchestrator.get_model_status()
+
+@router.get("/status/quick")
+async def get_quick_models_status() -> Dict[str, Any]:
+    """Get quick model status for frontend (minimal info, no heavy operations)"""
+    return await orchestrator.get_quick_model_status()
 
 @router.post("/load/{model_name}")
 async def load_model(model_name: str) -> Dict[str, Any]:

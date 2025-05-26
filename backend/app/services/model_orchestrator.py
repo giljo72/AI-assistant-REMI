@@ -95,6 +95,8 @@ class ModelOrchestrator:
         self.reserved_vram_gb = 1  # Keep 1GB free
         self.mode = OperationalMode.BALANCED
         self.active_primary_model = "qwen2.5:32b-instruct-q4_K_M"  # Default
+        self._cached_vram_usage = 0
+        self._last_vram_update = time.time()
         self.mode_configs = {
             OperationalMode.BUSINESS_DEEP: ["llama3.1:70b-instruct-q4_K_M"],
             OperationalMode.BUSINESS_FAST: ["qwen2.5:32b-instruct-q4_K_M", "nv-embedqa-e5-v5"],
@@ -198,16 +200,23 @@ class ModelOrchestrator:
         
     async def get_current_vram_usage(self) -> float:
         """Get current VRAM usage in GB"""
-        if GPUtil is None:
-            return 0
-        try:
-            gpus = GPUtil.getGPUs()
-            if gpus:
-                used_memory = gpus[0].memoryUsed / 1024  # Convert MB to GB
-                return used_memory
-        except:
-            pass
-        return 0
+        # Check if we should update the cache (every 5 seconds)
+        current_time = time.time()
+        if current_time - self._last_vram_update > 5:
+            if GPUtil is None:
+                self._cached_vram_usage = 0
+            else:
+                try:
+                    gpus = GPUtil.getGPUs()
+                    if gpus:
+                        self._cached_vram_usage = gpus[0].memoryUsed / 1024  # Convert MB to GB
+                    else:
+                        self._cached_vram_usage = 0
+                except:
+                    self._cached_vram_usage = 0
+            self._last_vram_update = current_time
+        
+        return self._cached_vram_usage
         
     async def get_loaded_models(self) -> List[str]:
         """Get list of currently loaded models"""
@@ -553,7 +562,8 @@ class ModelOrchestrator:
         
     async def get_model_status(self) -> Dict:
         """Get comprehensive status of all models"""
-        current_vram = await self.get_current_vram_usage()
+        # Use cached VRAM reading if available (updated every 5 seconds)
+        current_vram = self._cached_vram_usage if hasattr(self, '_cached_vram_usage') else await self.get_current_vram_usage()
         
         models_status = {}
         for name, model in self.models.items():
@@ -600,6 +610,25 @@ class ModelOrchestrator:
                 "active_primary_model": self.active_primary_model,
                 "total_requests_active": sum(m.current_requests for m in self.models.values())
             }
+        }
+    
+    async def get_quick_model_status(self) -> Dict:
+        """Get minimal model status for quick checks (used by frontend)"""
+        # Return only the essential information needed by frontend
+        active_model = None
+        for name, model in self.models.items():
+            if model.status == ModelStatus.LOADED and model.purpose != "embeddings":
+                active_model = {
+                    "name": name,
+                    "display_name": model.display_name,
+                    "type": model.backend,
+                    "status": "loaded"
+                }
+                break
+        
+        return {
+            "active_model": active_model,
+            "mode": self.mode.value
         }
         
     async def update_model_stats(self, model_name: str, tokens: int, duration: float):

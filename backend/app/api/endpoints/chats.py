@@ -20,6 +20,51 @@ from ...services.model_orchestrator import orchestrator
 router = APIRouter()
 
 
+@router.get("/debug/documents/{project_id}")
+def debug_project_documents(
+    project_id: str,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Debug endpoint to check document processing status for a project.
+    """
+    from ...db.models.document import Document, ProjectDocument
+    
+    # Get all documents for the project
+    docs = db.query(Document).join(ProjectDocument).filter(
+        ProjectDocument.project_id == project_id
+    ).all()
+    
+    result = {
+        "project_id": project_id,
+        "total_documents": len(docs),
+        "processed_documents": sum(1 for d in docs if d.is_processed),
+        "documents": []
+    }
+    
+    for doc in docs:
+        doc_info = {
+            "id": doc.id,
+            "filename": doc.filename,
+            "is_processed": doc.is_processed,
+            "is_active": doc.is_active,
+            "chunk_count": doc.chunk_count,
+            "created_at": doc.created_at.isoformat() if doc.created_at else None
+        }
+        
+        # Check if chunks exist
+        try:
+            from ...db.models.document import DocumentChunk
+            chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == doc.id).count()
+            doc_info["actual_chunks"] = chunks
+        except:
+            doc_info["actual_chunks"] = 0
+        
+        result["documents"].append(doc_info)
+    
+    return result
+
+
 @router.get("/", response_model=List[Chat])
 def read_chats(
     db: Session = Depends(get_db),
@@ -286,8 +331,15 @@ You can help improve your own code, debug issues, and suggest enhancements. When
             ]
             messages.extend(context_messages)
         
-        # Add document context if not in self-aware mode
-        if not is_self_aware and request.include_context:
+        # Check if project documents are enabled in context mode
+        include_project_docs = True  # Default to including documents
+        if hasattr(request, 'context_mode') and request.context_mode:
+            # Check if this is a mode that excludes documents
+            if request.context_mode in ['quick-response', 'minimal']:
+                include_project_docs = False
+        
+        # Add document context if not in self-aware mode and documents are enabled
+        if not is_self_aware and request.include_context and project_id and include_project_docs:
             try:
                 # Search for relevant documents in the project
                 from ...services.embedding_service import get_embedding_service
@@ -297,31 +349,45 @@ You can help improve your own code, debug issues, and suggest enhancements. When
                 embedding_service = get_embedding_service()
                 vector_store = get_vector_store(db, embedding_service)
                 
+                # Log project info
+                logger.info(f"Searching for documents in project {project_id}")
+                
+                # Check if there are any processed documents in the project
+                from ...db.models.document import Document
+                from ...db.models.project import ProjectDocument
+                project_docs = db.query(Document).join(ProjectDocument).filter(
+                    ProjectDocument.project_id == project_id,
+                    Document.is_processed == True
+                ).count()
+                logger.info(f"Found {project_docs} processed documents in project")
+                
                 # Generate embedding for the query
                 query_embedding = await vector_store.generate_embedding(request.message)
                 
-                # Search for relevant chunks
+                # Search for relevant chunks with lower threshold
                 chunks = vector_store.similarity_search(
                     query_embedding=query_embedding,
                     project_id=project_id,
-                    limit=3,  # Get top 3 most relevant chunks
-                    similarity_threshold=0.6
+                    limit=5,  # Get top 5 most relevant chunks
+                    similarity_threshold=0.3  # Lower threshold for better recall
                 )
                 
                 if chunks:
                     # Add document context as a system message
                     doc_context = "\n\nRelevant Document Context:\n"
-                    for idx, chunk in enumerate(chunks):
-                        doc_context += f"\n[{idx+1}] From '{chunk['filename']}':\n{chunk['content']}\n"
+                    for idx, chunk in enumerate(chunks[:3]):  # Still use only top 3
+                        doc_context += f"\n[{idx+1}] From '{chunk['filename']}' (similarity: {chunk['similarity']:.2f}):\n{chunk['content']}\n"
                     
                     doc_message = {
                         "role": "system",
                         "content": doc_context
                     }
                     messages.append(doc_message)
-                    logger.info(f"Added {len(chunks)} document chunks to context")
+                    logger.info(f"Added {min(len(chunks), 3)} document chunks to context")
+                else:
+                    logger.info("No relevant document chunks found")
             except Exception as e:
-                logger.warning(f"Failed to add document context: {e}")
+                logger.error(f"Failed to add document context: {e}", exc_info=True)
         
         # Process file operations in self-aware mode
         if is_self_aware:

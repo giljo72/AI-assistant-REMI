@@ -6,6 +6,7 @@ import PersonalProfilesModal from '../modals/PersonalProfilesModal';
 import UniversalSearchModal from '../layout/UniversalSearchModal';
 import { useProjects } from '../../context/ProjectContext';
 import { useNavigation } from '../../hooks/useNavigation';
+import { Icon } from '../common/Icon';
 
 const ProjectSidebar: React.FC = () => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
@@ -53,39 +54,39 @@ const ProjectSidebar: React.FC = () => {
         
         <div className="mb-4 flex items-center space-x-1">
           <button 
-            className={`p-2 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            className={`p-2 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
             onClick={() => navigation.openMainFileManager()}
             title="File Manager"
           >
-            <span className={`${navigation.activeView === 'mainFiles' ? 'text-gold font-bold' : 'text-gold'}`}>📄</span>
+            <Icon name="file" size={20} style={{ color: '#d4af37' }} />
           </button>
           <button 
-            className={`p-2 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            className={`p-2 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
             onClick={() => setIsSearchModalOpen(true)}
             title="Universal Search"
           >
-            <span className="text-gold">🔍</span>
+            <Icon name="search" size={20} style={{ color: '#d4af37' }} />
           </button>
           <button 
-            className={`p-2 ${isSystemPanelOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full`}
+            className={`p-2 ${isSystemPanelOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
             onClick={() => setIsSystemPanelOpen(true)}
             title="System & Models"
           >
-            <span className="text-gold">❓</span>
+            <Icon name="question" size={20} style={{ color: '#d4af37' }} />
           </button>
           <button 
-            className="p-2 hover:bg-navy-lighter rounded-full" 
+            className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
             title="Personal Profiles"
             onClick={() => setIsProfilesModalOpen(true)}
           >
-            <span className="text-gold">👤</span>
+            <Icon name="user" size={20} style={{ color: '#d4af37' }} />
           </button>
           <button 
-            className="p-2 hover:bg-navy-lighter rounded-full" 
+            className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
             title="Admin Settings"
             onClick={() => setIsSettingsPanelOpen(true)}
           >
-            <span className="text-gold">⚙️</span>
+            <Icon name="settings" size={20} style={{ color: '#d4af37' }} />
           </button>
         </div>
         
@@ -93,7 +94,8 @@ const ProjectSidebar: React.FC = () => {
           onClick={() => setIsAddProjectModalOpen(true)} 
           className="w-full py-2 mb-4 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold font-medium rounded transition-colors"
         >
-          <span className="mr-1">+</span> Add Project
+          <Icon name="add" size={16} className="mr-1" />
+          Add Project
         </button>
       </div>
       
@@ -104,7 +106,11 @@ const ProjectSidebar: React.FC = () => {
             className="w-full py-2 px-3 flex justify-between items-center rounded hover:bg-navy-lighter"
           >
             <span className={`font-bold text-gold`}>PROJECTS</span>
-            <span>{isProjectsExpanded ? '▼' : '▶'}</span>
+            <Icon 
+              name={isProjectsExpanded ? 'dropdownOpen' : 'dropdownClose'} 
+              size={16} 
+              style={{ color: '#ffffff' }} 
+            />
           </button>
           
           {isProjectsExpanded && (

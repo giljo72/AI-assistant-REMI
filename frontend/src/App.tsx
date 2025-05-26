@@ -157,6 +157,14 @@ function AppContent() {
       try {
         const chat = await chatService.getChat(navigation.activeChatId);
         
+        // Update chat name if not already in chatNames
+        if (chat.name && !chatNames[navigation.activeChatId]) {
+          setChatNames(prev => ({
+            ...prev,
+            [navigation.activeChatId]: chat.name
+          }));
+        }
+        
         // Convert API messages to UI format, ensuring messages is an array
         const messages = Array.isArray(chat.messages) ? chat.messages : [];
         const uiMessages: UIMessage[] = messages.map((msg: ChatMessage) => ({
@@ -183,7 +191,11 @@ function AppContent() {
 
   const getChatName = (chatId: string | null): string => {
     if (!chatId) return 'New Chat';
-    return chatNames[chatId] || 'Unknown Chat';
+    // If we have the chat name, use it
+    if (chatNames[chatId]) return chatNames[chatId];
+    // Otherwise check if we can find it in the chats array
+    const chat = chats.find(c => c.id === chatId);
+    return chat ? chat.name : 'Loading...';
   };
 
   // Handle message sending with streaming
@@ -295,6 +307,16 @@ function AppContent() {
       });
       
       // Update chats list
+      setChats(prev => [...prev, newChat]);
+      
+      // Update chat names immediately
+      setChatNames(prev => ({
+        ...prev,
+        [newChat.id]: newChat.name
+      }));
+      
+      // Navigate to the new chat
+      navigation.navigateToChat(newChat.id);
       const updatedChats = await chatService.getChats(navigation.activeProjectId);
       setChats(updatedChats);
       

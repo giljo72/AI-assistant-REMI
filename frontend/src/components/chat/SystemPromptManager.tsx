@@ -16,11 +16,7 @@ import {
   CircularProgress,
   Chip,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-} from '@mui/icons-material';
+import { Icon } from '../common/Icon';
 import { RootState, AppDispatch } from '../../store';
 import {
   fetchSystemPrompts,
@@ -120,15 +116,14 @@ const SystemPromptManager: React.FC = () => {
       <Paper elevation={3} sx={promptPanelStyles.paper}>
         <Box sx={promptPanelStyles.panelHeader}>
           <Typography sx={promptPanelStyles.headerTitle}>System Prompts</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAddModal}
-            size="small"
-            sx={promptPanelStyles.addButton}
-          >
-            Add Prompt
-          </Button>
+          <Tooltip title="Add Prompt">
+            <IconButton
+              onClick={handleOpenAddModal}
+              sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
+            >
+              <Icon name="add" size={20} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         {loading ? (
@@ -153,43 +148,8 @@ const SystemPromptManager: React.FC = () => {
                   {index > 0 && <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />}
                   <ListItem
                     sx={promptPanelStyles.listItem}
-                    secondaryAction={
-                      <Box>
-                        <Tooltip title="Edit Prompt">
-                          <IconButton 
-                            edge="end" 
-                            aria-label="edit"
-                            onClick={() => handleOpenEditModal(prompt)}
-                            sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        {!prompt.is_default && (
-                          <Tooltip title="Delete Prompt">
-                            <IconButton 
-                              edge="end" 
-                              aria-label="delete"
-                              onClick={() => {
-                                if (window.confirm(`Are you sure you want to delete "${prompt.name}"?`)) {
-                                  setEditingPrompt(prompt);
-                                  handleDeletePrompt();
-                                }
-                              }}
-                              disabled={prompt.is_active}
-                              sx={{ 
-                                ...promptPanelStyles.iconButton, 
-                                color: prompt.is_active ? 'rgba(255, 255, 255, 0.3)' : promptColors.danger 
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    }
                   >
-                    <ListItemIcon>
+                    <ListItemIcon sx={{ display: 'flex', alignItems: 'center', minWidth: 'auto', marginRight: 1 }}>
                       <Radio
                         edge="start"
                         checked={prompt.is_active}
@@ -202,6 +162,21 @@ const SystemPromptManager: React.FC = () => {
                           },
                         }}
                       />
+                      <Tooltip title="Edit Prompt">
+                        <IconButton 
+                          size="small"
+                          aria-label="edit"
+                          onClick={() => handleOpenEditModal(prompt)}
+                          sx={{ 
+                            ...promptPanelStyles.iconButton, 
+                            color: promptColors.gold,
+                            padding: '4px',
+                            marginLeft: 0.5
+                          }}
+                        >
+                          <Icon name="userEdit" size={21} />
+                        </IconButton>
+                      </Tooltip>
                     </ListItemIcon>
                     <ListItemText
                       primary={
@@ -225,18 +200,6 @@ const SystemPromptManager: React.FC = () => {
                                 backgroundColor: 'rgba(212, 175, 55, 0.2)',
                                 color: promptColors.gold,
                                 border: `1px solid ${promptColors.gold}`,
-                              }} 
-                            />
-                          )}
-                          {prompt.category && (
-                            <Chip 
-                              label={prompt.category} 
-                              size="small" 
-                              sx={{ 
-                                height: '18px',
-                                fontSize: '0.65rem',
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                color: 'rgba(255, 255, 255, 0.7)',
                               }} 
                             />
                           )}

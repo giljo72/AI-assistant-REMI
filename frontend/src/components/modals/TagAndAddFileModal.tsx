@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { projectService } from '../../services';
+import { Icon } from '../common/Icon';
 
 // Define types for our selected files
 type SelectedFile = {
@@ -148,10 +149,8 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
         {/* File input area - only show if no files are selected yet */}
         {selectedFiles.length === 0 && (
           <div className="border-2 border-dashed border-navy-lighter rounded-lg p-6 text-center mb-4">
-            <div className="mb-4">
-              <div className="mx-auto w-12 h-12 bg-navy-lighter rounded-full flex items-center justify-center">
-                <span className="text-gold text-2xl">+</span>
-              </div>
+            <div className="mb-4 flex justify-center">
+              <Icon name="add" size={32} className="text-gold" />
             </div>
             <p className="text-gray-400 mb-2">Select files to tag and add</p>
             <input
@@ -223,13 +222,13 @@ const TagAndAddFileModal: React.FC<TagAndAddFileModalProps> = ({
                 <div key={selectedFile.id} className="p-3 bg-navy rounded-lg">
                   <div className="flex justify-between mb-2">
                     <span className="font-medium text-white">{selectedFile.file.name}</span>
-                    <button 
+                    <Icon
+                      name="delete"
+                      size={20}
                       onClick={() => handleRemoveFile(selectedFile.id)}
-                      className="text-red-400 hover:text-red-300"
-                      aria-label="Remove file"
-                    >
-                      ✕
-                    </button>
+                      tooltip="Remove file"
+                      style={{ color: '#f87171' }}
+                    />
                   </div>
                   <div className="text-xs text-gray-400 mb-2">
                     {(selectedFile.file.size / 1024).toFixed(1)} KB • {selectedFile.file.type || 'Unknown type'}

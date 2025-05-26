@@ -4,6 +4,7 @@ import systemPromptsReducer from './systemPromptsSlice';
 import projectSettingsReducer from './projectSettingsSlice';
 import navigationReducer from './navigationSlice';
 import typedMessagesReducer from './typedMessagesSlice';
+import chatSettingsReducer from './chatSettingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     projectSettings: projectSettingsReducer,
     navigation: navigationReducer,
     typedMessages: typedMessagesReducer,
+    chatSettings: chatSettingsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

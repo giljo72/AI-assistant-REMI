@@ -8,6 +8,7 @@ import ContextControlsPanel from '../modals/ContextControlsPanel';
 import { RootState } from '../../store';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useContextControls } from '../../context/ContextControlsContext';
+import { Icon } from '../common/Icon';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -26,7 +27,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen bg-navy text-white overflow-hidden">
       {/* Sidebar */}
-      <div className="w-64 bg-navy-light border-r border-gold overflow-y-auto flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="w-80 bg-navy-light border-r border-gold overflow-y-auto flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Project sidebar takes the top portion */}
         <div className="flex-1 overflow-y-auto">
           <ProjectSidebar />
@@ -39,7 +40,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             onClick={openContextControls}
             className="w-full py-2 mb-4 flex items-center justify-center bg-gold/20 hover:bg-gold/30 text-gold font-medium rounded transition-colors"
           >
-            <span className="mr-1">⚙</span> Context Settings
+            <Icon name="settings" size={16} className="mr-1" />
+            Context Settings
           </button>
           
           {/* System Prompts Panel */}

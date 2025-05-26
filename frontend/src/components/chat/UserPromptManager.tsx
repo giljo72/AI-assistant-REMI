@@ -8,20 +8,26 @@ import {
   ListItemText,
   ListItemIcon,
   IconButton,
-  Checkbox,
+  Radio,
   Divider,
   Button,
   Tooltip,
   CircularProgress
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon
-} from '@mui/icons-material';
+import { Icon } from '../common/Icon';
 import UserPromptModal from '../modals/UserPromptModal';
 import { userPromptService, UserPrompt } from '../../services';
 import { promptPanelStyles, promptColors } from '../common/promptStyles';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store';
+import { setActiveUserPrompt } from '../../store/chatSettingsSlice';
+import { 
+  setPrompts, 
+  activatePrompt as activatePromptAction, 
+  deactivatePrompt,
+  setLoading as setReduxLoading,
+  setError as setReduxError
+} from '../../store/userPromptsSlice';
 
 interface UserPromptManagerProps {
   projectId?: string; // Optional project ID for project-specific prompts
@@ -32,16 +38,21 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
   projectId,
   onError
 }) => {
-  const [prompts, setPrompts] = useState<UserPrompt[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<UserPrompt | null>(null);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  
+  const dispatch = useDispatch();
+  const currentChatId = useSelector((state: RootState) => state.chatSettings.currentChatId);
+  const prompts = useSelector((state: RootState) => state.userPrompts.prompts);
+  const activePromptId = useSelector((state: RootState) => state.userPrompts.activePromptId);
+  const loading = useSelector((state: RootState) => state.userPrompts.loading);
+
 
   // Fetch prompts on component mount and when projectId changes
   useEffect(() => {
     const fetchPrompts = async () => {
-      setLoading(true);
+      dispatch(setReduxLoading(true));
       try {
         let fetchedPrompts;
         if (projectId) {
@@ -49,19 +60,21 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
         } else {
           fetchedPrompts = await userPromptService.getAllUserPrompts();
         }
-        setPrompts(fetchedPrompts);
+        // Update Redux store
+        dispatch(setPrompts(fetchedPrompts));
       } catch (err) {
         console.error("Error fetching user prompts:", err);
+        dispatch(setReduxError("Failed to load user prompts"));
         if (onError) {
           onError("Failed to load user prompts");
         }
       } finally {
-        setLoading(false);
+        dispatch(setReduxLoading(false));
       }
     };
 
     fetchPrompts();
-  }, [projectId, onError]);
+  }, [projectId, onError, dispatch]);
 
   const handleOpenAddModal = () => {
     setEditingPrompt(null);
@@ -83,27 +96,25 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
     try {
       if (editingPrompt) {
         // Update existing prompt
-        const updatedPrompt = await userPromptService.updateUserPrompt(editingPrompt.id, {
+        await userPromptService.updateUserPrompt(editingPrompt.id, {
           name,
           content,
           project_id: projectId
         });
-        
-        // Update local state
-        setPrompts(prevPrompts => 
-          prevPrompts.map(p => p.id === updatedPrompt.id ? updatedPrompt : p)
-        );
       } else {
         // Add new prompt
-        const newPrompt = await userPromptService.createUserPrompt({
+        await userPromptService.createUserPrompt({
           name,
           content,
           project_id: projectId
         });
-        
-        // Update local state
-        setPrompts(prevPrompts => [...prevPrompts, newPrompt]);
       }
+      
+      // Re-fetch prompts to ensure sync with backend
+      const fetchedPrompts = projectId 
+        ? await userPromptService.getUserPromptsForProject(projectId)
+        : await userPromptService.getAllUserPrompts();
+      dispatch(setPrompts(fetchedPrompts));
       
       // Close modal
       handleCloseModal();
@@ -123,8 +134,11 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
     try {
       await userPromptService.deleteUserPrompt(editingPrompt.id);
       
-      // Update local state
-      setPrompts(prevPrompts => prevPrompts.filter(p => p.id !== editingPrompt.id));
+      // Re-fetch prompts to ensure sync with backend
+      const fetchedPrompts = projectId 
+        ? await userPromptService.getUserPromptsForProject(projectId)
+        : await userPromptService.getAllUserPrompts();
+      dispatch(setPrompts(fetchedPrompts));
       
       // Close modal
       handleCloseModal();
@@ -138,29 +152,46 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
 
   const handleToggleActive = async (prompt: UserPrompt) => {
     try {
-      if (!prompt.is_active) {
+      const isCurrentlyActive = prompt.id === activePromptId;
+      
+      if (!isCurrentlyActive) {
         // Activate this prompt
         await userPromptService.activateUserPrompt(prompt.id);
         
-        // Update local state - activate this prompt and deactivate all others
-        setPrompts(prevPrompts => 
-          prevPrompts.map(p => ({
-            ...p,
-            is_active: p.id === prompt.id
-          }))
-        );
+        // Update Redux state
+        dispatch(activatePromptAction(prompt.id));
+        
+        // Update chat settings if we're in a chat
+        if (currentChatId) {
+          dispatch(setActiveUserPrompt({
+            id: prompt.id,
+            name: prompt.name
+          }));
+        }
       } else {
-        // Deactivate this prompt (note: backend might not support this)
-        // We'll need to handle this differently in a real implementation
-        const updatedPrompt = await userPromptService.updateUserPrompt(prompt.id, {
+        // Deactivate this prompt
+        await userPromptService.updateUserPrompt(prompt.id, {
           is_active: false
         });
         
-        // Update local state
-        setPrompts(prevPrompts => 
-          prevPrompts.map(p => p.id === updatedPrompt.id ? updatedPrompt : p)
-        );
+        // Update Redux state
+        dispatch(deactivatePrompt(prompt.id));
+        
+        // Clear from chat settings if we're in a chat
+        if (currentChatId) {
+          dispatch(setActiveUserPrompt({
+            id: null,
+            name: null
+          }));
+        }
       }
+      
+      // Re-fetch prompts to ensure sync with backend
+      const fetchedPrompts = projectId 
+        ? await userPromptService.getUserPromptsForProject(projectId)
+        : await userPromptService.getAllUserPrompts();
+      dispatch(setPrompts(fetchedPrompts));
+      
     } catch (err) {
       console.error("Error toggling user prompt active state:", err);
       if (onError) {
@@ -174,15 +205,14 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
       <Paper elevation={3} sx={promptPanelStyles.paper}>
         <Box sx={promptPanelStyles.panelHeader}>
           <Typography sx={promptPanelStyles.headerTitle}>User Prompts</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAddModal}
-            size="small"
-            sx={promptPanelStyles.addButton}
-          >
-            Add Prompt
-          </Button>
+          <Tooltip title="Add Prompt">
+            <IconButton
+              onClick={handleOpenAddModal}
+              sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
+            >
+              <Icon name="add" size={20} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         {loading ? (
@@ -207,51 +237,43 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
                   {index > 0 && <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />}
                   <ListItem
                     sx={promptPanelStyles.listItem}
-                    secondaryAction={
-                      <Box>
-                        <Tooltip title="Edit Prompt">
-                          <IconButton 
-                            edge="end" 
-                            aria-label="edit"
-                            onClick={() => handleOpenEditModal(prompt)}
-                            sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Prompt">
-                          <IconButton 
-                            edge="end" 
-                            aria-label="delete"
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete "${prompt.name}"?`)) {
-                                setEditingPrompt(prompt);
-                                handleDeletePrompt();
-                              }
-                            }}
-                            sx={{ ...promptPanelStyles.iconButton, color: promptColors.danger }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    }
                   >
-                    <ListItemIcon>
-                      <Checkbox
+                    <ListItemIcon sx={{ display: 'flex', alignItems: 'center', minWidth: 'auto', marginRight: 1 }}>
+                      <Radio
                         edge="start"
-                        checked={prompt.is_active}
+                        checked={prompt.id === activePromptId}
                         onChange={() => handleToggleActive(prompt)}
-                        sx={promptPanelStyles.checkbox}
+                        sx={{
+                          padding: '4px',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          '&.Mui-checked': {
+                            color: promptColors.gold,
+                          },
+                        }}
                       />
+                      <Tooltip title="Edit Prompt">
+                        <IconButton 
+                          size="small"
+                          aria-label="edit"
+                          onClick={() => handleOpenEditModal(prompt)}
+                          sx={{ 
+                            ...promptPanelStyles.iconButton, 
+                            color: promptColors.gold,
+                            padding: '4px',
+                            marginLeft: 0.5
+                          }}
+                        >
+                          <Icon name="userEdit" size={21} />
+                        </IconButton>
+                      </Tooltip>
                     </ListItemIcon>
                     <ListItemText
                       primary={
                         <Typography 
                           sx={{ 
                             ...promptPanelStyles.listItemPrimary,
-                            fontWeight: prompt.is_active ? 'bold' : 'normal',
-                            color: prompt.is_active ? promptColors.gold : '#ffffff'
+                            fontWeight: prompt.id === activePromptId ? 'bold' : 'normal',
+                            color: prompt.id === activePromptId ? promptColors.gold : '#ffffff'
                           }}
                         >
                           {prompt.name}

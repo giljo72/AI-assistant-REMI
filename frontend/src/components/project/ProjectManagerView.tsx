@@ -228,6 +228,8 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
           description: projectDescription
         });
       }
+      // Return to overview tab after successful save
+      setActiveTab('overview');
     } catch (err) {
       console.error("Error updating project:", err);
       setError("Failed to update project. Please try again.");
@@ -598,7 +600,18 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
                 </div>
               </div>
               <div className="pt-4 flex justify-end space-x-3">
-                <button className="px-4 py-2 bg-navy hover:bg-navy-lighter rounded">
+                <button 
+                  className="px-4 py-2 bg-navy hover:bg-navy-lighter rounded"
+                  onClick={() => {
+                    // Reset to original values
+                    if (project) {
+                      setProjectName(project.name);
+                      setProjectDescription(project.description || '');
+                    }
+                    // Return to overview tab
+                    setActiveTab('overview');
+                  }}
+                >
                   Cancel
                 </button>
                 <button 

@@ -53,79 +53,90 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
       {/* Context Mode Indicator - Yellow Box */}
       <button
         onClick={onOpenContextControls}
-        className="inline-flex items-center px-3 py-1 rounded text-sm mr-2 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors cursor-pointer"
+        className="inline-flex items-center px-3 py-1 rounded text-sm mr-2 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
         title="Click to change context mode"
       >
-        <span className="w-2 h-2 rounded-full mr-2 bg-yellow-400"></span>
+        <span className="w-2 h-2 rounded-full mr-2 bg-yellow-400 animate-pulse"></span>
         Context: <span className="font-semibold ml-1">{getContextModeDisplay(contextMode)}</span>
       </button>
 
       {/* System Prompt Indicator - Orange */}
       <button
         onClick={onToggleSystemPrompt}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isSystemPromptEnabled
-            ? 'bg-orange-900/30 text-orange-400'
-            : 'bg-gray-800 text-gray-400'
+            ? 'bg-orange-900/30 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 hover:shadow-lg hover:shadow-orange-500/20'
+            : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
         title={selectedModel.includes('deepseek') ? 'DeepSeek Coder System Prompt' : 'Default Assistant System Prompt'}
       >
-        <span className={`w-2 h-2 rounded-full mr-2 ${isSystemPromptEnabled ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isSystemPromptEnabled ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
         System Prompt {isSystemPromptEnabled ? 'Enabled' : 'Disabled'}
       </button>
 
-      {/* Active User Prompt Indicator - Gray */}
-      {activeUserPromptName && (
-        <button
-          onClick={onToggleUserPrompt}
-          className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
-            isUserPromptEnabled
-              ? 'bg-gray-700/50 text-gray-300'
-              : 'bg-gray-800 text-gray-500'
-          }`}
-          title={`User Prompt: ${activeUserPromptName}`}
-        >
-          <span className={`w-2 h-2 rounded-full mr-2 ${isUserPromptEnabled ? 'bg-gray-400' : 'bg-gray-600'}`}></span>
-          {activeUserPromptName} {isUserPromptEnabled ? 'Active' : 'Inactive'}
-        </button>
-      )}
+      {/* User Prompt Indicator - Gray (Always visible) */}
+      <button
+        onClick={onToggleUserPrompt}
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
+          activeUserPromptName
+            ? isUserPromptEnabled
+              ? 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-600/50 hover:shadow-lg hover:shadow-gray-600/20'
+              : 'bg-gray-800 text-gray-500 border border-gray-700 hover:bg-gray-700 hover:text-gray-400'
+            : 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed opacity-50'
+        }`}
+        title={activeUserPromptName ? `User Prompt: ${activeUserPromptName}` : 'No user prompt selected'}
+        disabled={!activeUserPromptName}
+      >
+        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${
+          activeUserPromptName 
+            ? (isUserPromptEnabled ? 'bg-gray-400' : 'bg-gray-600')
+            : 'bg-gray-600'
+        }`}></span>
+        {activeUserPromptName 
+          ? `${activeUserPromptName} ${isUserPromptEnabled ? 'Active' : 'Inactive'}`
+          : 'User Prompt Disabled'
+        }
+      </button>
 
       {/* Project Prompt Indicator */}
       <button
         onClick={onToggleProjectPrompt}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isProjectPromptEnabled
-            ? 'bg-green-900/30 text-green-400'
-            : 'bg-gray-800 text-gray-400'
+            ? 'bg-green-900/30 text-green-400 border border-green-500/30 hover:bg-green-500/30 hover:shadow-lg hover:shadow-green-500/20'
+            : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
+        title="Toggle project-specific prompt"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 ${isProjectPromptEnabled ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isProjectPromptEnabled ? 'bg-green-400' : 'bg-gray-500'}`}></span>
         Project Prompt {isProjectPromptEnabled ? 'Enabled' : 'Disabled'}
       </button>
 
       {/* Global Data Indicator */}
       <button
         onClick={onToggleGlobalData}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isGlobalDataEnabled
-            ? 'bg-blue-900/30 text-blue-400'
-            : 'bg-gray-800 text-gray-400'
+            ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20'
+            : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
+        title="Toggle global knowledge base access"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 ${isGlobalDataEnabled ? 'bg-blue-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isGlobalDataEnabled ? 'bg-blue-400' : 'bg-gray-500'}`}></span>
         Global Data {isGlobalDataEnabled ? 'Enabled' : 'Disabled'}
       </button>
 
       {/* Project Documents Indicator */}
       <button
         onClick={onToggleProjectDocuments}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 ${
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isProjectDocumentsEnabled
-            ? 'bg-purple-900/30 text-purple-400'
-            : 'bg-gray-800 text-gray-400'
+            ? 'bg-purple-900/30 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 hover:shadow-lg hover:shadow-purple-500/20'
+            : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
+        title="Toggle project document access"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 ${isProjectDocumentsEnabled ? 'bg-purple-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isProjectDocumentsEnabled ? 'bg-purple-400' : 'bg-gray-500'}`}></span>
         Project Documents {isProjectDocumentsEnabled ? 'Enabled' : 'Disabled'}
       </button>
     </div>

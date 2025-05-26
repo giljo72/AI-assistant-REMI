@@ -12,6 +12,8 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  Typography,
+  IconButton
 } from '@mui/material';
 import { promptColors } from '../common/promptStyles';
 
@@ -95,18 +97,25 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
         sx: {
           backgroundColor: '#1a2b47',
           color: '#ffffff',
+          '& .Mui-disabled': {
+            '& input, & textarea, & .MuiSelect-select': {
+              color: 'rgba(255, 255, 255, 0.7) !important',
+              WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
+            },
+          },
         },
       }}
     >
       <DialogTitle sx={{ 
         backgroundColor: '#152238', 
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        fontSize: '1.25rem'
+        fontSize: '1.25rem',
+        color: promptColors.gold
       }}>
         {editMode ? 'Edit System Prompt' : 'Add System Prompt'}
       </DialogTitle>
       
-      <DialogContent sx={{ mt: 2 }}>
+      <DialogContent sx={{ mt: 2, pt: 3 }}>
         <TextField
           fullWidth
           label="Name"
@@ -120,20 +129,44 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
             '& .MuiInputBase-root': {
               color: '#ffffff',
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                '& input': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                },
+                '& textarea': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                },
+              },
             },
             '& .MuiInputLabel-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: promptColors.gold,
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: promptColors.gold,
+              },
             },
             '& .MuiOutlinedInput-root': {
               '& fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                borderColor: '#ffffff',
               },
               '&:hover fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
+                borderColor: promptColors.gold,
               },
               '&.Mui-focused fieldset': {
                 borderColor: promptColors.gold,
+              },
+              '&.Mui-disabled': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '& input, & textarea': {
+                  color: 'rgba(255, 255, 255, 0.7) !important',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
+                },
               },
             },
           }}
@@ -141,7 +174,7 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
 
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel sx={{ 
-            color: 'rgba(255, 255, 255, 0.7)',
+            color: promptColors.gold,
             fontSize: '0.875rem',
             '&.Mui-focused': {
               color: promptColors.gold,
@@ -157,16 +190,30 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
             sx={{
               color: '#ffffff',
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                '& .MuiSelect-select': {
+                  color: 'rgba(255, 255, 255, 0.7) !important',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+              },
               '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                borderColor: '#ffffff',
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
+                borderColor: promptColors.gold,
               },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: promptColors.gold,
               },
               '& .MuiSvgIcon-root': {
+                color: '#ffffff',
+              },
+              '&.Mui-disabled .MuiSvgIcon-root': {
                 color: 'rgba(255, 255, 255, 0.7)',
               },
             }}
@@ -190,20 +237,44 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
             '& .MuiInputBase-root': {
               color: '#ffffff',
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                '& input': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                },
+                '& textarea': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                },
+              },
             },
             '& .MuiInputLabel-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: promptColors.gold,
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: promptColors.gold,
+              },
             },
             '& .MuiOutlinedInput-root': {
               '& fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                borderColor: '#ffffff',
               },
               '&:hover fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
+                borderColor: promptColors.gold,
               },
               '&.Mui-focused fieldset': {
                 borderColor: promptColors.gold,
+              },
+              '&.Mui-disabled': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '& input, & textarea': {
+                  color: 'rgba(255, 255, 255, 0.7) !important',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
+                },
               },
             },
           }}
@@ -217,26 +288,56 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
           error={!!errors.content}
           helperText={errors.content || 'Define how the AI assistant should behave'}
           multiline
-          rows={12}
+          rows={10}
           disabled={isDefault}
           sx={{
             '& .MuiInputBase-root': {
               color: '#ffffff',
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                '& input': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                },
+                '& textarea': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                },
+              },
             },
             '& .MuiInputLabel-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: promptColors.gold,
               fontSize: '0.875rem',
+              '&.Mui-disabled': {
+                color: promptColors.gold,
+              },
             },
             '& .MuiOutlinedInput-root': {
               '& fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                borderColor: '#ffffff',
               },
               '&:hover fieldset': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
+                borderColor: promptColors.gold,
               },
               '&.Mui-focused fieldset': {
                 borderColor: promptColors.gold,
+              },
+              '&.Mui-disabled': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '& input, & textarea': {
+                  color: 'rgba(255, 255, 255, 0.7) !important',
+                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
+                },
+              },
+            },
+            '& .MuiFormHelperText-root': {
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&.Mui-disabled': {
+                color: 'rgba(255, 255, 255, 0.7)',
               },
             },
           }}

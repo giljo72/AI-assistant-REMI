@@ -32,11 +32,24 @@ class ChatMessage(ChatMessageInDB):
         from_attributes = True
 
 
+# Chat context settings schema
+class ChatContextSettings(BaseModel):
+    """Settings for chat context controls."""
+    context_mode: str = "standard"
+    is_system_prompt_enabled: bool = True
+    is_user_prompt_enabled: bool = False
+    active_user_prompt_id: Optional[str] = None
+    active_user_prompt_name: Optional[str] = None
+    is_project_prompt_enabled: bool = True
+    is_global_data_enabled: bool = True
+    is_project_documents_enabled: bool = True
+
 # Chat schemas
 class ChatBase(BaseModel):
     """Base chat schema with common attributes."""
     name: str
     project_id: str
+    context_settings: Optional[ChatContextSettings] = None
 
 
 class ChatCreate(ChatBase):
@@ -47,6 +60,7 @@ class ChatCreate(ChatBase):
 class ChatUpdate(BaseModel):
     """Schema for updating an existing chat."""
     name: Optional[str] = None
+    context_settings: Optional[ChatContextSettings] = None
 
 
 class ChatInDB(ChatBase):

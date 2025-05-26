@@ -192,11 +192,13 @@ The FastAPI backend delivers:
 
 ### UI Icons
 * **SVG Icon Library**: Curated collection of UI icons stored in `/Images/` directory
-  * **Primary Usage Icons**: View (👁️→View.SVG), Add (+ buttons→add.svg), Close (X buttons→close.svg), Delete (🗑️→delete.svg), Download (⬇️→download.svg), Link (🔗→link.svg), Question (?→question.svg), Refresh, Search (🔍→search.svg)
-  * **Dropdown Controls**: Multiple dropdown state icons for various UI elements
-  * **Usage Pattern**: "Add Project (+)" where (+) represents the clickable add.svg icon
-  * **Modal Integration**: All modal close buttons should use close.svg instead of text/emoji
-  * **Reserved for Future**: unlink.svg (no current unlink function), save.svg (using download.svg instead)
+  * **Primary Usage Icons**: View (👁️→View.SVG), Add (+ buttons→add.svg), Close (X buttons→close.svg), Copy (📋→copy.svg), Delete (🗑️→delete.svg), Download (⬇️→download.svg), Link (🔗→link.svg), Microphone (🎤→microphone.svg), Question (?→question.svg), Refresh (🔄→refresh.svg), Save (💾→save.svg), Search (🔍→search.svg), Settings (⚙️→settings.svg), Unlink (🔗❌→unlink.svg)
+  * **User Management Icons**: User (👤→user.svg), User Add (👤+→useradd.svg), User Delete (👤-→userdelete.svg), User Edit (👤✏️→useredit.svg)
+  * **Dropdown Controls**: Dropdown Open (▼→dropdown_open.svg), Dropdown Close (▶→dropdown_close.svg)
+  * **Usage Pattern**: Icons are accessed through the Icon component: `<Icon name="add" size={20} />`
+  * **Modal Integration**: All modal close buttons use close.svg with rotation hover effect
+  * **Hover Effects**: All icons have smooth scale, brightness, and shadow effects on hover
+  * **Chat-Specific Context Settings**: Each chat thread maintains its own context settings (system prompt, user prompt, project settings)
   * Location: `F:\Assistant\Images\` - Scalable vector graphics for crisp display
 
 ## Technology Stack

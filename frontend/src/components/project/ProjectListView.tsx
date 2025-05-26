@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { projectService } from '../../services';
 import { Project } from '../../services';
+import { Icon } from '../common/Icon';
 
 type ProjectListViewProps = {
   onSelectProject: (projectId: string) => void;
@@ -41,7 +42,7 @@ const ProjectListView: React.FC<ProjectListViewProps> = ({
           onClick={onCreateProject}
           className="px-3 py-1 bg-gold/20 hover:bg-gold/30 text-gold rounded text-sm flex items-center"
         >
-          <span className="mr-1">+</span> Create Project
+          <Icon name="add" size={16} className="mr-1" /> Create Project
         </button>
       </div>
 

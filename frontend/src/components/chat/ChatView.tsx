@@ -15,20 +15,26 @@ import {
   FormControl,
 } from '@mui/material';
 import systemService from '../../services/systemService';
-import {
-  Send as SendIcon,
-  Mic as MicIcon,
-  ContentCopy as CopyIcon,
-  Stop as StopIcon
-} from '@mui/icons-material';
 import ContextStatusIndicators from './ContextStatusIndicators';
 import { RootState } from '../../store';
+import { Icon } from '../common/Icon';
+import SendIcon from '@mui/icons-material/Send';
+import StopIcon from '@mui/icons-material/Stop';
 import { 
   toggleProjectPrompt, 
   toggleGlobalData, 
   toggleProjectDocuments 
 } from '../../store/projectSettingsSlice';
 import { useContextControls } from '../../context/ContextControlsContext';
+import {
+  setCurrentChat,
+  toggleSystemPrompt as toggleChatSystemPrompt,
+  toggleUserPrompt as toggleChatUserPrompt,
+  toggleProjectPrompt as toggleChatProjectPrompt,
+  toggleGlobalData as toggleChatGlobalData,
+  toggleProjectDocuments as toggleChatProjectDocuments,
+  selectCurrentChatSettings,
+} from '../../store/chatSettingsSlice';
 
 interface ChatViewProps {
   projectName: string;  
@@ -74,11 +80,35 @@ const ChatView: React.FC<ChatViewProps> = ({
     (state: RootState) => state.projectSettings
   );
   const { openContextControls } = useContextControls();
+  
+  // Get chat-specific settings
+  const chatSettings = useSelector((state: RootState) => selectCurrentChatSettings(state));
+  const { activePrompt: systemPrompt } = useSelector((state: RootState) => state.systemPrompts);
+  const { prompts: userPrompts, activePromptId } = useSelector((state: RootState) => state.userPrompts);
+  
+  // Find active user prompt using Redux activePromptId
+  const activeUserPrompt = userPrompts.find(p => p.id === activePromptId);
+
+  // Set current chat when component mounts or chat changes
+  useEffect(() => {
+    if (chatId) {
+      dispatch(setCurrentChat(chatId));
+    }
+    return () => {
+      // Clear current chat when unmounting
+      dispatch(setCurrentChat(null));
+    };
+  }, [chatId, dispatch]);
 
   // Fetch active model from backend on mount
   useEffect(() => {
     const fetchModels = async () => {
       try {
+        // First, get active model quickly
+        const activeModel = await systemService.getActiveModelQuick();
+        setSelectedModel(activeModel);
+        
+        // Then fetch full model list in background
         const models = await systemService.getAvailableModels();
         // Filter out embeddings models and keep only chat models
         const chatModels = models.filter((m: any) => 
@@ -91,19 +121,22 @@ const ChatView: React.FC<ChatViewProps> = ({
         );
         setAvailableModels(chatModels);
         
-        // Find and set the active model
-        const activeModel = models.find((m: any) => 
-          m.status === 'loaded' && 
-          !m.name.includes('embedqa') &&
-          m.last_used !== 'Embeddings'
-        );
-        if (activeModel) {
-          setSelectedModel(activeModel.name);
-        } else if (chatModels.length > 0) {
-          // If no active model, set the first available chat model
-          // Prefer Qwen if available
-          const defaultModel = chatModels.find((m: any) => m.name.includes('qwen2.5:32b')) || chatModels[0];
-          setSelectedModel(defaultModel.name);
+        // Only update selected model if we didn't already get it
+        if (!activeModel) {
+          // Find and set the active model
+          const activeModel = models.find((m: any) => 
+            m.status === 'loaded' && 
+            !m.name.includes('embedqa') &&
+            m.last_used !== 'Embeddings'
+          );
+          if (activeModel) {
+            setSelectedModel(activeModel.name);
+          } else if (chatModels.length > 0) {
+            // If no active model, set the first available chat model
+            // Prefer Qwen if available
+            const defaultModel = chatModels.find((m: any) => m.name.includes('qwen2.5:32b')) || chatModels[0];
+            setSelectedModel(defaultModel.name);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch models:', error);
@@ -189,20 +222,7 @@ const ChatView: React.FC<ChatViewProps> = ({
         overflowX: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#080d13',
-        '&::-webkit-scrollbar': {
-          width: '8px',
-        },
-        '&::-webkit-scrollbar-track': {
-          backgroundColor: '#121922',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: '#FFC000', // Yellow scrollbar
-          borderRadius: '4px',
-          '&:hover': {
-            backgroundColor: '#e6ac00',
-          }
-        }
+        backgroundColor: '#080d13'
       }}>
         {/* Messages Area */}
         <Box 
@@ -300,7 +320,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                         padding: '4px'
                       }}
                     >
-                      <CopyIcon fontSize="small" />
+                      <Icon name="copy" size={16} />
                     </IconButton>
                   </Tooltip>
                 )}
@@ -498,7 +518,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 }}
                 onClick={onEnableMic}
               >
-                <MicIcon fontSize={window.innerWidth < 600 ? "small" : "medium"} />
+                <Icon name="microphone" size={window.innerWidth < 600 ? 20 : 24} />
               </IconButton>
             )}
             
@@ -525,7 +545,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                   }}
                   onClick={onStopGeneration}
                 >
-                  <StopIcon fontSize={window.innerWidth < 600 ? "small" : "medium"} />
+                  <StopIcon sx={{ fontSize: window.innerWidth < 600 ? 20 : 24 }} />
                 </IconButton>
               </Tooltip>
             ) : (
@@ -550,7 +570,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 onClick={handleSendMessage}
                 disabled={isProcessing || !input.trim()}
               >
-                <SendIcon fontSize={window.innerWidth < 600 ? "small" : "medium"} />
+                <SendIcon sx={{ fontSize: window.innerWidth < 600 ? 20 : 24 }} />
               </IconButton>
             )}
           </Box>
@@ -558,20 +578,20 @@ const ChatView: React.FC<ChatViewProps> = ({
         
         {/* Context Controls - Below the chat input */}
         <ContextStatusIndicators 
-          isProjectPromptEnabled={projectPromptEnabled}
-          isGlobalDataEnabled={globalDataEnabled}
-          isProjectDocumentsEnabled={projectDocumentsEnabled}
-          isSystemPromptEnabled={true} // TODO: Add toggle state
-          isUserPromptEnabled={true} // TODO: Add toggle state
-          activeUserPromptName="Business Analysis" // TODO: Get from active prompts
+          isProjectPromptEnabled={chatSettings.isProjectPromptEnabled}
+          isGlobalDataEnabled={chatSettings.isGlobalDataEnabled}
+          isProjectDocumentsEnabled={chatSettings.isProjectDocumentsEnabled}
+          isSystemPromptEnabled={chatSettings.isSystemPromptEnabled}
+          isUserPromptEnabled={chatSettings.isUserPromptEnabled}
+          activeUserPromptName={activeUserPrompt?.name || chatSettings.activeUserPromptName || ''}
           selectedModel={selectedModel}
-          onToggleProjectPrompt={() => dispatch(toggleProjectPrompt())}
-          onToggleGlobalData={() => dispatch(toggleGlobalData())}
-          onToggleProjectDocuments={() => dispatch(toggleProjectDocuments())}
-          onToggleSystemPrompt={() => {}} // TODO: Implement toggle
-          onToggleUserPrompt={() => {}} // TODO: Implement toggle
+          onToggleProjectPrompt={() => dispatch(toggleChatProjectPrompt())}
+          onToggleGlobalData={() => dispatch(toggleChatGlobalData())}
+          onToggleProjectDocuments={() => dispatch(toggleChatProjectDocuments())}
+          onToggleSystemPrompt={() => dispatch(toggleChatSystemPrompt())}
+          onToggleUserPrompt={() => dispatch(toggleChatUserPrompt())}
           onOpenContextControls={openContextControls}
-          contextMode={contextMode}
+          contextMode={chatSettings.contextMode}
         />
       </Box>
     </Box>

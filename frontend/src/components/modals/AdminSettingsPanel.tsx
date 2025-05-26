@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import adminService, { SystemInfo } from '../../services/adminService';
+import { Icon, HelpIcon } from '../common/Icon';
 
 interface AdminSettingsPanelProps {
   isOpen: boolean;
@@ -126,12 +127,13 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
         {/* Header */}
         <div className="p-4 bg-navy flex items-center justify-between border-b border-navy-lighter">
           <h2 className="text-xl font-bold text-gold">System Administration</h2>
-          <button 
+          <Icon
+            name="close"
+            size={24}
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
-          >
-            ✕
-          </button>
+            tooltip="Close"
+            style={{ color: '#9ca3af' }}
+          />
         </div>
         
         {/* Tabs */}
@@ -224,9 +226,10 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
               <div className="flex justify-end">
                 <button 
                   onClick={fetchSystemInfo}
-                  className="px-4 py-2 bg-navy hover:bg-navy-lighter text-white rounded-md flex items-center"
+                  className="px-4 py-2 bg-navy hover:bg-navy-lighter text-white rounded-md flex items-center gap-2"
                 >
-                  <span className="mr-2">🔄</span> Refresh
+                  <Icon name="refresh" size={16} />
+                  Refresh
                 </button>
               </div>
             </div>
@@ -307,7 +310,10 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-navy-lighter rounded-md">
                     <div>
-                      <h4 className="font-semibold text-white mb-1">Development Mode</h4>
+                      <h4 className="font-semibold text-white mb-1">
+                        Development Mode
+                        <HelpIcon tooltip="Activates developer tools including self-analysis, enhanced logging, and experimental features. Use with caution in production." />
+                      </h4>
                       <p className="text-sm text-gray-400">
                         Enables enhanced debugging, verbose logging, and access to experimental features.
                       </p>
