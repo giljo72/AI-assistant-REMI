@@ -1,5 +1,7 @@
 // File: frontend/src/components/chat/ContextStatusIndicators.tsx
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import UserPromptQuickSwitcher from './UserPromptQuickSwitcher';
+import SystemPromptQuickSwitcher from './SystemPromptQuickSwitcher';
 
 type ContextStatusIndicatorsProps = {
   isProjectPromptEnabled: boolean;
@@ -15,6 +17,8 @@ type ContextStatusIndicatorsProps = {
   onToggleSystemPrompt?: () => void;
   onToggleUserPrompt?: () => void;
   onOpenContextControls?: () => void;
+  onOpenSystemPromptPanel?: () => void;
+  onOpenUserPromptPanel?: () => void;
   contextMode?: string;
 };
 
@@ -25,15 +29,18 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
   isSystemPromptEnabled = true,
   isUserPromptEnabled = false,
   activeUserPromptName = '',
-  selectedModel = '',
   onToggleProjectPrompt,
   onToggleGlobalData,
   onToggleProjectDocuments,
-  onToggleSystemPrompt = () => {},
-  onToggleUserPrompt = () => {},
   onOpenContextControls,
+  onOpenSystemPromptPanel,
+  onOpenUserPromptPanel,
   contextMode = 'standard'
 }) => {
+  const [userPromptMenuOpen, setUserPromptMenuOpen] = useState(false);
+  const [systemPromptMenuOpen, setSystemPromptMenuOpen] = useState(false);
+  const userPromptButtonRef = useRef<HTMLButtonElement>(null);
+  const systemPromptButtonRef = useRef<HTMLButtonElement>(null);
   // Format context mode display name
   const getContextModeDisplay = (mode: string) => {
     const modeMap: { [key: string]: string } = {
@@ -62,41 +69,56 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
 
       {/* System Prompt Indicator - Orange */}
       <button
-        onClick={onToggleSystemPrompt}
+        ref={systemPromptButtonRef}
+        onClick={() => setSystemPromptMenuOpen(!systemPromptMenuOpen)}
         className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isSystemPromptEnabled
             ? 'bg-orange-900/30 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 hover:shadow-lg hover:shadow-orange-500/20'
             : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
-        title={selectedModel.includes('deepseek') ? 'DeepSeek Coder System Prompt' : 'Default Assistant System Prompt'}
+        title="Click to select system prompt"
       >
         <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isSystemPromptEnabled ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
         System Prompt {isSystemPromptEnabled ? 'Enabled' : 'Disabled'}
       </button>
+      
+      <SystemPromptQuickSwitcher
+        isOpen={systemPromptMenuOpen}
+        anchorEl={systemPromptButtonRef.current}
+        onClose={() => setSystemPromptMenuOpen(false)}
+        onManagePrompts={onOpenSystemPromptPanel}
+      />
 
       {/* User Prompt Indicator - Gray (Always visible) */}
       <button
-        onClick={onToggleUserPrompt}
+        ref={userPromptButtonRef}
+        onClick={() => setUserPromptMenuOpen(!userPromptMenuOpen)}
         className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           activeUserPromptName
             ? isUserPromptEnabled
               ? 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-600/50 hover:shadow-lg hover:shadow-gray-600/20'
               : 'bg-gray-800 text-gray-500 border border-gray-700 hover:bg-gray-700 hover:text-gray-400'
-            : 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed opacity-50'
+            : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
-        title={activeUserPromptName ? `User Prompt: ${activeUserPromptName}` : 'No user prompt selected'}
-        disabled={!activeUserPromptName}
+        title="Click to select user prompt"
       >
         <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${
           activeUserPromptName 
-            ? (isUserPromptEnabled ? 'bg-gray-400' : 'bg-gray-600')
-            : 'bg-gray-600'
+            ? (isUserPromptEnabled ? 'bg-gray-400' : 'bg-gray-500')
+            : 'bg-gray-500'
         }`}></span>
         {activeUserPromptName 
           ? `${activeUserPromptName} ${isUserPromptEnabled ? 'Active' : 'Inactive'}`
           : 'User Prompt Disabled'
         }
       </button>
+      
+      <UserPromptQuickSwitcher
+        isOpen={userPromptMenuOpen}
+        anchorEl={userPromptButtonRef.current}
+        onClose={() => setUserPromptMenuOpen(false)}
+        onManagePrompts={onOpenUserPromptPanel}
+      />
 
       {/* Project Prompt Indicator */}
       <button

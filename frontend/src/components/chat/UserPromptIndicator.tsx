@@ -7,7 +7,6 @@ import {
   IconButton
 } from '@mui/material';
 import {
-  Description as DescriptionIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
 import { UserPrompt } from './UserPromptManager';
@@ -31,15 +30,14 @@ const UserPromptIndicator: React.FC<UserPromptIndicatorProps> = ({
         display: 'flex',
         alignItems: 'center',
         padding: '8px 16px',
-        backgroundColor: 'rgba(212, 175, 55, 0.1)', // Light gold background
-        borderRadius: '4px',
-        marginBottom: '16px'
+        backgroundColor: 'rgba(156, 163, 175, 0.1)', // Light gray background
+        borderRadius: '8px',
+        marginBottom: '16px',
+        border: '1px solid rgba(156, 163, 175, 0.3)'
       }}
     >
-      <DescriptionIcon sx={{ color: '#d4af37', marginRight: '8px' }} />
-      
       <Box sx={{ flexGrow: 1 }}>
-        <Typography variant="body2" sx={{ color: '#d4af37', fontWeight: 'bold' }}>
+        <Typography variant="body2" sx={{ color: '#9ca3af', fontWeight: 'bold', fontSize: '0.75rem' }}>
           Active User Prompt:
         </Typography>
         
@@ -47,15 +45,17 @@ const UserPromptIndicator: React.FC<UserPromptIndicatorProps> = ({
           <Chip
             label={activePrompt.name}
             sx={{
-              backgroundColor: '#d4af37',
-              color: '#000000',
+              backgroundColor: 'rgba(156, 163, 175, 0.5)',
+              color: '#1a1a1a',
               fontWeight: 'bold',
               marginTop: '4px',
               maxWidth: '250px',
+              height: '24px',
               '& .MuiChip-label': {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                padding: '0 8px'
               }
             }}
           />
@@ -67,9 +67,9 @@ const UserPromptIndicator: React.FC<UserPromptIndicatorProps> = ({
           size="small" 
           onClick={onDeactivate}
           sx={{ 
-            color: '#d4af37',
+            color: '#9ca3af',
             '&:hover': {
-              backgroundColor: 'rgba(212, 175, 55, 0.2)'
+              backgroundColor: 'rgba(156, 163, 175, 0.2)'
             }
           }}
         >

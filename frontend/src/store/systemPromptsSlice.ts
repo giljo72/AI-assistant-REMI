@@ -79,6 +79,23 @@ const systemPromptsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setActiveSystemPrompt: (state, action: PayloadAction<string | null>) => {
+      if (action.payload === null) {
+        // Disable system prompt
+        state.activePrompt = null;
+        state.prompts = state.prompts.map(p => ({ ...p, is_active: false }));
+      } else {
+        // Find and activate the selected prompt
+        const prompt = state.prompts.find(p => p.id === action.payload);
+        if (prompt) {
+          state.prompts = state.prompts.map(p => ({ 
+            ...p, 
+            is_active: p.id === action.payload 
+          }));
+          state.activePrompt = { ...prompt, is_active: true };
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     // Fetch all prompts
@@ -161,5 +178,5 @@ const systemPromptsSlice = createSlice({
   },
 });
 
-export const { clearError } = systemPromptsSlice.actions;
+export const { clearError, setActiveSystemPrompt } = systemPromptsSlice.actions;
 export default systemPromptsSlice.reducer;

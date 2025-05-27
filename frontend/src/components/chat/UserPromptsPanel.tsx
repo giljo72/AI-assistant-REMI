@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Collapse,
@@ -8,17 +7,8 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
-import UserPromptManager, { UserPrompt } from './UserPromptManager';
-import UserPromptIndicator from './UserPromptIndicator';
-import { RootState } from '../../store';
+import UserPromptManager from './UserPromptManager';
 import { Icon } from '../common/Icon';
-import {
-  addPrompt,
-  updatePrompt,
-  deletePrompt,
-  activatePrompt,
-  deactivatePrompt
-} from '../../store/userPromptsSlice';
 import { promptPanelStyles, promptColors } from '../common/promptStyles';
 
 interface UserPromptsPanelProps {
@@ -30,10 +20,6 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
   expanded = false,
   onToggleExpand
 }) => {
-  const dispatch = useDispatch();
-  const { prompts } = useSelector((state: RootState) => state.userPrompts);
-  const activePrompt = prompts.find((p: UserPrompt) => p.active) || null;
-  
   // Local expanding state if not controlled externally
   const [localExpanded, setLocalExpanded] = useState(expanded);
   const isExpanded = onToggleExpand ? expanded : localExpanded;
@@ -43,32 +29,6 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
       onToggleExpand();
     } else {
       setLocalExpanded(!localExpanded);
-    }
-  };
-  
-  const handleAddPrompt = (newPrompt: Omit<typeof prompts[0], 'id'>) => {
-    dispatch(addPrompt(newPrompt));
-  };
-  
-  const handleUpdatePrompt = (updatedPrompt: typeof prompts[0]) => {
-    dispatch(updatePrompt(updatedPrompt));
-  };
-  
-  const handleDeletePrompt = (id: string) => {
-    dispatch(deletePrompt(id));
-  };
-  
-  const handleActivatePrompt = (id: string, active: boolean) => {
-    if (active) {
-      dispatch(activatePrompt(id));
-    } else {
-      dispatch(deactivatePrompt(id));
-    }
-  };
-  
-  const handleDeactivatePrompt = () => {
-    if (activePrompt) {
-      dispatch(deactivatePrompt(activePrompt.id));
     }
   };
 
@@ -86,18 +46,6 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
             >
               User Prompts
             </Typography>
-            
-            {activePrompt && (
-              <Tooltip title={activePrompt.name}>
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    ...promptPanelStyles.activeDot,
-                    backgroundColor: promptColors.gold,
-                  }} 
-                />
-              </Tooltip>
-            )}
           </Box>
           
           <Box>
@@ -131,13 +79,6 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
         </Box>
       )}
 
-      {/* User Prompt Indicator (when not expanded but a prompt is active) */}
-      {!isExpanded && activePrompt && (
-        <UserPromptIndicator
-          activePrompt={activePrompt}
-          onDeactivate={handleDeactivatePrompt}
-        />
-      )}
 
       {/* Expanded Panel */}
       <Collapse in={isExpanded} timeout="auto">
@@ -158,13 +99,7 @@ const UserPromptsPanel: React.FC<UserPromptsPanelProps> = ({
           </Box>
           
           <Box sx={{ padding: 2 }}>
-            <UserPromptManager
-              prompts={prompts}
-              onAddPrompt={handleAddPrompt}
-              onUpdatePrompt={handleUpdatePrompt}
-              onDeletePrompt={handleDeletePrompt}
-              onActivatePrompt={handleActivatePrompt}
-            />
+            <UserPromptManager />
           </Box>
         </Paper>
       </Collapse>

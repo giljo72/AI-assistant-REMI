@@ -216,7 +216,7 @@ The FastAPI backend delivers:
 | Quick Responses | Mistral-Nemo 12B (Ollama) | Fast responses when speed is priority |
 | Code Generation | DeepSeek Coder V2 16B (Ollama) | Self-aware coding mode |
 | Embeddings | NVIDIA NIM NV-Embedqa-E5-v5 | Always active except in Llama 70B solo mode |
-| Document Processing | NVIDIA NIM Embeddings + Auto-chunking | Multi-level chunking with document type detection |
+| Document Processing | NVIDIA NV-Ingest + NIM Embeddings | Multimodal extraction with smart model loading |
 | Voice Processing | Whisper (planned) | Transcription for voice input |
 | System Monitoring | Custom service management + psutil | Real-time system and model status tracking |
 | Model Management | Dynamic loading system (planned) | Runtime model switching and configuration |
@@ -400,13 +400,22 @@ The system is designed around a philosophy of "containment by default, expansion
 * ✅ Added streaming chat responses with SSE
 * ✅ Implemented model orchestration service
 
-### Phase 6: Document Processing & RAG (Completed)
+### Phase 6: Document Processing & RAG (In Progress)
 * ✅ Implemented document processing with embeddings
 * ✅ Created chunking strategies for documents
 * ✅ Metadata extraction and storage in PostgreSQL
 * ✅ Vector embeddings with NV-Embedqa-E5-v5
 * ✅ Semantic search with pgvector
 * ⚠️ Hierarchical document structure preservation simplified
+* 🚧 **NVIDIA NV-Ingest Integration** (Implementing):
+  * Multimodal document extraction (text, tables, charts, images)
+  * Smart model loading based on file type:
+    - TXT/Code: Direct extraction (0GB VRAM)
+    - DOCX: YOLOX + DePlot (~4-6GB VRAM)
+    - PDF: Full suite - YOLOX, PaddleOCR, DePlot, C-RADIO (~10-12GB VRAM)
+    - XLSX: DePlot for embedded charts (~2-3GB VRAM)
+  * Progressive loading with status indicators
+  * 15x faster extraction vs traditional methods
 
 ### Phase 7: NVIDIA NIM Integration & Optimization (Completed)
 * ✅ **Deployed NVIDIA NIM Containers:** 

@@ -30,6 +30,8 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 ### 🔍 **Advanced Search & Retrieval**
 - **Universal Search**: Search across chats, knowledge base, and documents simultaneously
 - **NVIDIA NIM Embeddings**: NV-EmbedQA-E5-V5 (335M params) with 1024-dimensional vectors
+- **Multimodal Document Processing**: NVIDIA NV-Ingest extracts text, tables, charts from PDFs/DOCX
+- **Smart Model Loading**: Loads only necessary models based on file type (0-12GB VRAM)
 - **Intelligent Chunking**: Auto-detects document types for optimal chunk sizes (3000-8000 chars)
 - **Multi-Level Retrieval**: Business docs get multiple chunk sizes for context flexibility
 - **Semantic Understanding**: pgvector-powered similarity search optimized for NIM
@@ -207,8 +209,14 @@ stopai.bat
 5. **Enhanced Conversations**: Benefit from project-specific context and document retrieval
 
 ### **Document Processing**
-- **Supported Formats**: PDF, DOCX, TXT, and more
-- **Automatic Processing**: Documents are automatically chunked and indexed
+- **Supported Formats**: PDF, DOCX, TXT, XLSX, and more
+- **NVIDIA NV-Ingest**: Multimodal extraction of text, tables, charts, and images
+- **Smart Model Loading**: 
+  - TXT/Code: Direct extraction (0GB VRAM)
+  - DOCX: Chart/table detection models (4-6GB VRAM)
+  - PDF: Full OCR + visual understanding (10-12GB VRAM)
+- **Automatic Processing**: Documents are intelligently chunked and indexed
+- **15x Faster**: NV-Ingest provides enterprise-grade extraction speed
 - **Semantic Search**: Advanced vector search across all document content
 - **Context Integration**: Documents automatically enhance chat conversations
 

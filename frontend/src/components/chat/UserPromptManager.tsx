@@ -10,14 +10,15 @@ import {
   IconButton,
   Radio,
   Divider,
-  Button,
   Tooltip,
   CircularProgress
 } from '@mui/material';
 import { Icon } from '../common/Icon';
 import UserPromptModal from '../modals/UserPromptModal';
-import { userPromptService, UserPrompt } from '../../services';
+import { userPromptService } from '../../services';
+import type { UserPrompt } from '../../services/userPromptService';
 import { promptPanelStyles, promptColors } from '../common/promptStyles';
+
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { setActiveUserPrompt } from '../../store/chatSettingsSlice';
@@ -203,14 +204,29 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
   return (
     <Box>
       <Paper elevation={3} sx={promptPanelStyles.paper}>
-        <Box sx={promptPanelStyles.panelHeader}>
-          <Typography sx={promptPanelStyles.headerTitle}>User Prompts</Typography>
-          <Tooltip title="Add Prompt">
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          padding: '8px 16px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <Tooltip title="Add User Prompt">
             <IconButton
               onClick={handleOpenAddModal}
-              sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
+              sx={{ 
+                color: promptColors.gold,
+                padding: '12px',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                  transform: 'scale(1.1)'
+                },
+                '& svg': {
+                  fontSize: '2rem' // 50% larger
+                }
+              }}
             >
-              <Icon name="add" size={20} />
+              <Icon name="add" size={30} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -308,3 +324,4 @@ const UserPromptManager: React.FC<UserPromptManagerProps> = ({
 };
 
 export default UserPromptManager;
+export type { UserPrompt };

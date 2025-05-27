@@ -164,8 +164,15 @@ class AutoChunkProcessor:
         plan = get_chunking_plan(filename, override_type)
         logger.info(f"Chunking plan for {filename}: {plan['document_type']} ({plan['total_levels']} levels)")
         
-        # Extract text using the private method
-        text = processor._extract_text(document_path, filetype)
+        # Extract text - try NV-Ingest first, then fallback
+        try:
+            # Try async NV-Ingest extraction
+            text = await processor._extract_text_with_nv_ingest(document_path, filetype)
+        except Exception as e:
+            logger.warning(f"Async extraction failed, using sync fallback: {str(e)}")
+            # Fallback to sync extraction
+            text = processor._extract_text(document_path, filetype)
+            
         if not text:
             raise ValueError("No text extracted from document")
         

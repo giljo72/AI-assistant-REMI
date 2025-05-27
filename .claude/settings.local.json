@@ -29,7 +29,9 @@
       "Bash(fi)",
       "Bash(source:*)",
       "Bash(rg:*)",
-      "Bash(../venv_nemo/Scripts/python.exe check_document_paths.py)"
+      "Bash(../venv_nemo/Scripts/python.exe check_document_paths.py)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

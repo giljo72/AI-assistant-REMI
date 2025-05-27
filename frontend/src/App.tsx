@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Provider, useSelector, useDispatch } from 'react-redux';
 import { store, RootState, AppDispatch } from './store';
 import MainLayout from './components/layout/MainLayout';
@@ -14,6 +13,7 @@ import { projectService, chatService, fileService } from './services';
 import type { Chat as ChatType, ChatMessage } from './services';
 import { ProjectProvider } from './context/ProjectContext';
 import { ContextControlsProvider } from './context/ContextControlsContext';
+import { PromptPanelsProvider } from './context/PromptPanelsContext';
 import { useNavigation } from './hooks/useNavigation';
 import { fetchSystemPrompts, seedDefaultSystemPrompts } from './store/systemPromptsSlice';
 import { setCurrentChat } from './store/chatSettingsSlice';
@@ -58,7 +58,7 @@ function AppContent() {
   
   // State for file search and upload
   const [isTagAndAddModalOpen, setIsTagAndAddModalOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults] = useState<any[]>([]);
   
   // Ref to track previous chat ID
   const previousChatIdRef = useRef<string | null>(null);
@@ -169,7 +169,7 @@ function AppContent() {
         const chat = await chatService.getChat(navigation.activeChatId);
         
         // Update chat name if not already in chatNames
-        if (chat.name && !chatNames[navigation.activeChatId]) {
+        if (chat.name && navigation.activeChatId && !chatNames[navigation.activeChatId]) {
           setChatNames(prev => ({
             ...prev,
             [navigation.activeChatId]: chat.name
@@ -181,7 +181,7 @@ function AppContent() {
         const uiMessages: UIMessage[] = messages.map((msg: ChatMessage) => ({
           id: msg.id || String(Date.now() + Math.random()),
           content: msg.content || '',
-          sender: msg.is_user ? 'user' : 'assistant',
+          sender: msg.role === 'user' ? 'user' : 'assistant',
           timestamp: new Date().toLocaleString() // Safer date handling
         }));
         
@@ -242,10 +242,10 @@ function AppContent() {
         context_mode: contextMode,
         model_name: modelName,
         // Add document context settings from chat settings
-        is_project_documents_enabled: chatSettings?.is_project_documents_enabled ?? true,
-        is_global_data_enabled: chatSettings?.is_global_data_enabled ?? false,
-        is_user_prompt_enabled: chatSettings?.is_user_prompt_enabled ?? false,
-        active_user_prompt_id: chatSettings?.active_user_prompt_id,
+        is_project_documents_enabled: chatSettings?.isProjectDocumentsEnabled ?? true,
+        is_global_data_enabled: chatSettings?.isGlobalDataEnabled ?? false,
+        is_user_prompt_enabled: chatSettings?.isUserPromptEnabled ?? false,
+        active_user_prompt_id: chatSettings?.activeUserPromptId || undefined,
         onStart: (modelInfo: { model: string }) => {
           // Update the assistant message with model info
           setChatMessages(prev => 
@@ -313,6 +313,7 @@ function AppContent() {
   };
 
   // Handle creating a new chat
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleCreateChat = async (name: string) => {
     if (!navigation.activeProjectId) return;
     
@@ -408,7 +409,6 @@ function AppContent() {
       case 'chat':
         return (
           <ChatView 
-            projectId={navigation.activeProjectId || ''} 
             chatId={navigation.activeChatId}
             projectName={getProjectName(navigation.activeProjectId || '')}
             chatName={getChatName(navigation.activeChatId)}
@@ -430,23 +430,9 @@ function AppContent() {
           />
         );
       case 'projectFiles':
-        return (
-          <ProjectFileManager 
-            projectId={navigation.activeProjectId || ''} 
-            onReturn={() => navigation.navigateToView('project')} 
-            onOpenMainFileManager={() => navigation.openMainFileManager()} 
-          />
-        );
+        return <ProjectFileManager />;
       case 'mainFiles':
-        return (
-          <MainFileManager 
-            onReturn={() => navigation.activeProjectId 
-              ? navigation.navigateToView('projectFiles') 
-              : navigation.navigateToView('project')}
-            onSelectProject={(projectId) => navigation.navigateToProject(projectId)}
-            projectId={navigation.activeProjectId || ''}
-          />
-        );
+        return <MainFileManager />;
       case 'searchResults':
         return (
           <SearchFilesResults 
@@ -485,7 +471,9 @@ function App() {
   return (
     <Provider store={store}>
       <ContextControlsProvider>
-        <AppContent />
+        <PromptPanelsProvider>
+          <AppContent />
+        </PromptPanelsProvider>
       </ContextControlsProvider>
     </Provider>
   );

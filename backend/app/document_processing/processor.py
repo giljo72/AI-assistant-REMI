@@ -124,9 +124,33 @@ class DocumentProcessor:
             logger.error(f"Error processing document {document_id}: {str(e)}")
             raise
     
+    async def _extract_text_with_nv_ingest(self, file_path: str, filetype: str) -> str:
+        """
+        Try to extract text using NV-Ingest first, fallback to simple extraction.
+        """
+        # Try NV-Ingest first (except for simple text files)
+        if filetype not in ["txt", "md", "py", "js", "json"]:
+            try:
+                from ..services.nv_ingest_service import get_nv_ingest_service
+                nv_ingest = get_nv_ingest_service()
+                
+                result = await nv_ingest.extract_document(file_path, filetype)
+                if result.get("success"):
+                    logger.info(f"Successfully extracted with NV-Ingest: {file_path}")
+                    logger.info(f"Models used: {result.get('models_used', [])}")
+                    logger.info(f"Metadata: {result.get('metadata', {})}")
+                    return result["content"]
+                else:
+                    logger.warning(f"NV-Ingest extraction failed, using fallback: {result.get('error')}")
+            except Exception as e:
+                logger.warning(f"NV-Ingest not available, using fallback: {str(e)}")
+        
+        # Fallback to simple extraction
+        return self._extract_text(file_path, filetype)
+    
     def _extract_text(self, file_path: str, filetype: str) -> str:
         """
-        Extract text from a document based on its filetype.
+        Simple text extraction as fallback.
         
         Args:
             file_path: Path to the document file

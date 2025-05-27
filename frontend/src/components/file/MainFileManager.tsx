@@ -336,6 +336,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
   const [selectedFileDetails, setSelectedFileDetails] = useState<LocalFile | null>(null);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
 
+  // Track processing files for retry
+  const [processingFileIds, setProcessingFileIds] = useState<Set<string>>(new Set());
+
   // Function to fetch files based on current filters
   const fetchFiles = async () => {
     setIsLoading(true);
@@ -529,6 +532,24 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       document.body.removeEventListener('click', handleClickOutside);
     };
   }, [projectId, sortField, sortDirection]); // Dependencies trigger re-fetch when they change
+
+  // Smart refresh for retry processing
+  useEffect(() => {
+    if (processingFileIds.size === 0) return;
+    
+    // Single check after a reasonable processing time
+    const timeoutId = setTimeout(async () => {
+      console.log("[MAINFILEMANAGER] Checking processing status...");
+      
+      // Fetch updated status once
+      await fetchFiles();
+      
+      // Clear all tracked IDs - they should be updated now
+      setProcessingFileIds(new Set());
+    }, 5000); // Check once after 5 seconds
+    
+    return () => clearTimeout(timeoutId);
+  }, [processingFileIds.size]);
 
   // Handle search
   const handleSearch = async () => {
@@ -1810,6 +1831,36 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     >
                       <Icon name="download" size={16} />
                     </button>
+                    {/* Retry Processing Button - Always visible for testing */}
+                    <button 
+                      onClick={async () => {
+                        try {
+                          // Immediately update UI to show processing
+                          setFiles(prevFiles => 
+                            prevFiles.map(f => 
+                              f.id === file.id 
+                                ? { ...f, processed: false, processingFailed: false, chunks: undefined }
+                                : f
+                            )
+                          );
+                          
+                          await fileService.retryProcessing(file.id);
+                          
+                          // Track for single refresh after processing
+                          setProcessingFileIds(prev => new Set(prev).add(file.id));
+                        } catch (err) {
+                          console.error('Error retrying processing:', err);
+                          setError('Failed to retry processing. Please try again.');
+                          // Revert on error
+                          await fetchFiles();
+                        }
+                      }}
+                      className="w-8 h-8 flex items-center justify-center bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded"
+                      title="Retry processing"
+                    >
+                      <Icon name="refresh" size={16} />
+                    </button>
+                    
                     {/* Delete Button */}
                     <button 
                       className="px-3 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded text-sm"

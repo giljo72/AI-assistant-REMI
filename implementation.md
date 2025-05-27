@@ -43,6 +43,8 @@ The AI Assistant is fully operational with a complete multi-model architecture, 
 │   ├── Mistral-Nemo 12B (Quick responses)
 │   └── DeepSeek Coder V2 16B (Self-aware coding)
 └── Document Processing
+    ├── NVIDIA NV-Ingest (multimodal extraction)
+    ├── Smart model loading by file type
     ├── Auto-detect chunking (3000 char default)
     ├── Multi-level chunks for business docs
     └── NIM embeddings (no fallback)
@@ -340,7 +342,31 @@ async def verify_system_health():
 - **Resource Limits**: Controlled resource allocation preventing system exhaustion
 - **Safe Defaults**: Conservative configuration with security-first approach
 
-## Embedding & Document Processing ✅
+## Embedding & Document Processing 🚧
+
+### NVIDIA NV-Ingest Integration (In Progress)
+Advanced multimodal document extraction using NVIDIA's NV-Ingest (NeMo Retriever):
+
+```yaml
+# NV-Ingest Microservices
+Document Processing Models:
+  - nv-yolox-structured-image: Chart/table detection (1-2GB VRAM)
+  - PaddleOCR: Text extraction from images (2-3GB VRAM)
+  - DePlot: Chart data extraction (2-4GB VRAM)
+  - C-RADIO: Visual feature extraction (2-3GB VRAM)
+
+Smart Loading Strategy:
+  - TXT/Code: Direct extraction (0GB VRAM, 0s load time)
+  - DOCX: YOLOX + DePlot (4-6GB VRAM, 8-10s load time)
+  - PDF: Full suite (10-12GB VRAM, 15-20s load time)
+  - XLSX: DePlot only (2-3GB VRAM, 5s load time)
+
+Processing Features:
+  - 15x faster than traditional extraction
+  - Multimodal: text, tables, charts, images
+  - Structured JSON output with spatial layout
+  - Progressive model loading based on content
+```
 
 ### NVIDIA NIM Embeddings (REQUIRED)
 The system exclusively uses NVIDIA NIM embeddings - no fallback:

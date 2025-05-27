@@ -1,5 +1,124 @@
 # AI Assistant Dev Log
 
+## January 26, 2025 - UI Cleanup and Sidebar Improvements
+
+### UI Refinements: Prompt Display Cleanup
+Cleaned up redundant visual elements in the sidebar to reduce clutter and improve user experience.
+
+1. **Sidebar Visual Updates:**
+   - Changed the divider line above [CONTEXT SETTINGS] from dark to yellow (`border-yellow-500`)
+   - Maintains visual consistency with the gold theme throughout the application
+
+2. **Removed Redundant Prompt Indicators:**
+   - **System Prompts Panel**: Removed the orange active prompt indicator badge
+   - **User Prompts Panel**: Removed the gray/white active prompt indicator badge
+   - Rationale: These indicators were redundant as the same information is clearly displayed under the chat window
+   - Kept all configuration functionality intact - panels still manage prompts through Redux
+
+3. **Code Cleanup:**
+   - Removed unused imports from both SystemPromptsPanel and UserPromptsPanel
+   - Removed `UserPromptIndicator` component references
+   - Removed unused Redux selectors and dispatch calls
+   - Simplified component logic by removing active prompt tracking in sidebar
+
+4. **Architecture Verification:**
+   - Confirmed proper separation of concerns:
+     - Sidebar panels: Configuration and management of prompts
+     - Chat window badges: Visual display of active prompts
+   - Both systems operate independently through shared Redux state
+   - No breaking changes to functionality
+
+### Technical Details:
+- Modified files:
+  - `/frontend/src/components/layout/MainLayout.tsx` (yellow divider)
+  - `/frontend/src/components/chat/SystemPromptsPanel.tsx` (removed indicator)
+  - `/frontend/src/components/chat/UserPromptsPanel.tsx` (removed indicator)
+- Result: Cleaner, less cluttered UI while maintaining full functionality
+
+## January 26, 2025 - Resource Monitoring Implementation
+
+### Major Feature: Real-time Resource Monitor in Top Bar
+Implemented comprehensive resource monitoring display to replace "AI Assistant" text in header.
+
+1. **Initial Implementation:**
+   - Real-time VRAM usage display with progress bar
+   - Active model name with status indicator
+   - Token generation speed display
+   - 2-second polling for updates
+
+2. **Circular Gauge Redesign:**
+   - Created CircularGauge component matching the design from chat.jpg
+   - Four circular gauges with color-coded themes:
+     - **GPU (NVIDIA Green #76B900)**: VRAM usage monitoring
+     - **CPU (AMD Red #ED1C24 / Intel Blue #0078D4)**: CPU utilization
+     - **RAM (Purple #9B59B6)**: Memory usage tracking
+     - **HDD (Gray #6C757D)**: Storage space monitoring
+   - Each gauge shows numeric value in center with label below
+   - Brand names displayed under each gauge (NVIDIA, AMD/Intel, Memory, Storage)
+
+3. **Visual Design:**
+   - Circular progress indicators with smooth animations
+   - Consistent 50px gauge size with 5px stroke width
+   - Model info and stats displayed separately after divider
+   - Compact layout fits perfectly in top bar
+
+4. **Integration:**
+   - Replaced "AI Assistant" header text with ResourceMonitor
+   - Sidebar retains "AI Assistant" title as branding
+   - Mock data for CPU/RAM/HDD (backend endpoints pending)
+   - Real GPU/VRAM data from existing endpoints
+
+### Technical Implementation:
+- Components: 
+  - `/frontend/src/components/common/ResourceMonitor.tsx`
+  - `/frontend/src/components/common/CircularGauge.tsx`
+- Service updates: 
+  - Added `getQuickModelStatus()` to modelService
+  - Added `getSystemResources()` to systemService (for future use)
+- Polling interval: 2 seconds for responsive updates
+
+## May 26, 2025 - NVIDIA NV-Ingest Integration Decision
+
+### Strategic Decision: Advanced Document Processing with NV-Ingest
+1. **Why NV-Ingest over Simple Libraries:**
+   - **Multimodal Extraction**: Handles text, tables, charts, and images from PDFs/DOCX
+   - **15x Performance**: Enterprise-grade speed vs traditional extraction
+   - **Future-Proof**: No need to migrate data when scaling up
+   - **Smart Loading**: Only loads models needed for specific file types
+   - **RTX 4090 Optimized**: Leverages GPU for maximum performance
+
+2. **Smart Model Loading Strategy:**
+   - TXT/Code: Direct extraction (0GB VRAM, instant)
+   - DOCX: YOLOX + DePlot for charts/tables (4-6GB VRAM, 8-10s)
+   - PDF: Full suite including OCR (10-12GB VRAM, 15-20s)
+   - XLSX: DePlot for chart extraction (2-3GB VRAM, 5s)
+
+3. **VRAM Management Considerations:**
+   - Total models: 6-12GB during processing (fits within 24GB)
+   - Models load on-demand, unload when idle
+   - No competition with LLMs - documents process separately
+   - User gets visual feedback during model loading
+
+4. **Implementation Plan:**
+   - Add NV-Ingest container to docker-compose.yml
+   - Create processing status WebSocket for real-time updates
+   - Enhance ProcessingStatusPanel with model loading progress
+   - Implement smart routing based on file extension
+
+## May 26, 2025 - Document Extraction Bug Discovery
+
+### Critical Bug Found:
+1. **Document content not being extracted**
+   - Documents (DOCX, PDF, etc.) were storing placeholder text instead of actual content
+   - Root cause: `processor.py` had placeholder implementations that were never completed
+   - This explains why AI couldn't access document content despite successful embeddings
+   
+2. **Investigation Results:**
+   - Both current code AND backup had the same placeholders
+   - Text extraction was NEVER implemented, not a regression
+   - System was creating embeddings of placeholder text like "[Word document content would be extracted here...]"
+   - This is why switching from sentence-transformers to NIM "broke" document retrieval
+
 ## May 26, 2025 - Full Migration to NIM Embeddings & Enhanced Document Processing
 
 ### Major Changes:

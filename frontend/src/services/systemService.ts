@@ -209,7 +209,21 @@ class SystemService {
       return { used_gb: 0, total_gb: 24, free_gb: 24 };
     }
   }
+
+  /**
+   * Get system resources (CPU, RAM, Disk)
+   */
+  async getSystemResources(): Promise<any> {
+    try {
+      const response = await api.get('/system/resources');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching system resources:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
 export default new SystemService();
+export const systemService = new SystemService();

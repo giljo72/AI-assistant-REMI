@@ -18,6 +18,7 @@ numpy==1.26.2
 # System monitoring and utilities
 psutil==5.9.6
 gputil==1.4.0
+py-cpuinfo==9.0.0
 colorama>=0.4.6
 
 # HTTP clients for service integration
@@ -42,12 +43,23 @@ sentence-transformers>=2.2.0
 # (Service communication via HTTP)
 
 # Document processing pipeline
+# Note: Moving to NVIDIA NV-Ingest for multimodal extraction
+# These are kept as fallback for simple text extraction
 pypdf>=3.0.0
+PyPDF2>=3.0.0
 docx2txt>=0.8
 python-docx>=0.8.11
+pandas>=2.0.0
+openpyxl>=3.0.0
 
-# Optional: NeMo Document AI (for advanced document processing)
-# nemo-toolkit[all]>=1.22.0  # Uncomment if using full NeMo integration
+# NVIDIA NV-Ingest Integration
+# NV-Ingest runs as Docker containers, not Python packages
+# Container orchestration handled via docker-compose.yml
+# Models loaded on-demand based on file type:
+# - YOLOX for chart/table detection
+# - PaddleOCR for text extraction from images
+# - DePlot for chart data extraction
+# - C-RADIO for visual understanding
 
 # Development and testing
 pytest>=7.0.0

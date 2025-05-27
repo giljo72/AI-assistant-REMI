@@ -11,14 +11,24 @@ export const promptPanelStyles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    mb: 1.5
+    mb: 1.5,
+    padding: '10px 14px',
+    backgroundColor: '#0a0f1c',
+    borderRadius: '6px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: '#0d1220',
+      borderColor: 'rgba(212, 175, 55, 0.3)'
+    }
   },
   
   // Title typography
   title: {
-    fontSize: '0.875rem', // 14px - reduced from default
-    fontWeight: 'bold',
-    marginRight: 1
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    marginRight: 1,
+    color: '#d4af37'
   },
   
   // Active indicator dot
@@ -32,9 +42,11 @@ export const promptPanelStyles = {
   
   // Panel paper
   paper: {
-    backgroundColor: '#1a2b47',
+    backgroundColor: '#0a0f1c', // Very dark background
     color: '#ffffff',
     borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.1)', // Subtle border
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', // Dark shadow
     overflow: 'hidden',
     mb: 2
   },
@@ -44,44 +56,66 @@ export const promptPanelStyles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#152238',
-    padding: '8px 12px', // Reduced from 12px 16px
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+    backgroundColor: 'transparent',
+    padding: '14px 18px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)' // Subtle border
   },
   
   // Header title
   headerTitle: {
-    fontSize: '1rem', // 16px - reduced from h6
-    fontWeight: 600
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    color: '#d4af37' // gold color for headers
   },
   
   // Add button
   addButton: {
-    fontSize: '0.75rem', // 12px
-    padding: '4px 12px',
-    backgroundColor: '#d4af37',
-    color: '#000000',
+    fontSize: '0.875rem',
+    padding: '6px 16px',
+    backgroundColor: 'transparent',
+    color: '#d4af37',
+    border: '1px solid rgba(212, 175, 55, 0.5)',
+    transition: 'all 0.2s ease',
     '&:hover': {
-      backgroundColor: '#b4941f'
+      backgroundColor: 'rgba(212, 175, 55, 0.1)',
+      borderColor: '#d4af37'
     }
   },
   
   // List container
   list: {
-    maxHeight: '250px', // Reduced from 300px
+    maxHeight: '300px',
     overflow: 'auto',
-    padding: 0
+    padding: '4px 0',
+    '&::-webkit-scrollbar': {
+      width: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: '3px',
+      '&:hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+      }
+    }
   },
   
   // List item
   listItem: {
-    padding: '8px 12px' // Reduced padding
+    padding: '10px 16px',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)'
+    }
   },
   
   // List item text
   listItemPrimary: {
-    fontSize: '0.875rem', // 14px
-    lineHeight: 1.4
+    fontSize: '0.95rem',
+    lineHeight: 1.5,
+    fontWeight: 500
   },
   
   // List item secondary text
@@ -98,18 +132,28 @@ export const promptPanelStyles = {
   
   // Icon buttons
   iconButton: {
-    padding: '4px',
+    padding: '6px',
+    color: 'rgba(255, 255, 255, 0.5)',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      color: '#d4af37',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)'
+    },
     '& svg': {
-      fontSize: '1.2rem' // Smaller icons
+      fontSize: '1.25rem'
     }
   },
   
   // Checkbox
   checkbox: {
-    padding: '4px',
-    color: 'rgba(255, 255, 255, 0.7)',
+    padding: '6px',
+    color: 'rgba(255, 255, 255, 0.3)',
+    transition: 'all 0.2s ease',
     '&.Mui-checked': {
       color: '#d4af37'
+    },
+    '&:hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)'
     }
   },
   

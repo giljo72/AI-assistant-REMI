@@ -614,21 +614,48 @@ class ModelOrchestrator:
     
     async def get_quick_model_status(self) -> Dict:
         """Get minimal model status for quick checks (used by frontend)"""
-        # Return only the essential information needed by frontend
-        active_model = None
+        # Get current VRAM usage
+        current_vram = await self.get_current_vram_usage()
+        
+        # Get GPU info
+        gpu_name = "RTX 4090"  # Default
+        gpu_utilization = 0
+        try:
+            gpus = GPUtil.getGPUs()
+            if gpus:
+                gpu = gpus[0]
+                gpu_name = gpu.name
+                gpu_utilization = gpu.load * 100
+        except:
+            pass
+        
+        # Get loaded models info
+        models_info = {}
+        active_primary = None
+        
         for name, model in self.models.items():
-            if model.status == ModelStatus.LOADED and model.purpose != "embeddings":
-                active_model = {
-                    "name": name,
+            if model.status == ModelStatus.LOADED:
+                models_info[name] = {
                     "display_name": model.display_name,
-                    "type": model.backend,
-                    "status": "loaded"
+                    "status": model.status.value,
+                    "status_color": "green" if model.backend == "nim" else "blue",
+                    "tokens_per_second": model.tokens_per_second,
+                    "memory_gb": model.memory_gb
                 }
-                break
+                if model.purpose != "embeddings" and active_primary is None:
+                    active_primary = name
         
         return {
-            "active_model": active_model,
-            "mode": self.mode.value
+            "models": models_info,
+            "system": {
+                "total_vram_gb": self.max_vram_gb,
+                "used_vram_gb": current_vram,
+                "available_vram_gb": self.max_vram_gb - current_vram,
+                "active_primary_model": active_primary,
+                "total_requests_active": sum(m.current_requests for m in self.models.values()),
+                "gpu_utilization": gpu_utilization,
+                "gpu_name": gpu_name
+            }
         }
         
     async def update_model_stats(self, model_name: str, tokens: int, duration: float):

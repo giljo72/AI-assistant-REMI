@@ -19,7 +19,7 @@ const TypewriterMessage: React.FC<TypewriterMessageProps> = ({
 }) => {
   const [displayedContent, setDisplayedContent] = useState(isNew ? '' : content);
   const [isTyping, setIsTyping] = useState(isNew);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

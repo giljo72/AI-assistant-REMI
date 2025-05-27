@@ -8,7 +8,10 @@ import ContextControlsPanel from '../modals/ContextControlsPanel';
 import { RootState } from '../../store';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useContextControls } from '../../context/ContextControlsContext';
+import { usePromptPanels } from '../../context/PromptPanelsContext';
 import { Icon } from '../common/Icon';
+import { setContextMode } from '../../store/projectSettingsSlice';
+import { ResourceMonitor } from '../common/ResourceMonitor';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -20,6 +23,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     (state: RootState) => state.projectSettings
   );
   const { isOpen: isContextControlsOpen, openContextControls, closeContextControls } = useContextControls();
+  const { 
+    isUserPromptPanelOpen, 
+    isSystemPromptPanelOpen,
+    toggleUserPromptPanel,
+    toggleSystemPromptPanel
+  } = usePromptPanels();
   
   // Get navigation state using our custom hook
   const { activeView } = useNavigation();
@@ -34,7 +43,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </div>
         
         {/* User Prompts and Context Controls in the bottom portion */}
-        <div className="p-3 border-t border-navy">
+        <div className="p-3 border-t border-yellow-500">
           {/* Context Settings Button */}
           <button 
             onClick={openContextControls}
@@ -45,17 +54,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </button>
           
           {/* System Prompts Panel */}
-          <SystemPromptsPanel expanded={false} />
+          <SystemPromptsPanel 
+            expanded={isSystemPromptPanelOpen} 
+            onToggleExpand={toggleSystemPromptPanel}
+          />
           
           {/* User Prompts Panel */}
-          <UserPromptsPanel expanded={false} />
+          <UserPromptsPanel 
+            expanded={isUserPromptPanelOpen} 
+            onToggleExpand={toggleUserPromptPanel}
+          />
         </div>
       </div>
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-0">
         <header className="bg-navy-light p-4 border-b border-gold flex justify-between items-center flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gold">AI Assistant</h1>
+          {/* Resource Monitor - replaces AI Assistant text */}
+          <ResourceMonitor />
           
           {/* View indicator showing current view */}
           <div className="flex items-center">

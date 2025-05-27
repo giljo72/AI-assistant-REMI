@@ -591,8 +591,16 @@ def process_file(
     if not document:
         raise HTTPException(status_code=404, detail="File not found")
     
+    # Allow re-processing for testing
     if document.is_processed:
-        raise HTTPException(status_code=400, detail="File is already processed")
+        logger.info(f"Re-processing already processed file: {document.id}")
+        # Reset the processed flag to allow re-processing
+        document.is_processed = False
+        document.chunk_count = 0
+        # Delete existing chunks
+        from ...db.models.document import DocumentChunk
+        db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).delete()
+        db.commit()
     
     # Reset processing status if it failed before
     if document.is_processing_failed:
@@ -659,8 +667,14 @@ def retry_processing(
     if not document:
         raise HTTPException(status_code=404, detail="File not found")
     
-    if document.is_processed and not document.is_processing_failed:
-        raise HTTPException(status_code=400, detail="File is already processed successfully")
+    # Allow re-processing for testing
+    if document.is_processed:
+        logger.info(f"Re-processing already processed file via retry: {document.id}")
+        # Delete existing chunks before re-processing
+        from ...db.models.document import DocumentChunk
+        db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).delete()
+        document.chunk_count = 0
+        db.commit()
     
     # Reset processing status
     document.is_processing_failed = False

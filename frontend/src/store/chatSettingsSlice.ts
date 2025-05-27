@@ -26,7 +26,7 @@ const defaultChatSettings: ChatSettings = {
   activeUserPromptId: null,
   activeUserPromptName: null,
   isProjectPromptEnabled: true,
-  isGlobalDataEnabled: true,
+  isGlobalDataEnabled: false,
   isProjectDocumentsEnabled: true,
 };
 

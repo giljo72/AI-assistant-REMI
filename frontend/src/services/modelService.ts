@@ -26,6 +26,26 @@ class ModelService {
     return response.data;
   }
 
+  async getQuickModelStatus(): Promise<any> {
+    try {
+      const response = await api.get('/models/status/quick');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching quick model status:', error);
+      // Return a default structure when backend is not available
+      return {
+        models: {},
+        system: {
+          total_vram_gb: 24,
+          used_vram_gb: 0,
+          available_vram_gb: 24,
+          active_primary_model: null,
+          total_requests_active: 0
+        }
+      };
+    }
+  }
+
   async getMemoryStatus(): Promise<MemoryStatus> {
     const response = await api.get('/models/memory');
     return response.data;

@@ -11,7 +11,6 @@ import {
   IconButton,
   Radio,
   Divider,
-  Button,
   Tooltip,
   CircularProgress,
   Chip,
@@ -31,7 +30,7 @@ import { promptPanelStyles, promptColors } from '../common/promptStyles';
 
 const SystemPromptManager: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { prompts, activePrompt, loading, error } = useSelector(
+  const { prompts, loading } = useSelector(
     (state: RootState) => state.systemPrompts
   );
   
@@ -114,14 +113,29 @@ const SystemPromptManager: React.FC = () => {
   return (
     <Box>
       <Paper elevation={3} sx={promptPanelStyles.paper}>
-        <Box sx={promptPanelStyles.panelHeader}>
-          <Typography sx={promptPanelStyles.headerTitle}>System Prompts</Typography>
-          <Tooltip title="Add Prompt">
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          padding: '8px 16px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <Tooltip title="Add System Prompt">
             <IconButton
               onClick={handleOpenAddModal}
-              sx={{ ...promptPanelStyles.iconButton, color: promptColors.gold }}
+              sx={{ 
+                color: promptColors.gold,
+                padding: '12px',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                  transform: 'scale(1.1)'
+                },
+                '& svg': {
+                  fontSize: '2rem' // 50% larger
+                }
+              }}
             >
-              <Icon name="add" size={20} />
+              <Icon name="add" size={30} />
             </IconButton>
           </Tooltip>
         </Box>

@@ -20,12 +20,8 @@ import { RootState } from '../../store';
 import { Icon } from '../common/Icon';
 import SendIcon from '@mui/icons-material/Send';
 import StopIcon from '@mui/icons-material/Stop';
-import { 
-  toggleProjectPrompt, 
-  toggleGlobalData, 
-  toggleProjectDocuments 
-} from '../../store/projectSettingsSlice';
 import { useContextControls } from '../../context/ContextControlsContext';
+import { usePromptPanels } from '../../context/PromptPanelsContext';
 import {
   setCurrentChat,
   toggleSystemPrompt as toggleChatSystemPrompt,
@@ -39,7 +35,6 @@ import {
 interface ChatViewProps {
   projectName: string;  
   chatName: string;     
-  projectId?: string;   
   chatId?: string | null;
   messages: Array<{
     id: string;
@@ -60,7 +55,6 @@ interface ChatViewProps {
 const ChatView: React.FC<ChatViewProps> = ({
   projectName,
   chatName,
-  projectId,
   chatId,
   messages,
   isProcessing,
@@ -76,14 +70,11 @@ const ChatView: React.FC<ChatViewProps> = ({
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
   const dispatch = useDispatch();
-  const { projectPromptEnabled, globalDataEnabled, projectDocumentsEnabled, contextMode } = useSelector(
-    (state: RootState) => state.projectSettings
-  );
   const { openContextControls } = useContextControls();
+  const { openUserPromptPanel, openSystemPromptPanel } = usePromptPanels();
   
   // Get chat-specific settings
   const chatSettings = useSelector((state: RootState) => selectCurrentChatSettings(state));
-  const { activePrompt: systemPrompt } = useSelector((state: RootState) => state.systemPrompts);
   const { prompts: userPrompts, activePromptId } = useSelector((state: RootState) => state.userPrompts);
   
   // Find active user prompt using Redux activePromptId
@@ -381,14 +372,15 @@ const ChatView: React.FC<ChatViewProps> = ({
                 setSelectedModel(newModel);
                 // Sync with backend
                 try {
+                  // TODO: Implement model switching
                   // Determine model type based on model name
-                  let modelType = 'ollama'; // Default to ollama
-                  if (newModel === 'llama3.1:70b-instruct-q4_K_M' || 
-                      newModel === 'meta/llama-3.1-70b-instruct' ||
-                      newModel.includes('meta/')) {
-                    modelType = 'nvidia-nim';
-                  }
-                  await systemService.switchModel(newModel, modelType);
+                  // let modelType = 'ollama'; // Default to ollama
+                  // if (newModel === 'llama3.1:70b-instruct-q4_K_M' || 
+                  //     newModel === 'meta/llama-3.1-70b-instruct' ||
+                  //     newModel.includes('meta/')) {
+                  //   modelType = 'nvidia-nim';
+                  // }
+                  // await systemService.switchModel(newModel, modelType);
                 } catch (error) {
                   console.error('Failed to switch model:', error);
                 }
@@ -591,6 +583,8 @@ const ChatView: React.FC<ChatViewProps> = ({
           onToggleSystemPrompt={() => dispatch(toggleChatSystemPrompt())}
           onToggleUserPrompt={() => dispatch(toggleChatUserPrompt())}
           onOpenContextControls={openContextControls}
+          onOpenSystemPromptPanel={openSystemPromptPanel}
+          onOpenUserPromptPanel={openUserPromptPanel}
           contextMode={chatSettings.contextMode}
         />
       </Box>
