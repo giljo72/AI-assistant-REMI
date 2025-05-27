@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any
 from app.services.model_orchestrator import orchestrator
 
-router = APIRouter(prefix="/api/models", tags=["models"])
+router = APIRouter()
 
 @router.get("/status")
 async def get_models_status() -> Dict[str, Any]:

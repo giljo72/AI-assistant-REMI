@@ -949,4 +949,85 @@ Updated all embedding dimension references from 768 to 1024 to match NVIDIA NIM 
    - Database schema now correctly reflects the embedding size
    - Note: This requires a database migration to update existing vectors
 
+## 1/26/2025 - Resource Monitoring and Chat UI Fixes
+
+### Implemented System Resource Monitoring
+Added real-time system resource monitoring to the main display header:
+
+1. **Created Components**:
+   - `ResourceMonitor.tsx`: Main monitoring component with 10-second polling
+   - `HorizontalGauge.tsx`: Reusable horizontal bar gauge component
+   - `/api/system/resources` endpoint for backend data
+
+2. **Features**:
+   - NVIDIA GPU monitoring (VRAM with decimals, utilization)
+   - CPU usage with brand detection (Intel blue, AMD orange)
+   - RAM usage (purple) with whole number capacity display
+   - Storage monitoring (white) with M.2 drive detection
+   - Horizontal bar design matching chat.jpg aesthetic
+
+3. **Backend Logging Fix**:
+   - Modified `run_server.py` to filter only resource monitoring endpoints
+   - Keeps all other logs visible while preventing console spam
+   - Resource logs still written to separate file
+
+### Fixed Chat Message Formatting
+Restored proper chat message styling:
+
+1. **Label Fix**: Changed user message label from "You" to "Assistant" (matching chat.jpg)
+2. **Color Fix**: User messages now display with:
+   - Dark background (#1a1a1a)
+   - Yellow/gold text (#d4af37)
+   - Red border (2px solid #cc0000)
+3. **Maintained**: Assistant messages keep blue background with white text
+
+### Fixed Backend Console Output Issues
+Resolved multiple console logging problems:
+
+1. **Restored Colors**: Added ColoredFormatter with colorama support
+   - INFO messages show in green
+   - ERROR messages show in red
+   - HTTP status codes are colored (200=green, 307=yellow, 404/500=red)
+   
+2. **Fixed Resource Endpoint Filtering**: 
+   - Updated ConsoleFilter to properly detect access log format
+   - Now correctly filters /api/models/status/quick and /api/system/resources
+   
+3. **Prevented Double Messages**:
+   - Properly configured uvicorn access logger with separate handler
+   - Added lifespan="on" to prevent duplicate startup messages
+
 These settings are now uniquely tied to each chat thread and will be remembered as users navigate between different chats within projects.
+
+## May 27, 2025 - Document Processing and Logging Improvements
+
+### Fixed Document Text Extraction
+Replaced placeholder text extraction with actual implementations:
+
+1. **Added Library Dependencies**:
+   - python-docx for Word documents
+   - PyPDF2 for PDF files
+   - pandas for spreadsheet support
+
+2. **Implemented Extraction Methods**:
+   - DOCX: Full paragraph text extraction
+   - PDF: Page-by-page text extraction
+   - XLSX/XLS: DataFrame to CSV conversion
+   - TXT: Direct file reading
+
+3. **Result**: Documents now properly extract content for embeddings and search
+
+### Implemented Resource Polling Log Filtering
+Separated high-frequency polling logs from main console output:
+
+1. **Custom Logging Filter**:
+   - Created ExcludeResourceEndpointsFilter class
+   - Filters /api/system/resources and /api/models/status/quick
+   - Maintains all other logs in console
+
+2. **Separate Log File**:
+   - Resource polling logs written to resource_polling.log
+   - 10MB rotating log with 3 backups
+   - Reduces console spam while preserving debugging data
+
+3. **Implementation**: Updated run_server.py with custom filter configuration

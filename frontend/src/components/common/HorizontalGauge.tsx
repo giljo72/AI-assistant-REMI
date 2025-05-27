@@ -21,11 +21,14 @@ export const HorizontalGauge: React.FC<HorizontalGaugeProps> = ({
   width = 200,
 }) => {
   const percentage = Math.min((value / maxValue) * 100, 100);
-  const displayValue = unit === '%' ? value.toFixed(0) : value.toFixed(1);
+  // For VRAM (GPU), show decimals. For others, round.
+  const displayValue = unit === '%' ? value.toFixed(0) : 
+                      (label === '' && color === '#76B900') ? value.toFixed(1) : 
+                      Math.round(value).toString();
   
   return (
     <div className="flex flex-col space-y-1">
-      <div className="text-[10px] text-gray-400">{label}</div>
+      {label && <div className="text-[10px] text-gray-400">{label}</div>}
       <div className="relative" style={{ width: `${width}px` }}>
         {/* Background bar */}
         <div className="absolute inset-0 h-5 bg-gray-800 rounded-full overflow-hidden">
@@ -47,8 +50,8 @@ export const HorizontalGauge: React.FC<HorizontalGaugeProps> = ({
               {displayValue}{unit}
             </span>
           )}
-          <span className="text-[11px] text-gray-400 ml-auto">
-            {maxValue}{unit}
+          <span className="text-[11px] text-gray-300 ml-auto">
+            {unit === 'GB' || unit === 'TB' ? `${Math.round(maxValue)}${unit}` : ''}
           </span>
         </div>
       </div>

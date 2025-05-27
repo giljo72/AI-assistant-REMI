@@ -31,7 +31,8 @@
       "Bash(rg:*)",
       "Bash(../venv_nemo/Scripts/python.exe check_document_paths.py)",
       "Bash(npm run build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

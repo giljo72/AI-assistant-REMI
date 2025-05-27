@@ -49,17 +49,9 @@ export const ResourceMonitor: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Add debug logging
-  useEffect(() => {
-    console.log('[ResourceMonitor] Component mounted');
-    console.log('[ResourceMonitor] Model Status:', modelStatus);
-    console.log('[ResourceMonitor] System Resources:', systemResources);
-  }, [modelStatus, systemResources]);
-
   // Fetch model status
   const fetchStatus = async () => {
     try {
-      console.log('[ResourceMonitor] Fetching status...');
       const [modelData, systemData] = await Promise.all([
         modelService.getQuickModelStatus(),
         systemService.getSystemResources().catch((err) => {
@@ -67,9 +59,6 @@ export const ResourceMonitor: React.FC = () => {
           return null;
         })
       ]);
-      
-      console.log('[ResourceMonitor] Model data:', modelData);
-      console.log('[ResourceMonitor] System data:', systemData);
       
       setModelStatus(modelData);
       
@@ -80,31 +69,11 @@ export const ResourceMonitor: React.FC = () => {
           ram: systemData.ram,
           disk: systemData.disk
         });
-      } else {
-        // Fallback to mock data if endpoint not available
-        setSystemResources({
-          cpu: {
-            usage: Math.random() * 100,
-            brand: 'AMD',
-            model: 'Ryzen 9 5950X'
-          },
-          ram: {
-            used_gb: 32 + Math.random() * 32,
-            total_gb: 64,
-            speed: '3200 MHz'
-          },
-          disk: {
-            used_gb: 500 + Math.random() * 500,
-            total_gb: 2000,
-            type: 'NVMe SSD'
-          }
-        });
       }
       
       setError(null);
     } catch (err: any) {
       console.error('[ResourceMonitor] Failed to fetch status:', err);
-      console.error('[ResourceMonitor] Error details:', err.response?.data || err.message);
       setError('Connection Error');
     } finally {
       setLoading(false);
@@ -115,8 +84,8 @@ export const ResourceMonitor: React.FC = () => {
     // Initial fetch
     fetchStatus();
 
-    // Poll every 5 seconds for real-time updates
-    const interval = setInterval(fetchStatus, 5000);
+    // Poll every 10 seconds for real-time updates (reduced to minimize logs)
+    const interval = setInterval(fetchStatus, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -162,35 +131,65 @@ export const ResourceMonitor: React.FC = () => {
 
   const gpuName = modelStatus.system.gpu_name || 'RTX 4090';
 
+  // Truncate CPU model name
+  const truncateCpuModel = (model: string) => {
+    // Extract just the processor model, remove frequency info
+    const parts = model.split('@');
+    let cpuName = parts[0].trim();
+    
+    // Further truncate if still too long
+    if (cpuName.length > 25) {
+      cpuName = cpuName.substring(0, 22) + '...';
+    }
+    
+    return cpuName;
+  };
+
+  // Format storage values to display in TB if over 1000GB
+  const formatStorage = (gb: number) => {
+    if (gb >= 1000) {
+      return { value: gb / 1000, unit: 'TB' };
+    }
+    return { value: gb, unit: 'GB' };
+  };
+
+  const diskFormatted = systemResources ? formatStorage(systemResources.disk.total_gb) : { value: 0, unit: 'GB' };
+
   return (
     <div className="flex items-start space-x-6">
       {/* NVIDIA GPU Section */}
       <div className="flex flex-col">
-        <div className="flex items-center space-x-2 mb-2">
+        <div className="flex items-center space-x-2 mb-1">
           <span className="text-xs font-medium" style={{ color: '#76B900' }}>NVIDIA</span>
           <span className="text-[10px] text-gray-400">{gpuName}</span>
         </div>
         
         <div className="space-y-2">
           {/* VRAM Gauge */}
-          <HorizontalGauge
-            label="VRAM"
-            value={modelStatus.system.used_vram_gb}
-            maxValue={modelStatus.system.total_vram_gb}
-            unit="GB"
-            color="#76B900"
-            width={180}
-          />
+          <div>
+            <div className="text-[10px] text-gray-400 mb-1">VRAM</div>
+            <HorizontalGauge
+              label=""
+              value={modelStatus.system.used_vram_gb}
+              maxValue={modelStatus.system.total_vram_gb}
+              unit="GB"
+              color="#76B900"
+              width={180}
+            />
+          </div>
           
           {/* GPU Utilization Gauge */}
-          <HorizontalGauge
-            label="Utilization"
-            value={modelStatus.system.gpu_utilization || 0}
-            maxValue={100}
-            unit="%"
-            color="#76B900"
-            width={180}
-          />
+          <div>
+            <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
+            <HorizontalGauge
+              label=""
+              value={modelStatus.system.gpu_utilization || 0}
+              maxValue={100}
+              unit="%"
+              color="#76B900"
+              width={180}
+            />
+          </div>
         </div>
       </div>
 
@@ -200,7 +199,7 @@ export const ResourceMonitor: React.FC = () => {
       {/* CPU Section */}
       {systemResources && (
         <div className="flex flex-col">
-          <div className="flex items-center space-x-2 mb-2">
+          <div className="flex items-center space-x-2 mb-1">
             <span 
               className="text-xs font-medium" 
               style={{ color: getCpuColor() }}
@@ -208,13 +207,12 @@ export const ResourceMonitor: React.FC = () => {
               {systemResources.cpu.brand}
             </span>
             <span className="text-[10px] text-gray-400">
-              {systemResources.cpu.model.length > 30 
-                ? systemResources.cpu.model.substring(0, 30) + '...' 
-                : systemResources.cpu.model}
+              {truncateCpuModel(systemResources.cpu.model)}
             </span>
           </div>
+          <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
           <HorizontalGauge
-            label="CPU"
+            label=""
             value={systemResources.cpu.usage}
             maxValue={100}
             unit="%"
@@ -227,12 +225,13 @@ export const ResourceMonitor: React.FC = () => {
       {/* RAM Section */}
       {systemResources && (
         <div className="flex flex-col">
-          <div className="flex items-center space-x-2 mb-2">
+          <div className="flex items-center space-x-2 mb-1">
             <span className="text-xs font-medium text-purple-500">RAM</span>
             {systemResources.ram.speed && (
               <span className="text-[10px] text-gray-400">{systemResources.ram.speed}</span>
             )}
           </div>
+          <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
           <HorizontalGauge
             label=""
             value={systemResources.ram.used_gb}
@@ -247,18 +246,19 @@ export const ResourceMonitor: React.FC = () => {
       {/* Storage Section */}
       {systemResources && (
         <div className="flex flex-col">
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="text-xs font-medium text-gray-500">Storage</span>
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="text-xs font-medium text-white">Storage</span>
             {systemResources.disk.type && (
               <span className="text-[10px] text-gray-400">{systemResources.disk.type}</span>
             )}
           </div>
+          <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
           <HorizontalGauge
             label=""
             value={systemResources.disk.used_gb}
             maxValue={systemResources.disk.total_gb}
-            unit="GB"
-            color="#6C757D"
+            unit={diskFormatted.unit}
+            color="#FFFFFF"
             width={120}
           />
         </div>

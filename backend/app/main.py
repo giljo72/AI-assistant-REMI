@@ -10,6 +10,11 @@ from typing import Optional, List, Dict, Any
 from app.api.api import api_router
 from app.db.database import Base, engine, get_db
 from app.document_processing.status_tracker import status_tracker
+from app.core.logging_filter import ResourceEndpointFilter
+import logging
+
+# Set up logging filter to suppress resource polling
+logging.getLogger("uvicorn.access").addFilter(ResourceEndpointFilter())
 
 # Create database tables
 Base.metadata.create_all(bind=engine)

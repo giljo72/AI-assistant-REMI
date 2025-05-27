@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import os
 
-router = APIRouter(prefix="/api/system", tags=["system"])
+router = APIRouter()
 
 def get_cpu_info_windows():
     """Get CPU info on Windows using wmic"""
@@ -31,6 +31,10 @@ def get_cpu_info_windows():
         brand = "Unknown"
         if "AMD" in cpu_model:
             brand = "AMD"
+            # Remove core count from AMD processors
+            # e.g., "AMD Ryzen 7 7800X3D 8-Core Processor" -> "AMD Ryzen 7 7800X3D"
+            cpu_model = cpu_model.replace("8-Core Processor", "").replace("16-Core Processor", "").replace("12-Core Processor", "").replace("6-Core Processor", "").replace("4-Core Processor", "").strip()
+            cpu_model = cpu_model.replace("Processor", "").strip()
         elif "Intel" in cpu_model:
             brand = "Intel"
             
@@ -62,25 +66,44 @@ def get_ram_speed_windows():
 def get_disk_info_windows():
     """Get disk type on Windows"""
     try:
-        # First try to get disk model
+        # Get more detailed disk info including interface type
         result = subprocess.run(
-            ['wmic', 'diskdrive', 'get', 'model,size', '/value'],
+            ['wmic', 'diskdrive', 'get', 'model,interfacetype,mediatype', '/format:list'],
             capture_output=True, text=True, shell=True
         )
         
         disk_model = ""
+        interface_type = ""
+        media_type = ""
+        
         for line in result.stdout.strip().split('\n'):
             if line.startswith('Model='):
                 disk_model = line.split('=', 1)[1].strip()
-                break
+            elif line.startswith('InterfaceType='):
+                interface_type = line.split('=', 1)[1].strip()
+            elif line.startswith('MediaType='):
+                media_type = line.split('=', 1)[1].strip()
         
-        # Determine disk type from model
+        # Determine disk type from model, interface, and media type
         disk_type = "HDD"
+        
+        # Check if it's an SSD based on various indicators
         if any(ssd_indicator in disk_model.upper() for ssd_indicator in ['SSD', 'NVME', 'M.2', 'SOLID STATE']):
             disk_type = "SSD"
-            if 'NVME' in disk_model.upper():
-                disk_type = "NVMe SSD"
+            if 'NVME' in disk_model.upper() or 'NVME' in interface_type.upper():
+                disk_type = "NVMe M.2"
+            elif 'M.2' in disk_model.upper():
+                disk_type = "M.2 SSD"
+        elif media_type == "Fixed hard disk media":
+            # Additional check - if it's on SCSI interface with no rotating parts mentioned
+            if interface_type == "SCSI" and "SSD" not in disk_model:
+                # Could still be an M.2 drive
+                disk_type = "M.2 Drive"
         
+        # If we can't determine, just return generic
+        if disk_type == "HDD" and interface_type == "SCSI":
+            disk_type = "Storage"
+            
         return disk_type, disk_model
     except:
         return "Storage", ""

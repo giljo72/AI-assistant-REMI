@@ -24,7 +24,7 @@ api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(fix_files_router, prefix="/fix-files", tags=["fix_files"])
 
 # Add model management endpoints
-api_router.include_router(models.router, tags=["models"])
+api_router.include_router(models.router, prefix="/models", tags=["models"])
 
 # Add self-analysis endpoints (development mode)
 api_router.include_router(self_analysis.router, tags=["self_analysis"])
@@ -42,4 +42,4 @@ api_router.include_router(system_prompts.router, prefix="/system-prompts", tags=
 api_router.include_router(system_fast.router, prefix="/system", tags=["system"])
 
 # Add system resources monitoring endpoints
-api_router.include_router(system_resources.router, tags=["system_resources"])
+api_router.include_router(system_resources.router, prefix="/system", tags=["system_resources"])
