@@ -999,6 +999,100 @@ Resolved multiple console logging problems:
 
 These settings are now uniquely tied to each chat thread and will be remembered as users navigate between different chats within projects.
 
+## 5/27/2025 - Enhanced Resource Monitoring Log Filtering
+
+### Improved Resource Endpoint Filtering
+Fixed resource monitoring endpoints flooding the backend console:
+
+1. **Updated logging_filter.py**:
+   - Enhanced ResourceEndpointFilter to properly suppress console output
+   - Added automatic file logging to `backend/logs/resource_monitoring.log`
+   - Implemented RotatingFileHandler (10MB max, 3 backups)
+   
+2. **Simplified run_server.py**:
+   - Now imports and uses the centralized ResourceEndpointFilter
+   - Properly configures uvicorn's logging config
+   - Applied filter to uvicorn.access logger
+
+3. **Filtered Endpoints**:
+   - `/api/models/status/quick`
+   - `/api/system/resources` 
+   - `/api/models/memory`
+   - `/api/system/gpu-stats`
+
+Result: Resource monitoring logs are now silently written to a log file while keeping the console clean for important messages.
+
+## 5/27/2025 - Complete Resource Monitoring Implementation Summary
+
+### Overview
+Implemented comprehensive real-time system resource monitoring integrated into the UI header, providing live hardware statistics without cluttering the backend console.
+
+### Frontend Implementation
+
+1. **Created ResourceMonitor Component** (`frontend/src/components/common/ResourceMonitor.tsx`):
+   - Polls system resources every 10 seconds
+   - Displays GPU, CPU, RAM, and storage metrics
+   - Fetches data from two endpoints: `/api/models/status/quick` (GPU) and `/api/system/resources` (CPU/RAM/Storage)
+   - Graceful error handling with fallback displays
+
+2. **Created HorizontalGauge Component** (`frontend/src/components/common/HorizontalGauge.tsx`):
+   - Reusable horizontal bar gauge visualization
+   - Customizable colors, labels, and values
+   - Smooth animations on value changes
+   - Used for CPU, RAM, and storage displays
+
+3. **Visual Design Features**:
+   - **GPU Display**: Circular gauge (using existing CircularGauge component) with percentage
+   - **VRAM Display**: Shows decimal precision (e.g., "15.2/24.0 GB")
+   - **CPU Bar**: Brand-aware coloring (Intel = blue #0071c5, AMD = orange #ed1c24)
+   - **RAM Bar**: Purple color (#a855f7) with whole number display
+   - **Storage Bar**: White color with drive type detection
+   - All gauges match the chat.jpg aesthetic
+
+### Backend Implementation
+
+1. **Created System Resources Endpoint** (`backend/app/api/endpoints/system_resources.py`):
+   - `GET /api/system/resources` returns real-time hardware statistics
+   - Cross-platform support (Windows via WMI, Linux via /proc)
+   - Hardware detection includes:
+     - CPU: Brand, model, usage percentage
+     - RAM: Used/total GB, speed detection
+     - Storage: Primary drive usage, type (HDD/SSD/M.2), model
+
+2. **Hardware Detection Methods**:
+   - **Windows**: Uses `wmic` commands for detailed hardware info
+   - **Linux**: Parses `/proc/cpuinfo`, `/proc/meminfo`, uses `lshw`
+   - **GPU**: Leverages existing GPUtil integration
+   - **Storage**: Uses `shutil.disk_usage()` with platform-specific type detection
+
+3. **Python Dependencies** (already in requirements.txt):
+   - `psutil==5.9.6`: CPU and memory monitoring
+   - `GPUtil==1.4.0`: NVIDIA GPU monitoring
+   - `py-cpuinfo==9.0.0`: Detailed CPU information
+
+### Integration Points
+
+1. **Added to ChatView Header**: ResourceMonitor component placed in top navigation
+2. **Responsive Layout**: Adapts to screen size, hides on smaller displays
+3. **Error Resilience**: Continues working even if one endpoint fails
+4. **Performance**: Minimal overhead with 10-second polling interval
+
+### Logging Infrastructure
+
+1. **Console Filtering**: Resource monitoring endpoints filtered from console output
+2. **File Logging**: All resource polls logged to `backend/logs/resource_monitoring.log`
+3. **Log Rotation**: 10MB max file size with 3 backups
+4. **Clean Console**: Backend terminal remains readable for important messages
+
+### Technical Achievements
+
+1. **Cross-Platform Compatibility**: Works on both Windows and Linux
+2. **Brand Detection**: Automatically detects Intel vs AMD CPUs
+3. **Drive Type Detection**: Identifies HDD vs SSD vs M.2 storage
+4. **Model Formatting**: Cleans up CPU model names (removes redundant text)
+5. **Speed Detection**: Attempts to detect RAM speed where available
+6. **No New Dependencies**: Uses existing packages from requirements.txt
+
 ## May 27, 2025 - Document Processing and Logging Improvements
 
 ### Fixed Document Text Extraction
@@ -1031,3 +1125,17 @@ Separated high-frequency polling logs from main console output:
    - Reduces console spam while preserving debugging data
 
 3. **Implementation**: Updated run_server.py with custom filter configuration
+
+## May 27, 2025 - Fixed Document Processing and Removed Mock Embeddings
+
+### Fixed NIM Embedding Service
+- Fixed NIM embedding service 400 Bad Request errors by ensuring input is always a list in embed_documents()
+- Added missing /api/files/processing-status endpoint that was causing 404 errors
+- Verified PyPDF2 is working correctly for PDF text extraction
+
+### Removed All Mock Embeddings
+- Removed all mock embedding fallbacks - system now requires NIM embeddings to be available
+- Updated vector_store.py to throw exceptions when NIM is unavailable
+- Updated document processor to require NIM embeddings with no fallback
+- Updated error handling to fail properly when NIM service is unavailable
+- System now uses only real NVIDIA NIM embeddings (1024 dimensions) for production quality

@@ -410,6 +410,85 @@ CHUNK_CONFIGS = {
 - **Chat Context**: Low similarity threshold (0.01) for NIM normalization
 - **Performance**: <5ms query embedding, <100ms document embedding
 
+## System Resource Monitoring
+
+### Real-Time Hardware Monitoring ✅
+The system includes comprehensive hardware monitoring integrated into the UI header:
+
+#### Frontend Components
+```typescript
+// ResourceMonitor.tsx - Main monitoring component
+- Polls system resources every 10 seconds
+- Displays GPU, CPU, RAM, and storage metrics
+- Brand-aware color coding (Intel blue, AMD orange)
+- Responsive layout with horizontal gauges
+
+// HorizontalGauge.tsx - Reusable gauge component
+- Customizable colors and labels
+- Percentage-based visualization
+- Smooth animations on value changes
+```
+
+#### Backend API Endpoints
+```python
+GET /api/system/resources
+# Returns real-time hardware statistics
+{
+    "cpu": {
+        "usage": 45.2,
+        "brand": "AMD",
+        "model": "AMD Ryzen 7 7800X3D"
+    },
+    "ram": {
+        "used_gb": 24.5,
+        "total_gb": 64,
+        "speed": "5600 MHz"
+    },
+    "disk": {
+        "used_gb": 812.3,
+        "total_gb": 2000.0,
+        "type": "M.2",
+        "model": "Samsung 990 PRO"
+    }
+}
+
+GET /api/models/status/quick
+# Returns GPU and model status
+{
+    "system": {
+        "gpu_utilization": 76,
+        "gpu_name": "NVIDIA GeForce RTX 4090",
+        "total_vram_gb": 24.0,
+        "used_vram_gb": 15.2
+    }
+}
+```
+
+#### Hardware Detection Implementation
+```python
+# Cross-platform hardware detection
+- Windows: Uses WMI (Windows Management Instrumentation)
+- Linux: Uses /proc filesystem and lshw
+- GPU: NVIDIA GPUtil library
+- CPU: psutil with platform-specific enhancements
+```
+
+#### Logging Infrastructure
+```python
+# Resource monitoring logs filtered from console
+- ResourceEndpointFilter in logging_filter.py
+- Logs written to backend/logs/resource_monitoring.log
+- RotatingFileHandler with 10MB max, 3 backups
+- Prevents console spam while maintaining debug info
+```
+
+### Visual Design Features
+- **GPU Gauge**: Circular gauge with percentage display
+- **VRAM Display**: Decimal precision (e.g., "15.2/24.0 GB")
+- **CPU Bar**: Horizontal gauge with brand coloring
+- **RAM Bar**: Purple horizontal gauge with whole numbers
+- **Storage Bar**: White horizontal gauge with drive type
+
 ## Monitoring and Maintenance
 
 ### System Health Monitoring

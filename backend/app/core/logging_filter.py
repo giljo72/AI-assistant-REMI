@@ -2,6 +2,21 @@
 Logging filter to suppress resource monitoring spam
 """
 import logging
+import os
+from logging.handlers import RotatingFileHandler
+
+# Create log directory if it doesn't exist
+log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
+# Set up separate file handler for resource endpoints
+resource_handler = RotatingFileHandler(
+    os.path.join(log_dir, 'resource_monitoring.log'),
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=3
+)
+resource_handler.setLevel(logging.INFO)
+resource_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
 
 class ResourceEndpointFilter(logging.Filter):
     """Filter out resource monitoring endpoints from console"""
@@ -15,12 +30,13 @@ class ResourceEndpointFilter(logging.Filter):
             '/api/system/gpu-stats'
         ]
         
-        # Check if this is a uvicorn access log
-        if record.name == 'uvicorn.access':
-            message = record.getMessage()
-            # Suppress if it contains any of our resource endpoints
-            for endpoint in suppressed_endpoints:
-                if endpoint in message and '200 OK' in message:
-                    return False
+        message = record.getMessage()
         
-        return True
+        # Check if this message contains any suppressed endpoints
+        for endpoint in suppressed_endpoints:
+            if endpoint in message:
+                # Log to file instead of console
+                resource_handler.emit(record)
+                return False  # Don't show in console
+        
+        return True  # Show in console

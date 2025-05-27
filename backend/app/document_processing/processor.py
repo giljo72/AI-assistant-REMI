@@ -265,19 +265,15 @@ class DocumentProcessor:
                     # Store the embedding as a string
                     chunk["embedding"] = json.dumps(embedding)
             else:
-                # Fallback to mock embeddings if no DB session provided
-                for chunk in chunks:
-                    # Create a mock embedding (just a placeholder)
-                    chunk["embedding"] = f"mock_embedding_{uuid.uuid4()}"
+                # NIM embeddings require a DB session
+                raise Exception("Database session required for NIM embeddings")
             
             return chunks
             
         except Exception as e:
             logger.error(f"Error generating embeddings: {str(e)}")
-            # Fallback to mock embeddings
-            for chunk in chunks:
-                chunk["embedding"] = f"mock_embedding_{uuid.uuid4()}"
-            return chunks
+            # No fallback - NIM embeddings are required
+            raise Exception(f"Failed to generate NIM embeddings: {str(e)}")
     
     def cleanup_processed_file(self, file_path: str) -> bool:
         """

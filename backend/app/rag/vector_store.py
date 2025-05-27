@@ -277,64 +277,39 @@ class VectorStore:
     
     async def generate_embedding(self, text: str) -> List[float]:
         """
-        Generate an embedding for the given text.
+        Generate an embedding for the given text using NIM.
         
-        Uses the embedding service if available, otherwise falls back to mock embeddings.
+        REQUIRES NIM embedding service - no fallback to mock embeddings.
         
         Args:
             text: Text to generate an embedding for
             
         Returns:
             Embedding vector
-        """
-        if self.embedding_service:
-            try:
-                # Check which method the embedding service supports
-                if hasattr(self.embedding_service, 'embed_text'):
-                    return await self.embedding_service.embed_text(text)
-                elif hasattr(self.embedding_service, 'embed_documents'):
-                    # NIM uses embed_documents for text chunks
-                    embeddings = await self.embedding_service.embed_documents([text])
-                    return embeddings[0] if embeddings else None
-                else:
-                    raise Exception("Embedding service has no compatible embed method")
-            except Exception as e:
-                logger.warning(f"Failed to generate real embedding, falling back to mock: {e}")
-        
-        return self.generate_mock_embedding(text)
-    
-    def generate_mock_embedding(self, text: str) -> List[float]:
-        """
-        Generate a mock embedding for testing purposes.
-        
-        In a real implementation, this would use a proper embedding model.
-        
-        Args:
-            text: Text to generate an embedding for
             
-        Returns:
-            Mock embedding vector
+        Raises:
+            Exception: If NIM service is not available or fails
         """
-        # Generate a deterministic but varied mock embedding based on the text
-        # This is just for testing - in a real implementation, use a proper model
-        import hashlib
-        import struct
-        
-        # Generate a seed from the text
-        text_bytes = text.encode('utf-8')
-        hash_value = hashlib.md5(text_bytes).digest()
-        seed = struct.unpack('I', hash_value[:4])[0]
-        
-        # Set random seed for deterministic output
-        np.random.seed(seed)
-        
-        # Generate a random vector
-        vector = np.random.normal(0, 1, self.embedding_dimensions)
-        
-        # Normalize to unit length
-        vector = vector / np.linalg.norm(vector)
-        
-        return vector.tolist()
+        if not self.embedding_service:
+            raise Exception("NIM embedding service is required but not configured")
+            
+        try:
+            # Check which method the embedding service supports
+            if hasattr(self.embedding_service, 'embed_text'):
+                return await self.embedding_service.embed_text(text)
+            elif hasattr(self.embedding_service, 'embed_documents'):
+                # NIM uses embed_documents for text chunks
+                embeddings = await self.embedding_service.embed_documents([text])
+                if not embeddings or len(embeddings) == 0:
+                    raise Exception("NIM returned empty embeddings")
+                return embeddings[0]
+            else:
+                raise Exception("Embedding service has no compatible embed method")
+        except Exception as e:
+            logger.error(f"Failed to generate NIM embedding: {e}")
+            raise Exception(f"NIM embedding generation failed: {str(e)}")
+    
+    # Mock embedding method removed - NIM embeddings are required
 
 
 # Create a factory function to get the vector store

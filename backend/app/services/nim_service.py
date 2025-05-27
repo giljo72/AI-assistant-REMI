@@ -29,6 +29,10 @@ class NIMEmbeddingService:
     async def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for documents"""
         try:
+            # Ensure texts is always a list
+            if isinstance(texts, str):
+                texts = [texts]
+            
             payload = {
                 "input": texts,
                 "model": "nvidia/nv-embedqa-e5-v5",

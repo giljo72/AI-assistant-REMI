@@ -335,6 +335,35 @@ The system is designed around a philosophy of "containment by default, expansion
   - Model status monitoring and health checks
   - Automatic failover and error handling
 
+### 5. System Resource Monitoring (Completed)
+* ✅ **Real-Time Hardware Monitoring:** Live system resource tracking in the UI header
+  * **GPU Monitoring:**
+    - NVIDIA GPU utilization percentage with circular gauge
+    - VRAM usage with decimal precision (e.g., "15.2/24.0 GB")
+    - GPU model detection and display
+  * **CPU Monitoring:**
+    - Real-time CPU usage percentage
+    - CPU brand detection (Intel/AMD) with color-coded display
+    - Model name display with proper formatting
+  * **RAM Monitoring:**
+    - Memory usage in GB with whole number display
+    - Total system memory detection
+    - RAM speed detection on supported platforms
+  * **Storage Monitoring:**
+    - Disk usage for primary drive
+    - Drive type detection (HDD/SSD/M.2)
+    - Model information when available
+* ✅ **Visual Design:**
+  - Horizontal gauge bars matching chat.jpg aesthetic
+  - Brand-specific coloring (Intel blue, AMD orange)
+  - 10-second polling interval for performance
+  - Responsive layout that adapts to screen size
+* ✅ **Backend Infrastructure:**
+  - Cross-platform hardware detection (Windows/Linux)
+  - Efficient resource polling with minimal overhead
+  - Separate logging to prevent console spam
+  - RESTful API endpoints for resource data
+
 ## UI Design Guidelines
 
 ### Color Scheme

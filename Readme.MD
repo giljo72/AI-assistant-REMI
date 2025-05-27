@@ -46,6 +46,15 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 - **Chat Context Controls**: Per-chat settings with visual feedback and hover effects
 - **Prompt Management**: System (orange) and user (gray) prompt indicators
 
+### 📊 **Real-Time System Resource Monitoring**
+- **Live Hardware Monitoring**: Integrated resource display in UI header with 10-second updates
+- **GPU Metrics**: NVIDIA GPU utilization (circular gauge) and VRAM usage with decimal precision
+- **CPU Monitoring**: Real-time usage with brand detection (Intel blue/AMD orange coloring)
+- **Memory Display**: RAM usage with speed detection and purple gauge visualization
+- **Storage Tracking**: Primary drive usage with type detection (HDD/SSD/M.2)
+- **Cross-Platform**: Windows WMI and Linux /proc filesystem support
+- **Clean Logging**: Resource polling logs filtered to separate file, preventing console spam
+
 ## 🆕 Recent Updates (May 2025)
 
 ### **NIM Embeddings Migration** ✅

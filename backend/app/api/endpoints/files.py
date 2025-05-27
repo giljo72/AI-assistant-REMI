@@ -169,6 +169,18 @@ async def process_document_background(db: Session, document_id: str, filepath: O
         print(f"Error processing document {document_id}: {str(e)}")
 
 
+@router.get("/processing-status")
+def get_processing_status() -> Any:
+    """
+    Get the current document processing status.
+    
+    Returns:
+        Processing status information including queued, processing, and completed files
+    """
+    from ...document_processing.status_tracker import status_tracker
+    return status_tracker.get_status()
+
+
 @router.get("/", response_model=List[Document])
 def get_files(
     db: Session = Depends(get_db),
