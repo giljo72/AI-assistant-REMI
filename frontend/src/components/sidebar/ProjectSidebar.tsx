@@ -52,42 +52,46 @@ const ProjectSidebar: React.FC = () => {
           <h2 className="text-xl font-bold text-gold">AI Assistant</h2>
         </div>
         
-        <div className="mb-4 flex items-center space-x-1">
-          <button 
-            className={`p-2 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
-            onClick={() => navigation.openMainFileManager()}
-            title="File Manager"
-          >
-            <Icon name="file" size={20} style={{ color: '#d4af37' }} />
-          </button>
-          <button 
-            className={`p-2 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
-            onClick={() => setIsSearchModalOpen(true)}
-            title="Universal Search"
-          >
-            <Icon name="search" size={20} style={{ color: '#d4af37' }} />
-          </button>
-          <button 
-            className={`p-2 ${isSystemPanelOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
-            onClick={() => setIsSystemPanelOpen(true)}
-            title="System & Models"
-          >
-            <Icon name="question" size={20} style={{ color: '#d4af37' }} />
-          </button>
-          <button 
-            className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
-            title="Personal Profiles"
-            onClick={() => setIsProfilesModalOpen(true)}
-          >
-            <Icon name="user" size={20} style={{ color: '#d4af37' }} />
-          </button>
-          <button 
-            className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
-            title="Admin Settings"
-            onClick={() => setIsSettingsPanelOpen(true)}
-          >
-            <Icon name="settings" size={20} style={{ color: '#d4af37' }} />
-          </button>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center space-x-1">
+            <button 
+              className={`p-2 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
+              onClick={() => navigation.openMainFileManager()}
+              title="File Manager"
+            >
+              <Icon name="file" size={20} style={{ color: '#d4af37' }} />
+            </button>
+            <button 
+              className={`p-2 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
+              onClick={() => setIsSearchModalOpen(true)}
+              title="Universal Search"
+            >
+              <Icon name="search" size={20} style={{ color: '#d4af37' }} />
+            </button>
+            <button 
+              className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
+              title="Personal Profiles"
+              onClick={() => setIsProfilesModalOpen(true)}
+            >
+              <Icon name="user" size={20} style={{ color: '#d4af37' }} />
+            </button>
+          </div>
+          <div className="flex items-center space-x-1">
+            <button 
+              className={`p-2 ${isSystemPanelOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
+              onClick={() => setIsSystemPanelOpen(true)}
+              title="System & Models"
+            >
+              <Icon name="question" size={20} style={{ color: '#d4af37' }} />
+            </button>
+            <button 
+              className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
+              title="Admin Settings"
+              onClick={() => setIsSettingsPanelOpen(true)}
+            >
+              <Icon name="settings" size={20} style={{ color: '#d4af37' }} />
+            </button>
+          </div>
         </div>
         
         <button 

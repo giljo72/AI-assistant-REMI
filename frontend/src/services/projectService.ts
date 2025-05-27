@@ -25,7 +25,7 @@ const projectService = {
   getAllProjects: async (): Promise<Project[]> => {
     console.log("Fetching all projects...");
     try {
-      const response = await api.get('/projects');
+      const response = await api.get('/projects/');
       console.log("Projects response:", response.data);
       
       // Ensure we return an array

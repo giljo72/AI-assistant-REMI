@@ -4,13 +4,18 @@ import Tooltip from '@mui/material/Tooltip';
 // Icon mapping to public SVG files
 const icons = {
   add: '/icons/add.svg',
+  chart: '/icons/chart.svg',
   close: '/icons/close.svg',
+  code: '/icons/code.svg',
   copy: '/icons/copy.svg',
+  delete: '/icons/delete.svg',  // Map delete to delete.svg
+  document: '/icons/document.svg',
   trash: '/icons/trash.svg',
   download: '/icons/download.svg',
   dropdownClose: '/icons/dropdown_close.svg',
   dropdownOpen: '/icons/dropdown_open.svg',
   file: '/icons/file.svg',
+  image: '/icons/image.svg',
   link: '/icons/link.svg',
   microphone: '/icons/microphone.svg',
   question: '/icons/question.svg',
@@ -18,6 +23,7 @@ const icons = {
   save: '/icons/save.svg',
   search: '/icons/search.svg',
   settings: '/icons/settings.svg',
+  table: '/icons/table.svg',
   unlink: '/icons/unlink.svg',
   user: '/icons/user.svg',
   userAdd: '/icons/useradd.svg',

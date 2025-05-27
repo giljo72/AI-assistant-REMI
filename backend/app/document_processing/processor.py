@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Define constants
-DEFAULT_CHUNK_SIZE = 1000
-DEFAULT_CHUNK_OVERLAP = 200
+DEFAULT_CHUNK_SIZE = 3000  # Increased for better context
+DEFAULT_CHUNK_OVERLAP = 500  # More overlap for continuity
 
 class DocumentProcessor:
     """Handles document processing, chunking, and embedding generation."""
@@ -141,19 +141,44 @@ class DocumentProcessor:
                 return f.read()
         
         elif filetype == "pdf":
-            # In a real implementation, we would use a library like PyPDF2 or pdfplumber
-            # For now, return a placeholder
-            return f"[PDF content would be extracted here for {file_path}]"
+            try:
+                import PyPDF2
+                with open(file_path, 'rb') as file:
+                    pdf_reader = PyPDF2.PdfReader(file)
+                    text = []
+                    for page_num in range(len(pdf_reader.pages)):
+                        page = pdf_reader.pages[page_num]
+                        text.append(page.extract_text())
+                    return '\n'.join(text)
+            except Exception as e:
+                logger.error(f"Error extracting text from PDF: {str(e)}")
+                return f"[Error extracting PDF: {str(e)}]"
         
         elif filetype in ["docx", "doc"]:
-            # In a real implementation, we would use a library like python-docx
-            # For now, return a placeholder
-            return f"[Word document content would be extracted here for {file_path}]"
+            try:
+                from docx import Document
+                doc = Document(file_path)
+                full_text = []
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        full_text.append(para.text)
+                return '\n'.join(full_text)
+            except Exception as e:
+                logger.error(f"Error extracting text from DOCX: {str(e)}")
+                return f"[Error extracting Word document: {str(e)}]"
         
         elif filetype in ["csv", "xlsx", "xls"]:
-            # In a real implementation, we would use pandas or similar
-            # For now, return a placeholder
-            return f"[Spreadsheet content would be extracted here for {file_path}]"
+            try:
+                import pandas as pd
+                if filetype == "csv":
+                    df = pd.read_csv(file_path)
+                else:
+                    df = pd.read_excel(file_path)
+                # Convert dataframe to text representation
+                return df.to_string()
+            except Exception as e:
+                logger.error(f"Error extracting text from spreadsheet: {str(e)}")
+                return f"[Error extracting spreadsheet: {str(e)}]"
         
         else:
             # For unsupported file types

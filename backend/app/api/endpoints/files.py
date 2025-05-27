@@ -25,7 +25,7 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Define function for background processing of documents
-async def process_document_background(db: Session, document_id: str, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
+async def process_document_background(db: Session, document_id: str, filepath: Optional[str] = None, filename: Optional[str] = None, filetype: Optional[str] = None, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None, use_auto_chunking: bool = True):
     """Background task to process a document and generate embeddings."""
     # Import here to avoid circular imports
     from ...document_processing.processor import document_processor
@@ -39,6 +39,19 @@ async def process_document_background(db: Session, document_id: str, chunk_size:
     if not document:
         return
     
+    # Use passed parameters if document fields are missing (session issues)
+    doc_filepath = filepath or document.filepath
+    doc_filename = filename or document.filename
+    doc_filetype = filetype or document.filetype
+    
+    # Validate we have required fields
+    if not doc_filepath:
+        logger.error(f"No filepath available for document {document_id}")
+        status_tracker.finish_processing(document_id, success=False)
+        document.is_processing_failed = True
+        db.commit()
+        return
+    
     # Track processing status
     status_tracker.start_processing(document_id)
         
@@ -46,7 +59,36 @@ async def process_document_background(db: Session, document_id: str, chunk_size:
         # Update progress
         status_tracker.update_progress(document_id, 10)
         
-        # Process the document to generate chunks
+        # Use auto-chunking for better context preservation
+        if use_auto_chunking:
+            from ...document_processing.auto_chunk_processor import process_document_auto
+            
+            result = await process_document_auto(
+                document_path=doc_filepath,
+                document_id=document.id,
+                filename=doc_filename,
+                filetype=doc_filetype,
+                db_session=db
+            )
+            
+            # Update document metadata with chunking info
+            document.meta_data = document.meta_data or {}
+            document.meta_data["chunking_plan"] = result["chunking_plan"]
+            document.meta_data["chunks_by_level"] = result["chunks_created"]
+            
+            # Skip the old processing since auto_chunk handles everything
+            status_tracker.update_progress(document_id, 90)
+            
+            # Mark as processed
+            document.is_processed = True
+            document.is_processing_failed = False
+            document.chunk_count = result["total_chunks"]
+            db.commit()
+            
+            status_tracker.finish_processing(document_id, success=True)
+            return
+            
+        # Fall back to old processing if auto-chunking disabled
         chunks = document_processor.process_document(
             document_path=document.filepath,
             document_id=document.id,
@@ -459,6 +501,11 @@ async def upload_file(
         db.commit()
         db.refresh(document)
         
+        # Verify the filepath is set correctly
+        if not document.filepath or document.filepath == "":
+            logger.error(f"Document {document.id} has empty filepath after save")
+            raise HTTPException(status_code=500, detail="Failed to save document filepath")
+        
         # Link to project if provided
         if project_id:
             document_repository.link_document_to_project(
@@ -468,9 +515,15 @@ async def upload_file(
         # Add to processing queue in status tracker
         status_tracker.add_to_queue(document.id, document.filename, document.filesize)
         
-        # Schedule background processing
+        # Schedule background processing with all necessary data
+        # Pass filepath explicitly to avoid session issues
         background_tasks.add_task(
-            process_document_background, db=db, document_id=document.id
+            process_document_background, 
+            db=db, 
+            document_id=document.id,
+            filepath=document.filepath,
+            filename=document.filename,
+            filetype=document.filetype
         )
         
         # Map to response schema with both name and filename fields

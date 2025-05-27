@@ -12,6 +12,7 @@ import logging
 import httpx
 import asyncio
 import json
+import torch
 
 from app.services.model_orchestrator import orchestrator, OperationalMode, ModelStatus
 
@@ -264,7 +265,7 @@ def get_ai_models() -> List[ModelInfo]:
                     status="loaded",  # Embeddings are always loaded when container is running
                     size="1.2GB",
                     parameters="335M",
-                    quantization="FP16",
+                    quantization="1024D vectors",
                     context_length=512,
                     memory_usage=1200,
                     last_used="Embeddings"  # Not a chat model, so never "Active"
@@ -323,6 +324,8 @@ def get_ai_models() -> List[ModelInfo]:
             
     except Exception as e:
         logger.info(f"NVIDIA NIM check failed: {e}")
+    
+    # NIM is now the only embedding model - no sentence-transformers
     
     logger.info(f"Total real models detected: {len(models)}")
     return models

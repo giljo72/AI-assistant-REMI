@@ -23,9 +23,9 @@ class EmbeddingService:
         Args:
             model_name: The sentence-transformer model to use.
                        Default is all-MiniLM-L6-v2 which produces 384-dim embeddings.
-                       For 768-dim (matching our pgvector setup), use:
-                       - sentence-transformers/all-mpnet-base-v2
-                       - BAAI/bge-base-en-v1.5
+                       For 1024-dim (matching our NIM setup), use:
+                       - nvidia/nv-embedqa-e5-v5 (via NIM)
+                       - sentence-transformers/all-mpnet-base-v2 (fallback)
         """
         self.model: Optional[SentenceTransformer] = None
         self.model_name = model_name
@@ -175,10 +175,21 @@ class EmbeddingService:
 # Global instance for dependency injection
 _embedding_service: Optional[EmbeddingService] = None
 
-def get_embedding_service() -> EmbeddingService:
-    """Get the global embedding service instance."""
-    global _embedding_service
-    if _embedding_service is None:
-        # Use a model that produces 768-dimensional embeddings to match pgvector
-        _embedding_service = EmbeddingService("sentence-transformers/all-mpnet-base-v2")
-    return _embedding_service
+def get_embedding_service():
+    """Get the global embedding service instance - NIM only."""
+    from .nim_service import NIMEmbeddingService
+    
+    # NIM is now required - no fallback
+    try:
+        nim_service = NIMEmbeddingService(base_url="http://localhost:8081")
+        # Simple test to check if NIM is available
+        import requests
+        response = requests.get("http://localhost:8081/v1/health/ready", timeout=2)
+        if response.status_code == 200:
+            logger.info("Using NVIDIA NIM embeddings (1024 dimensions)")
+            return nim_service
+        else:
+            raise Exception(f"NIM health check failed with status {response.status_code}")
+    except Exception as e:
+        logger.error(f"NIM embeddings service is required but not available: {e}")
+        raise Exception("NIM embeddings service is required. Please ensure NIM container is running on port 8081.")

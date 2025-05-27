@@ -185,6 +185,11 @@ class ChatGenerateRequest(BaseModel):
     context_mode: Optional[str] = None  # standard, project-focus, deep-research, quick-response, self-aware, custom
     custom_context: Optional[str] = None  # Custom context instructions when mode is 'custom'
     personal_context: Optional[str] = None  # Personal profile context from frontend
+    # Document context settings
+    is_project_documents_enabled: bool = True
+    is_global_data_enabled: bool = False
+    is_user_prompt_enabled: bool = False
+    active_user_prompt_id: Optional[str] = None
 
 
 class ChatGenerateResponse(BaseModel):
@@ -369,7 +374,7 @@ You can help improve your own code, debug issues, and suggest enhancements. When
                     query_embedding=query_embedding,
                     project_id=project_id,
                     limit=5,  # Get top 5 most relevant chunks
-                    similarity_threshold=0.3  # Lower threshold for better recall
+                    similarity_threshold=0.01  # Very low threshold for NIM embeddings
                 )
                 
                 if chunks:
@@ -598,6 +603,9 @@ async def generate_chat_response_stream(
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
     
+    # Capture project_id before entering the async generator (to avoid SQLAlchemy session issues)
+    project_id_for_context = chat.project_id
+    
     # Save user message first
     user_message = ChatMessageCreate(
         chat_id=chat_id,
@@ -668,6 +676,59 @@ You can help improve your own code, debug issues, and suggest enhancements."""
                 for msg in reversed(recent_messages[:-1]):  # Exclude the just-saved user message
                     role = "user" if msg.is_user else "assistant"
                     messages.append({"role": role, "content": msg.content})
+            
+            # Add document context if enabled
+            if request.is_project_documents_enabled or request.is_global_data_enabled:
+                try:
+                    # Import necessary modules
+                    from ...rag.vector_store import get_vector_store
+                    from ...services.embedding_service import get_embedding_service
+                    
+                    # Initialize services
+                    embedding_service = get_embedding_service()
+                    # NIM doesn't need initialization
+                    vector_store = get_vector_store(db, embedding_service)
+                    
+                    # Generate embedding for the user's message
+                    if hasattr(embedding_service, 'embed_text'):
+                        query_embedding = await embedding_service.embed_text(request.message)
+                    elif hasattr(embedding_service, 'embed_query'):
+                        # NIM uses embed_query for search queries
+                        query_embedding = await embedding_service.embed_query(request.message)
+                    else:
+                        raise Exception("Embedding service has no compatible embed method")
+                    
+                    # Determine project scope
+                    project_id = project_id_for_context if request.is_project_documents_enabled and not request.is_global_data_enabled else None
+                    
+                    # Perform semantic search
+                    relevant_chunks = vector_store.similarity_search(
+                        query_embedding=query_embedding,
+                        project_id=project_id,
+                        limit=5,  # Get top 5 most relevant chunks
+                        similarity_threshold=0.01  # Very low threshold for NIM embeddings
+                    )
+                    
+                    # If we found relevant documents, add them to context
+                    if relevant_chunks:
+                        document_context = "\n\nRelevant information from documents:\n"
+                        for i, chunk in enumerate(relevant_chunks, 1):
+                            document_context += f"\n[Document {i}: {chunk['filename']} (similarity: {chunk['similarity']:.2f})]\n"
+                            document_context += f"{chunk['content']}\n"
+                        
+                        # Add document context as a system message
+                        messages.append({
+                            "role": "system",
+                            "content": f"Use the following document excerpts to help answer the user's question. These are the most relevant sections found:{document_context}"
+                        })
+                        
+                        logger.info(f"Added {len(relevant_chunks)} document chunks to context")
+                    else:
+                        logger.info("No relevant document chunks found for the query")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to retrieve document context: {str(e)}")
+                    # Continue without document context rather than failing the request
             
             # Add current user message
             messages.append({"role": "user", "content": request.message})

@@ -228,7 +228,7 @@ const fileService = {
       }
       
       // Make API call to get files
-      const response = await api.get('/files', { params });
+      const response = await api.get('/files/', { params });
       
       // Normalize project IDs to ensure consistent types
       const files = response.data.map((file: any) => ({

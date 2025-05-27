@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants
-EMBEDDING_DIMENSIONS = 768  # Default for many embedding models
+EMBEDDING_DIMENSIONS = 1024  # Default for NIM embeddings
 
 class VectorStore:
     """
@@ -131,7 +131,8 @@ class VectorStore:
         query_embedding: List[float],
         project_id: Optional[str] = None,
         limit: int = 10,
-        similarity_threshold: float = 0.7
+        similarity_threshold: float = 0.7,
+        chunk_level: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Search for similar documents using vector similarity.
@@ -175,13 +176,32 @@ class VectorStore:
                     LIMIT :limit
                 """)
                 
-                # Need to format query properly for pgvector
-                formatted_query = query.bindparams(
-                    query_vector=text(f"'{self.format_for_pgvector(query_embedding)}'::vector")
-                )
+                # Format the query with the vector literal
+                vector_str = self.format_for_pgvector(query_embedding)
                 
                 result = self.db.execute(
-                    formatted_query, 
+                    text(f"""
+                    SELECT 
+                        dc.id as chunk_id,
+                        dc.document_id,
+                        dc.content,
+                        dc.chunk_index,
+                        dc.meta_data,
+                        d.filename,
+                        d.filetype,
+                        pd.priority,
+                        1 - (dc.embedding <=> '{vector_str}'::vector) as similarity
+                    FROM document_chunks dc
+                    JOIN documents d ON dc.document_id = d.id
+                    JOIN project_documents pd ON d.id = pd.document_id
+                    WHERE 
+                        pd.project_id = :project_id
+                        AND pd.is_active = true
+                        AND 1 - (dc.embedding <=> '{vector_str}'::vector) > :similarity_threshold
+                    ORDER BY 
+                        pd.priority * (1 - (dc.embedding <=> '{vector_str}'::vector)) DESC
+                    LIMIT :limit
+                    """), 
                     {
                         "project_id": project_id,
                         "similarity_threshold": similarity_threshold,
@@ -209,10 +229,29 @@ class VectorStore:
                     LIMIT :limit
                 """)
                 
+                # Format the query with the vector literal
+                vector_str = self.format_for_pgvector(query_embedding)
+                
                 result = self.db.execute(
-                    query, 
+                    text(f"""
+                    SELECT 
+                        dc.id as chunk_id,
+                        dc.document_id,
+                        dc.content,
+                        dc.chunk_index,
+                        dc.meta_data,
+                        d.filename,
+                        d.filetype,
+                        1 - (dc.embedding <=> '{vector_str}'::vector) as similarity
+                    FROM document_chunks dc
+                    JOIN documents d ON dc.document_id = d.id
+                    WHERE 
+                        1 - (dc.embedding <=> '{vector_str}'::vector) > :similarity_threshold
+                    ORDER BY 
+                        similarity DESC
+                    LIMIT :limit
+                    """), 
                     {
-                        "query_vector": self.format_for_pgvector(query_embedding), 
                         "similarity_threshold": similarity_threshold,
                         "limit": limit
                     }
@@ -250,7 +289,15 @@ class VectorStore:
         """
         if self.embedding_service:
             try:
-                return await self.embedding_service.embed_text(text)
+                # Check which method the embedding service supports
+                if hasattr(self.embedding_service, 'embed_text'):
+                    return await self.embedding_service.embed_text(text)
+                elif hasattr(self.embedding_service, 'embed_documents'):
+                    # NIM uses embed_documents for text chunks
+                    embeddings = await self.embedding_service.embed_documents([text])
+                    return embeddings[0] if embeddings else None
+                else:
+                    raise Exception("Embedding service has no compatible embed method")
             except Exception as e:
                 logger.warning(f"Failed to generate real embedding, falling back to mock: {e}")
         

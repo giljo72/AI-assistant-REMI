@@ -1,5 +1,74 @@
 # AI Assistant Dev Log
 
+## May 26, 2025 - Full Migration to NIM Embeddings & Enhanced Document Processing
+
+### Major Changes:
+1. **Completely removed sentence-transformers**
+   - No more fallback - NIM is now required
+   - Removed all sentence-transformers references from code
+   - Updated embedding service to require NIM
+   - Fixed NIM integration issues (async health check, method names)
+
+2. **Database migration to 1024 dimensions**
+   - Changed vector column from 768 to 1024 dimensions
+   - Reset all document processing flags
+   - Ready for NIM's higher-dimensional embeddings
+   - Discovered NIM requires very low similarity thresholds (0.01 vs 0.3)
+
+3. **Enhanced Document Chunking System**
+   - Increased default chunk size from 1000 to 3000 characters (3x improvement)
+   - Implemented auto-detect document chunking based on filename patterns
+   - Business documents get multiple chunk sizes (3000 + 8000 chars)
+   - Technical documents get specialized chunking (3000 + 5000 chars)
+   - Default documents use standard 3000 char chunks
+
+4. **Simplified User Experience**
+   - Auto-chunking is default, no user configuration needed
+   - Context modes (Quick/Standard/Deep) will automatically use appropriate chunk sizes
+   - Optional manual override available during upload (future feature)
+
+### Technical Discoveries:
+- NIM embeddings use different normalization than traditional models
+- Similarity scores are much lower (0.05 = excellent match vs 0.7-0.9 traditional)
+- NIM optimized for ranking rather than absolute similarity scores
+- Both query and passage embeddings require explicit input_type parameter
+
+### Breaking Changes:
+- NIM container MUST be running on port 8081
+- All existing embeddings were deleted (documents preserved)
+- Documents need to be re-processed with NIM
+- Minimum similarity threshold changed from 0.3 to 0.01
+
+### Architecture Decisions:
+- Chose simplicity over complexity for chunking UI
+- Default to "auto-detect" with optional overrides
+- Context modes drive chunk selection, not user configuration
+- Multi-level chunking only for documents that benefit from it
+
+### Next Steps:
+- Test document upload with new auto-chunking
+- Implement context mode integration (Deep Research → large chunks)
+- Add optional document type override in upload UI
+- Turn off "Global Data" context by default (only use project documents)
+
+## May 26, 2025 - NIM Embeddings Integration
+
+### Improvements:
+1. **Added NIM embeddings with automatic fallback**
+   - Configured system to use NVIDIA NIM embeddings (NV-EmbedQA-E5-V5) as primary
+   - Automatic fallback to sentence-transformers when NIM service unavailable
+   - Fixed async/await issue in embedding service health check
+   
+2. **Enhanced embeddings visibility**
+   - Added sentence-transformers to models UI as "EMBEDDING FALLBACK"
+   - Shows current embedding model status and memory usage
+   - Both models use compatible 768-dimensional vectors
+
+### Status:
+- NIM embedding service needs to run on port 8001 for NIM usage
+- Currently using sentence-transformers as fallback (working correctly)
+- Document retrieval confirmed working with semantic search
+
 ## January 25, 2025 - Performance Optimizations and Document Context Fixes
 
 ### Issues Addressed:
@@ -663,5 +732,102 @@ Resolved critical issue where documents attached to projects weren't being used 
    - Added comprehensive error handling and logging
 
 This fix enables proper semantic search functionality, allowing the AI assistant to use project documents in chat responses as intended.
+
+### Implemented Document Context in Chat Responses
+Connected the document retrieval system to the chat interface so documents are actually used:
+
+1. **Backend Integration**
+   - Added document context fields to ChatGenerateRequest schema
+   - Implemented semantic search in generate_chat_response_stream endpoint
+   - Retrieves top 5 most relevant document chunks based on user query
+   - Supports both project-scoped and global document search
+   - Adds relevant chunks to chat context with similarity scores
+
+2. **Frontend Updates**
+   - Updated ChatGenerateRequest interface with document context settings
+   - Modified App.tsx to pass chat settings to the streaming API
+   - Connected Redux chat settings to the API calls
+   - Document context toggles now control actual behavior
+
+3. **How It Works**
+   - When "Project Documents Enabled" is on, searches project documents
+   - When "Global Data Enabled" is on, searches all documents system-wide
+   - User's message is converted to embedding vector
+   - Semantic search finds most relevant chunks (similarity > 0.3)
+   - Relevant chunks are added to the chat context
+   - AI uses this context to provide informed responses
+
+The AI assistant can now access and use document content when answering questions, making it truly context-aware.
+
+### Identified Redux/Navigation Timing Issue
+Discovered recurring pattern of crashes when accessing chat settings:
+
+1. **Symptoms**
+   - "Cannot read properties of undefined" errors when navigating to chats
+   - Particularly after deleting chats or rapid navigation
+   - Redux state not initialized before component renders
+
+2. **Root Cause**
+   - Navigation state (activeChatId) and Redux state (currentChatId) are separate
+   - Components render before Redux updates complete
+   - Race condition: Navigation → Render → Redux (should be Navigation → Redux → Render)
+
+3. **Current Mitigation**
+   - Fixed property name mismatch (settingsByChat vs chats)
+   - Added setCurrentChat dispatch when loading chat messages
+   - Added defensive null checks with optional chaining
+   - This is a "good enough" fix but not architecturally sound
+
+4. **Proper Solution (Future)**
+   - Unify navigation state into Redux as single source of truth
+   - Add middleware to block navigation until Redux is ready
+   - Implement proper loading states in components
+   - This would require significant refactoring of navigation system
+
+This issue is documented in implementation.md for future architectural improvements.
+
+### Fixed SQLAlchemy Session Issue in Document Retrieval
+The document context feature was failing with "Instance is not bound to a Session" error:
+
+1. **Root Cause**: Accessing `chat.project_id` inside async generator after session closed
+2. **Fix**: Capture `project_id_for_context` before entering generator
+3. **Result**: Document retrieval now works perfectly!
+
+### Discovered Embedding Model Mismatch
+Found that we're using sentence-transformers instead of the superior NVIDIA NIM embeddings:
+
+1. **Current State**: 
+   - Using: sentence-transformers/all-mpnet-base-v2 (109M params)
+   - Available: NVIDIA NV-EmbedQA-E5-V5 (335M params, already running!)
+
+2. **Impact**: Missing better semantic understanding (e.g., motorcycle→vehicle)
+
+3. **Planned Improvements**:
+   - Make embedding models visible in UI
+   - Switch to NIM embeddings as default
+   - Keep sentence-transformers as fallback option
+
+### Identified File Active/Inactive Toggle Issue
+The active/inactive toggle doesn't actually prevent files from being searched:
+
+1. **Conceptual Confusion**: What does "inactive" mean if files are still searchable?
+2. **Proposed Solution**: Remove toggle, keep only attach/detach
+3. **Benefit**: Clearer mental model - attached files are searchable, detached aren't
+
+## 1/26/2025
+
+### Updated Embedding Dimensions for NIM (768 → 1024)
+Updated all embedding dimension references from 768 to 1024 to match NVIDIA NIM embeddings:
+
+1. **Files Updated**:
+   - `/backend/app/rag/vector_store.py`: EMBEDDING_DIMENSIONS constant
+   - `/backend/app/api/endpoints/system.py`: Fallback embedding dimension and model info display
+   - `/backend/app/services/embedding_service.py`: Documentation comments
+   - `/backend/app/db/models/document.py`: DocumentChunk embedding column (Vector(1024))
+
+2. **Impact**: 
+   - Ensures consistency with NIM's 1024-dimensional embeddings
+   - Database schema now correctly reflects the embedding size
+   - Note: This requires a database migration to update existing vectors
 
 These settings are now uniquely tied to each chat thread and will be remembered as users navigate between different chats within projects.

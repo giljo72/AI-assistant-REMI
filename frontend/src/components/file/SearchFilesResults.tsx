@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { fileService } from '../../services';
 import { FileSearchResult } from '../../services/fileService';
+import { Icon } from '../common/Icon';
 
 // Local interface for displayed files
 interface LocalFile {
@@ -18,26 +19,130 @@ interface LocalFile {
   contentSnippets?: string[]; // Text snippets with matching content
 }
 
-// Get file type badge color
-const getFileTypeColor = (type: string): string => {
-  switch (type.toLowerCase()) {
+// File type metadata for improved visualization
+interface FileTypeMetadata {
+  color: string;
+  icon: string;
+  description: string;
+}
+
+// Get file type metadata for display
+const getFileTypeMetadata = (type: string): FileTypeMetadata => {
+  const fileType = type.toLowerCase();
+  
+  switch (fileType) {
     case 'pdf':
-      return 'red';
+      return {
+        color: 'red',
+        icon: 'document',
+        description: 'Adobe PDF Document'
+      };
     case 'docx':
     case 'doc':
-      return 'blue';
+      return {
+        color: 'blue',
+        icon: 'document',
+        description: 'Microsoft Word Document'
+      };
     case 'xlsx':
     case 'xls':
-      return 'green';
+      return {
+        color: 'green',
+        icon: 'table',
+        description: 'Microsoft Excel Spreadsheet'
+      };
+    case 'pptx':
+    case 'ppt':
+      return {
+        color: 'orange',
+        icon: 'chart',
+        description: 'Microsoft PowerPoint Presentation'
+      };
     case 'png':
     case 'jpg':
     case 'jpeg':
-      return 'purple';
+    case 'gif':
+    case 'bmp':
+    case 'svg':
+    case 'webp':
+      return {
+        color: 'purple',
+        icon: 'image',
+        description: 'Image File'
+      };
     case 'txt':
-      return 'gray';
+      return {
+        color: 'gray',
+        icon: 'document',
+        description: 'Text Document'
+      };
+    case 'md':
+    case 'markdown':
+      return {
+        color: 'cyan',
+        icon: 'document',
+        description: 'Markdown Document'
+      };
+    case 'json':
+    case 'xml':
+    case 'yaml':
+    case 'yml':
+      return {
+        color: 'yellow',
+        icon: 'code',
+        description: 'Data/Configuration File'
+      };
+    case 'csv':
+      return {
+        color: 'green',
+        icon: 'table',
+        description: 'Comma-Separated Values'
+      };
+    case 'zip':
+    case 'rar':
+    case '7z':
+    case 'tar':
+    case 'gz':
+      return {
+        color: 'amber',
+        icon: 'download',
+        description: 'Compressed Archive'
+      };
+    case 'html':
+    case 'htm':
+    case 'css':
+    case 'js':
+    case 'jsx':
+    case 'ts':
+    case 'tsx':
+    case 'py':
+    case 'java':
+    case 'cpp':
+    case 'c':
+    case 'cs':
+    case 'php':
+    case 'rb':
+    case 'go':
+    case 'rs':
+    case 'swift':
+    case 'kt':
+      return {
+        color: 'indigo',
+        icon: 'code',
+        description: 'Source Code'
+      };
     default:
-      return 'gray';
+      return {
+        color: 'gray',
+        icon: 'document',
+        description: 'Document'
+      };
   }
+};
+
+// Helper function to get just the color
+const getFileTypeColor = (type: string): string => {
+  return getFileTypeMetadata(type).color;
 };
 
 // Helper to format bytes to human-readable size
@@ -243,8 +348,18 @@ const SearchFilesResults: React.FC<SearchFilesResultsProps> = ({
                     </div>
                     
                     {/* File type icon */}
-                    <div className={`w-10 h-10 bg-${getFileTypeColor(file.type)}-500/20 rounded flex items-center justify-center mr-3`}>
-                      <span className={`text-${getFileTypeColor(file.type)}-400 text-xs`}>{file.type}</span>
+                    <div className={`w-12 h-12 bg-${getFileTypeColor(file.type)}-500/20 rounded-lg flex flex-col items-center justify-center mr-3`}
+                      title={getFileTypeMetadata(file.type).description}>
+                      <Icon 
+                        name={getFileTypeMetadata(file.type).icon as any} 
+                        size={16} 
+                        style={{ 
+                          opacity: 0.5, 
+                          filter: 'brightness(1.5)',
+                          cursor: 'default'
+                        }}
+                      />
+                      <span className={`text-${getFileTypeColor(file.type)}-400 text-xs mt-0.5 font-medium`}>{file.type.toUpperCase()}</span>
                     </div>
                     
                     {/* File info */}

@@ -16,6 +16,7 @@ import { ProjectProvider } from './context/ProjectContext';
 import { ContextControlsProvider } from './context/ContextControlsContext';
 import { useNavigation } from './hooks/useNavigation';
 import { fetchSystemPrompts, seedDefaultSystemPrompts } from './store/systemPromptsSlice';
+import { setCurrentChat } from './store/chatSettingsSlice';
 
 // Adapted chat message type to match UI needs
 interface UIMessage {
@@ -40,6 +41,13 @@ function AppContent() {
   
   // Get context mode from Redux store
   const { contextMode } = useSelector((state: RootState) => state.projectSettings);
+  
+  // Get chat settings for the current chat using the proper selector
+  const chatSettings = useSelector((state: RootState) => 
+    navigation.activeChatId 
+      ? state.chatSettings?.settingsByChat?.[navigation.activeChatId] || null
+      : null
+  );
   
   // Local component state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -154,6 +162,9 @@ function AppContent() {
         return;
       }
       
+      // Initialize chat settings in Redux when navigating to a chat
+      dispatch(setCurrentChat(navigation.activeChatId));
+      
       try {
         const chat = await chatService.getChat(navigation.activeChatId);
         
@@ -230,6 +241,11 @@ function AppContent() {
       await chatService.sendMessageStream(navigation.activeChatId, content, {
         context_mode: contextMode,
         model_name: modelName,
+        // Add document context settings from chat settings
+        is_project_documents_enabled: chatSettings?.is_project_documents_enabled ?? true,
+        is_global_data_enabled: chatSettings?.is_global_data_enabled ?? false,
+        is_user_prompt_enabled: chatSettings?.is_user_prompt_enabled ?? false,
+        active_user_prompt_id: chatSettings?.active_user_prompt_id,
         onStart: (modelInfo: { model: string }) => {
           // Update the assistant message with model info
           setChatMessages(prev => 

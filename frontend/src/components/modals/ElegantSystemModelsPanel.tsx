@@ -9,7 +9,7 @@ interface ElegantSystemModelsPanelProps {
 
 interface ModelInfo {
   name: string;
-  type: 'ollama' | 'nvidia-nim' | 'transformers';
+  type: 'ollama' | 'nvidia-nim' | 'transformers' | 'embedding-fallback';
   status: 'loaded' | 'unloaded' | 'loading' | 'error';
   size: string;
   parameters?: string;
@@ -265,9 +265,12 @@ const ElegantSystemModelsPanel: React.FC<ElegantSystemModelsPanelProps> = ({ isO
                           <span className={`text-xs px-2 py-1 rounded ${
                             model.type === 'ollama' ? 'bg-blue-600/20 text-blue-400 border border-blue-600/30' :
                             model.type === 'nvidia-nim' ? 'bg-green-600/20 text-green-400 border border-green-600/30' :
+                            model.type === 'embedding-fallback' ? 'bg-orange-600/20 text-orange-400 border border-orange-600/30' :
                             'bg-purple-600/20 text-purple-400 border border-purple-600/30'
                           }`}>
-                            {model.type === 'nvidia-nim' ? 'NVIDIA NIM' : model.type.toUpperCase()}
+                            {model.type === 'nvidia-nim' ? 'NVIDIA NIM' : 
+                             model.type === 'embedding-fallback' ? 'EMBEDDING FALLBACK' :
+                             model.type.toUpperCase()}
                           </span>
                         </div>
                         
@@ -297,7 +300,12 @@ const ElegantSystemModelsPanel: React.FC<ElegantSystemModelsPanelProps> = ({ isO
                       </div>
                       
                       <div className="flex space-x-2 ml-4">
-                        {model.status === 'unloaded' ? (
+                        {model.type === 'embedding-fallback' ? (
+                          // Embedding models have limited actions
+                          <div className="text-xs text-gray-400 px-3 py-1">
+                            {model.status === 'loaded' ? 'Active' : 'Standby'}
+                          </div>
+                        ) : model.status === 'unloaded' ? (
                           <button
                             onClick={() => handleModelAction(model.name, model.type, 'load')}
                             disabled={actionLoading === `${model.name}-load`}

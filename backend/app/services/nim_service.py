@@ -31,7 +31,8 @@ class NIMEmbeddingService:
         try:
             payload = {
                 "input": texts,
-                "model": "nvidia/nv-embedqa-e5-v5"
+                "model": "nvidia/nv-embedqa-e5-v5",
+                "input_type": "passage"  # Use passage for document chunks
             }
             
             response = await self.client.post(
@@ -43,7 +44,7 @@ class NIMEmbeddingService:
             result = response.json()
             embeddings = [item["embedding"] for item in result["data"]]
             
-            logger.info(f"Generated embeddings for {len(texts)} texts")
+            logger.info(f"Generated embeddings for {len(texts)} texts (dimension: {len(embeddings[0]) if embeddings else 0})")
             return embeddings
             
         except Exception as e:
@@ -52,8 +53,28 @@ class NIMEmbeddingService:
     
     async def embed_query(self, query: str) -> List[float]:
         """Generate embedding for a single query"""
-        embeddings = await self.embed_documents([query])
-        return embeddings[0] if embeddings else []
+        try:
+            payload = {
+                "input": query,
+                "model": "nvidia/nv-embedqa-e5-v5",
+                "input_type": "query"  # Use query type for search queries
+            }
+            
+            response = await self.client.post(
+                f"{self.base_url}/v1/embeddings",
+                json=payload
+            )
+            response.raise_for_status()
+            
+            result = response.json()
+            embedding = result["data"][0]["embedding"]
+            
+            logger.info(f"Generated query embedding (dimension: {len(embedding)})")
+            return embedding
+            
+        except Exception as e:
+            logger.error(f"Failed to generate query embedding: {e}")
+            raise
     
     async def close(self):
         """Close the HTTP client"""

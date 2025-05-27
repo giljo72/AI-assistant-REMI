@@ -16,6 +16,13 @@ export interface ChatGenerateRequest {
   include_context?: boolean;
   model_name?: string;
   model_type?: string;
+  context_mode?: string;
+  personal_context?: string;
+  // Document context settings
+  is_project_documents_enabled?: boolean;
+  is_global_data_enabled?: boolean;
+  is_user_prompt_enabled?: boolean;
+  active_user_prompt_id?: string;
 }
 
 export interface ChatGenerateResponse {
@@ -239,6 +246,11 @@ class ChatService {
       model_name?: string;
       model_type?: string;
       context_mode?: string;
+      // Document context settings
+      is_project_documents_enabled?: boolean;
+      is_global_data_enabled?: boolean;
+      is_user_prompt_enabled?: boolean;
+      active_user_prompt_id?: string;
       onChunk?: (chunk: string) => void;
       onStart?: (modelInfo: { model: string }) => void;
       onComplete?: (messageIds: { user_message_id: string; assistant_message_id: string }) => void;
@@ -253,7 +265,12 @@ class ChatService {
       model_name: options?.model_name,
       model_type: options?.model_type,
       context_mode: options?.context_mode,
-      personal_context: await this.getPersonalContext()
+      personal_context: await this.getPersonalContext(),
+      // Document context settings
+      is_project_documents_enabled: options?.is_project_documents_enabled ?? true,
+      is_global_data_enabled: options?.is_global_data_enabled ?? false,
+      is_user_prompt_enabled: options?.is_user_prompt_enabled ?? false,
+      active_user_prompt_id: options?.active_user_prompt_id
     };
 
     const response = await fetch(`${api.defaults.baseURL}/chats/${chatId}/generate-stream`, {

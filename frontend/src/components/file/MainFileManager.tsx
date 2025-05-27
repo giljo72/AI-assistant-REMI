@@ -44,28 +44,28 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'pdf':
       return {
         color: 'red',
-        icon: 'view',
+        icon: 'document',
         description: 'Adobe PDF Document'
       };
     case 'docx':
     case 'doc':
       return {
         color: 'blue',
-        icon: 'view',
+        icon: 'document',
         description: 'Microsoft Word Document'
       };
     case 'xlsx':
     case 'xls':
       return {
         color: 'green',
-        icon: 'view',
+        icon: 'table',
         description: 'Microsoft Excel Spreadsheet'
       };
     case 'pptx':
     case 'ppt':
       return {
         color: 'orange',
-        icon: 'view',
+        icon: 'chart',
         description: 'Microsoft PowerPoint Presentation'
       };
     case 'png':
@@ -73,22 +73,24 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'jpeg':
     case 'gif':
     case 'bmp':
+    case 'svg':
+    case 'webp':
       return {
         color: 'purple',
-        icon: 'view',
+        icon: 'image',
         description: 'Image File'
       };
     case 'txt':
       return {
         color: 'gray',
-        icon: 'view',
+        icon: 'document',
         description: 'Text Document'
       };
     case 'md':
     case 'markdown':
       return {
-        color: 'cyan',
-        icon: 'view',
+        color: 'gray',
+        icon: 'document',
         description: 'Markdown Document'
       };
     case 'json':
@@ -97,13 +99,13 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'yml':
       return {
         color: 'yellow',
-        icon: 'save',
+        icon: 'code',
         description: 'Data/Configuration File'
       };
     case 'csv':
       return {
         color: 'green',
-        icon: 'view',
+        icon: 'table',
         description: 'Comma-Separated Values'
       };
     case 'zip':
@@ -120,23 +122,124 @@ const getFileTypeMetadata = (type: string): FileTypeMetadata => {
     case 'htm':
     case 'css':
     case 'js':
+    case 'jsx':
+    case 'ts':
+    case 'tsx':
+    case 'py':
+    case 'java':
+    case 'cpp':
+    case 'c':
+    case 'cs':
+    case 'php':
+    case 'rb':
+    case 'go':
+    case 'rs':
+    case 'swift':
+    case 'kt':
       return {
-        color: 'indigo',
-        icon: 'view',
-        description: 'Web Document'
+        color: 'orange',
+        icon: 'code',
+        description: 'Source Code'
       };
     default:
       return {
         color: 'gray',
-        icon: 'view',
+        icon: 'document',
         description: 'Document'
       };
   }
 };
 
-// Helper function to get just the color
-const getFileTypeColor = (type: string): string => {
-  return getFileTypeMetadata(type).color;
+// Helper function to get badge styles based on file type
+const getFileBadgeStyles = (type: string): { bgClass: string, textClass: string, iconFilter: string } => {
+  const color = getFileTypeMetadata(type).color;
+  
+  switch (color) {
+    case 'blue':
+      return { 
+        bgClass: 'bg-blue-500/20', 
+        textClass: 'text-blue-400',
+        // CSS filter to make the icon blue-400
+        iconFilter: 'brightness(0) saturate(100%) invert(63%) sepia(35%) saturate(1726%) hue-rotate(178deg) brightness(101%) contrast(96%)'
+      };
+    case 'green':
+      return { 
+        bgClass: 'bg-green-500/20', 
+        textClass: 'text-green-400',
+        // CSS filter to make the icon green-400
+        iconFilter: 'brightness(0) saturate(100%) invert(78%) sepia(51%) saturate(1823%) hue-rotate(84deg) brightness(97%) contrast(86%)'
+      };
+    case 'red':
+      return { 
+        bgClass: 'bg-red-500/20', 
+        textClass: 'text-red-400',
+        // CSS filter to make the icon red-400
+        iconFilter: 'brightness(0) saturate(100%) invert(67%) sepia(44%) saturate(4893%) hue-rotate(329deg) brightness(98%) contrast(95%)'
+      };
+    case 'orange':
+      return { 
+        bgClass: 'bg-orange-500/20', 
+        textClass: 'text-orange-400',
+        // CSS filter to make the icon orange-400
+        iconFilter: 'brightness(0) saturate(100%) invert(67%) sepia(60%) saturate(1076%) hue-rotate(1deg) brightness(101%) contrast(98%)'
+      };
+    case 'purple':
+      return { 
+        bgClass: 'bg-purple-500/20', 
+        textClass: 'text-purple-400',
+        // CSS filter to make the icon purple-400
+        iconFilter: 'brightness(0) saturate(100%) invert(64%) sepia(52%) saturate(615%) hue-rotate(223deg) brightness(100%) contrast(97%)'
+      };
+    case 'gray':
+      return { 
+        bgClass: 'bg-gray-500/20', 
+        textClass: 'text-white',
+        // CSS filter to make the icon white
+        iconFilter: 'brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%)'
+      };
+    case 'yellow':
+      return { 
+        bgClass: 'bg-yellow-500/20', 
+        textClass: 'text-yellow-400',
+        // CSS filter to make the icon yellow-400
+        iconFilter: 'brightness(0) saturate(100%) invert(86%) sepia(66%) saturate(507%) hue-rotate(358deg) brightness(101%) contrast(98%)'
+      };
+    case 'amber':
+      return { 
+        bgClass: 'bg-amber-500/20', 
+        textClass: 'text-amber-400',
+        // CSS filter to make the icon amber-400
+        iconFilter: 'brightness(0) saturate(100%) invert(75%) sepia(76%) saturate(480%) hue-rotate(358deg) brightness(101%) contrast(98%)'
+      };
+    case 'pink':
+      return { 
+        bgClass: 'bg-pink-500/20', 
+        textClass: 'text-pink-400',
+        // CSS filter to make the icon pink-400
+        iconFilter: 'brightness(0) saturate(100%) invert(70%) sepia(52%) saturate(1620%) hue-rotate(295deg) brightness(101%) contrast(92%)'
+      };
+    case 'teal':
+      return { 
+        bgClass: 'bg-teal-500/20', 
+        textClass: 'text-teal-400',
+        // CSS filter to make the icon teal-400
+        iconFilter: 'brightness(0) saturate(100%) invert(75%) sepia(36%) saturate(1837%) hue-rotate(128deg) brightness(92%) contrast(93%)'
+      };
+    case 'cyan':
+      return { 
+        bgClass: 'bg-cyan-500/20', 
+        textClass: 'text-cyan-400',
+        // CSS filter to make the icon cyan-400
+        iconFilter: 'brightness(0) saturate(100%) invert(80%) sepia(57%) saturate(2122%) hue-rotate(157deg) brightness(97%) contrast(91%)'
+      };
+    default:
+      return { 
+        bgClass: 'bg-gray-500/20', 
+        textClass: 'text-gray-400',
+        // CSS filter to make the icon gray-400
+        iconFilter: 'brightness(0) saturate(100%) invert(65%) sepia(8%) saturate(192%) hue-rotate(172deg) brightness(95%) contrast(87%)'
+      };
+  }
 };
 
 // Helper to format bytes to human-readable size
@@ -599,6 +702,30 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             : file
         )
       );
+      
+      // Set up a delayed status check since processing happens in the background
+      const checkStatus = async () => {
+        try {
+          const file = await fileService.getFile(fileId);
+          setFiles(prev => 
+            prev.map(f => 
+              f.id === fileId 
+                ? mapApiFileToLocal(file)
+                : f
+            )
+          );
+          
+          // If still processing, check again after a delay
+          if (!file.processed && !file.processing_failed) {
+            setTimeout(checkStatus, 3000); // Check again in 3 seconds
+          }
+        } catch (err) {
+          console.error('Error checking file status:', err);
+        }
+      };
+      
+      // Start checking after 2 seconds
+      setTimeout(checkStatus, 2000);
     } catch (err) {
       console.error('Error retrying file processing:', err);
       setError('Failed to retry processing. Please try again.');
@@ -1262,10 +1389,17 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     </div>
                     
                     {/* Enhanced file type icon */}
-                    <div className={`w-12 h-12 bg-${getFileTypeColor(file.type)}-500/20 rounded-lg flex flex-col items-center justify-center mr-3`} 
+                    <div className={`w-12 h-12 ${getFileBadgeStyles(file.type).bgClass} rounded-lg flex flex-col items-center justify-center mr-3`} 
                       title={getFileTypeMetadata(file.type).description}>
-                      <Icon name={getFileTypeMetadata(file.type).icon as any} size={20} />
-                      <span className={`text-${getFileTypeColor(file.type)}-400 text-xs mt-1`}>{file.type}</span>
+                      <Icon 
+                        name={getFileTypeMetadata(file.type).icon as any} 
+                        size={16} 
+                        style={{ 
+                          filter: getFileBadgeStyles(file.type).iconFilter,
+                          cursor: 'default'
+                        }}
+                      />
+                      <span className={`${getFileBadgeStyles(file.type).textClass} text-xs mt-0.5 font-medium`}>{file.type.toUpperCase()}</span>
                     </div>
                     
                     {/* File info */}
@@ -1678,7 +1812,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     </button>
                     {/* Delete Button */}
                     <button 
-                      className="w-8 h-8 flex items-center justify-center bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded"
+                      className="px-3 py-1 bg-red-700/30 hover:bg-red-700/50 text-red-400 rounded text-sm"
                       onClick={() => {
                         if (window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
                           handleDeleteFile(file.id);
@@ -1686,7 +1820,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                       }}
                       title="Delete file"
                     >
-                      <Icon name="trash" size={16} />
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -1730,9 +1864,16 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             
             {/* File preview */}
             <div className="mb-4 bg-navy rounded-lg p-4 flex flex-col items-center">
-              <div className={`w-16 h-16 bg-${getFileTypeColor(selectedFileDetails.type)}-500/20 rounded-lg flex flex-col items-center justify-center mb-2`}>
-                <Icon name={getFileTypeMetadata(selectedFileDetails.type).icon as any} size={24} />
-                <span className={`text-${getFileTypeColor(selectedFileDetails.type)}-400 text-xs mt-1`}>{selectedFileDetails.type}</span>
+              <div className={`w-16 h-16 ${getFileBadgeStyles(selectedFileDetails.type).bgClass} rounded-lg flex flex-col items-center justify-center mb-2`}>
+                <Icon 
+                  name={getFileTypeMetadata(selectedFileDetails.type).icon as any} 
+                  size={24}
+                  style={{ 
+                    filter: getFileBadgeStyles(selectedFileDetails.type).iconFilter,
+                    cursor: 'default'
+                  }}
+                />
+                <span className={`${getFileBadgeStyles(selectedFileDetails.type).textClass} text-xs mt-1`}>{selectedFileDetails.type}</span>
               </div>
               <h4 className="text-center font-medium text-gold mt-2 break-words w-full">{selectedFileDetails.name}</h4>
             </div>
@@ -1893,8 +2034,40 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
               
               try {
                 // Upload the file using fileService
-                await fileService.uploadFile(uploadRequest);
+                const uploadedFile = await fileService.uploadFile(uploadRequest);
                 console.log(`Successfully uploaded file: ${selectedFile.file.name} with project_id: ${selectedFile.projectId || 'null'}`);
+                
+                // Set up status checking for the uploaded file
+                if (uploadedFile && uploadedFile.id) {
+                  const checkUploadedFileStatus = async () => {
+                    try {
+                      const file = await fileService.getFile(uploadedFile.id);
+                      setFiles(prev => {
+                        const exists = prev.some(f => f.id === uploadedFile.id);
+                        if (exists) {
+                          return prev.map(f => 
+                            f.id === uploadedFile.id 
+                              ? mapApiFileToLocal(file)
+                              : f
+                          );
+                        } else {
+                          // Add the file if it doesn't exist yet
+                          return [...prev, mapApiFileToLocal(file)];
+                        }
+                      });
+                      
+                      // If still processing, check again after a delay
+                      if (!file.processed && !file.processing_failed) {
+                        setTimeout(checkUploadedFileStatus, 3000); // Check again in 3 seconds
+                      }
+                    } catch (err) {
+                      console.error('Error checking uploaded file status:', err);
+                    }
+                  };
+                  
+                  // Start checking after 2 seconds
+                  setTimeout(checkUploadedFileStatus, 2000);
+                }
               } catch (uploadError) {
                 console.error(`Error uploading file ${selectedFile.file.name}:`, uploadError);
                 // If the API endpoint doesn't exist yet, show a mock success message

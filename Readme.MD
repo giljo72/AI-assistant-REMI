@@ -29,10 +29,12 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 
 ### 🔍 **Advanced Search & Retrieval**
 - **Universal Search**: Search across chats, knowledge base, and documents simultaneously
-- **Real Embeddings**: Sentence-transformers (all-mpnet-base-v2) with GPU acceleration
-- **Semantic Understanding**: pgvector-powered similarity search with 768-dimensional embeddings
-- **Relevance Scoring**: 0-100% probability scores for all results
-- **Context Expansion**: Expandable result snippets with full document access
+- **NVIDIA NIM Embeddings**: NV-EmbedQA-E5-V5 (335M params) with 1024-dimensional vectors
+- **Intelligent Chunking**: Auto-detects document types for optimal chunk sizes (3000-8000 chars)
+- **Multi-Level Retrieval**: Business docs get multiple chunk sizes for context flexibility
+- **Semantic Understanding**: pgvector-powered similarity search optimized for NIM
+- **Document Context in Chat**: AI automatically retrieves relevant document chunks during conversation
+- **Project/Global Scope**: Toggle between project-specific or system-wide document search
 
 ### 🎨 **Enhanced Visual Interface**
 - **Custom SVG Icons**: Complete icon system with hover effects and animations
@@ -41,6 +43,44 @@ A complete, privacy-focused AI assistant with unified multi-model architecture, 
 - **Visual Indicators**: Clear status indicators for prompts, models, and system state
 - **Chat Context Controls**: Per-chat settings with visual feedback and hover effects
 - **Prompt Management**: System (orange) and user (gray) prompt indicators
+
+## 🆕 Recent Updates (May 2025)
+
+### **NIM Embeddings Migration** ✅
+- Migrated from sentence-transformers to NVIDIA NIM embeddings (1024-dim)
+- No fallback - NIM container required on port 8081
+- Discovered optimal similarity threshold: 0.01 (vs traditional 0.3)
+
+### **Enhanced Document Processing** ✅  
+- Increased default chunk size from 1000 to 3000 characters (3x improvement)
+- Auto-detect document types from filenames (business, technical, default)
+- Multi-level chunking for business documents (3000 + 8000 char chunks)
+- Context modes will automatically select appropriate chunk levels
+
+### **Document Context Integration** ✅
+- Fixed pgvector storage to use proper Vector type
+- Updated to 1024 dimensions for NIM compatibility
+- Implemented real-time document retrieval during chat generation
+- Added semantic search with configurable project/global scope
+- Top 5 relevant chunks automatically included in AI context
+- Context toggles now control actual backend behavior
+
+### **Chat Settings Persistence** ✅
+- Each chat maintains independent context settings
+- Redux state management for per-chat configurations
+- Settings include: system prompt, user prompt, document toggles
+- Visual indicators with hover effects and animations
+
+### **System & User Prompts** ✅
+- Database-backed prompt storage with auto-activation
+- System prompts (orange) auto-activate by model type
+- User prompts (gray) with radio button selection
+- Visual feedback for active prompts in chat interface
+
+### **Upcoming Improvements** 🔄
+- Switch to NVIDIA NIM embeddings as default (currently using sentence-transformers)
+- Add embedding model visibility and switching in UI
+- Remove confusing active/inactive toggle for files (keep attach/detach only)
 
 ## 🏗️ Architecture Overview
 
@@ -69,6 +109,7 @@ Windows 11 Production Environment
 | **Llama 3.1 70B** | Ollama | 40GB | Complex queries | ⚡ On-demand |
 | **NVIDIA Embeddings** | NIM | 1.2GB | Semantic search | 🔄 Always running |
 | **NeMo Document AI** | Mock | 0GB | Document processing | ✅ Ready |
+| **Sentence Transformers** | Hidden | 0.4GB | Fallback embeddings | 🔄 Active |
 
 ## 🚀 Quick Start
 
@@ -290,6 +331,15 @@ startai.bat                 # Restart all services
 - **Logs**: Check console outputs in service windows
 - **Documentation**: Refer to implementation.md for technical details
 
+## ⚠️ Known Issues
+
+### **Redux/Navigation State Synchronization**
+- **Issue**: Occasional crashes when rapidly navigating between chats
+- **Symptoms**: "Cannot read properties of undefined" errors
+- **Workaround**: Refresh the page if you encounter this error
+- **Status**: Mitigated but requires architectural refactoring for complete fix
+- **Details**: See implementation.md for technical details
+
 ## 📋 System Requirements
 
 ### **Minimum Requirements**
@@ -297,6 +347,8 @@ startai.bat                 # Restart all services
 - **RAM**: 32GB system memory
 - **Storage**: 500GB available space
 - **OS**: Windows 10/11 with WSL2
+- **Docker**: Docker Desktop with WSL2 backend
+- **NIM Container**: nvidia/nv-embedqa-e5-v5 running on port 8081
 
 ### **Recommended Requirements**
 - **GPU**: NVIDIA RTX 4090 (24GB VRAM)

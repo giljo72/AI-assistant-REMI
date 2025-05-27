@@ -1,4 +1,4 @@
-*IMPORTANT* Behaviour exepectations
+*IMPORTANT* Behaviour expectations
 - ALWAYS Read the project documentation to be familiar with the scope, implementation and intended workflows and framework.  ASK questions if something is unclear.
 - AVOID creating cascading changes without also changing other scripts and code, always make sure a change flows through the project files
 - AVOID creating new files to solve a problem/diagnosis, unless absolutely neccesary, in order to prevent a cascading list of diagnostics programs to solve an issue.  I prefer one diagnistics application which we can add too over time with various test but must ALWAYS delete and revise if a function is no longer applicable.
@@ -22,11 +22,12 @@ This AI Assistant is a FastAPI + React application providing a local AI assistan
 ## Development Workflow
 
 #### Prerequisites
-- PostgreSQL 17 with pgvector extension
+- PostgreSQL 17 with pgvector extension (1024 dimensions)
 - Python 3.10+
 - Node.js 18+
 - NVIDIA GPU (RTX 4090 recommended)
 - CUDA Toolkit 12.0+ (for GPU acceleration)
+- Docker Desktop with NVIDIA NIM container on port 8081
 
 #### Quick Start
 ```bash
@@ -179,9 +180,9 @@ Custom instructions for the assistant's behavior.
    - Project-specific chats and settings
 
 2. **Document Processing**
-   - Hierarchical document indexing with NeMo
+   - Auto-detect chunking (3000-8000 chars based on document type)
    - PDF, DOCX, and text file support
-   - Semantic vector search with pgvector
+   - Semantic vector search with pgvector (1024-dim NIM embeddings)
 
 3. **Prioritized Document Retrieval**
    - Project-attached documents given higher priority
@@ -196,10 +197,12 @@ Custom instructions for the assistant's behavior.
 ## Implementation Status
 
 The project is production-ready with the following status:
+- NVIDIA NIM embeddings required (no fallback)
+- Enhanced chunking system (3x larger chunks, multi-level for business docs)
 - Project management: ✅ Completed
 - Chat interface: ✅ Completed with streaming
 - Document management: ✅ Completed with vector search
-- Document processing: ✅ Real embeddings with sentence-transformers
+- Document processing: ✅ NIM embeddings with auto-chunking
 - User prompts: ✅ Completed with database persistence
 - System prompts: ✅ Completed with auto-activation
 - Visual interface: ✅ Custom SVG icons and consistent theming
