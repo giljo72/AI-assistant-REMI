@@ -108,6 +108,7 @@ AI Services (Ollama + NVIDIA NIM)
 
 The AI assistant can read and analyze its own source code to help with development:
 
+### Read Access (All Modes)
 1. **How it works**: The assistant has direct read access to the F:\assistant directory
 2. **Usage**: Simply ask to see any file (e.g., "show me backend/app/main.py")
 3. **Features**:
@@ -115,6 +116,31 @@ The AI assistant can read and analyze its own source code to help with developme
    - Actual file content display (not generic examples)
    - Works in any context mode, not just self-aware
    - Supports all common code file types
+
+### Write Access (Self-Aware Mode Only)
+When you activate self-aware mode with password authentication:
+
+1. **Activation**: 
+   - Select "Self-Aware" from context mode dropdown
+   - Enter password (default: `dev-mode-2024`)
+   - Look for bright red "🔴 SELF-AWARE" badge
+
+2. **Capabilities**:
+   - **File Modifications**: AI can suggest and make changes to files on F:\ drive
+   - **Command Execution**: AI can run system commands (npm, python, git, etc.)
+   - **Security**: EVERY action requires your individual approval
+   - **No Batch Operations**: Each file write or command must be approved separately
+
+3. **Approval Process**:
+   - AI suggests a change → Approval modal appears
+   - Review the exact changes or command
+   - Click APPROVE or DENY for each action
+   - All changes are backed up automatically
+
+4. **Password Configuration**:
+   - Set environment variable: `SELF_AWARE_PASSWORD=your-password`
+   - Or modify default in `/backend/app/api/endpoints/self_aware_auth.py`
+   - Sessions expire after 1 hour
 
 ## Documentation
 

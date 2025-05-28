@@ -362,6 +362,7 @@ When self-aware mode is active:
 - AI can see F:\assistant directory structure
 - Responses include file content when requested
 - Modification requests parsed and validated
+- File writes and command execution require individual approval
 
 ### Simplified File Access Implementation
 
@@ -389,14 +390,79 @@ This approach:
 - Supports both regular and streaming chat endpoints
 - Displays files with full syntax highlighting via React Markdown
 
+### Write Permissions System (NEW)
+
+#### Authentication & Authorization
+1. **Password Protection**
+   - Password required to enter self-aware mode (default: "dev-mode-2024")
+   - Configurable via SELF_AWARE_PASSWORD environment variable
+   - 1-hour session tokens with automatic expiration
+   - Token stored in localStorage and passed in Authorization header
+
+2. **Visual Security Indicators**
+   - Bright red context badge with "🔴 SELF-AWARE" text
+   - Pulsing animation for high visibility
+   - Warning tooltip about F:\ drive access
+   - Context controls modal z-index fixed for proper layering
+
+#### Approval System Architecture
+```
+┌─────────────────────────────────────────────────────────┐
+│                 Action Approval Queue                    │
+│  - Every action requires individual approval            │
+│  - NO batch approvals allowed                          │
+│  - 5-minute timeout for approval requests              │
+│  - WebSocket notifications for real-time updates       │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│              Action Types & Security                     │
+│  File Writes:                                          │
+│    - Restricted to F:\ drive only                     │
+│    - Automatic backups before modification            │
+│    - Dangerous code pattern detection                 │
+│  Commands:                                             │
+│    - Can execute from any path (C:\, etc.)           │
+│    - Cannot write outside F:\ drive                   │
+│    - 5-minute execution timeout                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Implementation Components
+1. **Backend Services**
+   - `self_aware_auth.py`: Password authentication and session management
+   - `action_approval.py`: Approval queue with WebSocket support
+   - `secure_file_ops.py`: F:\ drive restrictions and safety checks
+   - `self_aware_ops.py`: Integrated operations with approval workflow
+   - `self_aware_integration.py`: AI response parsing for actions
+
+2. **Frontend Components**
+   - `ActionApprovalModal.tsx`: Detailed approval UI with syntax highlighting
+   - `selfAwareService.ts`: WebSocket client and API integration
+   - Password modal integrated into ContextControlsPanel
+   - Real-time approval notifications
+
+3. **Security Features**
+   - Path traversal protection
+   - Dangerous patterns blocked (exec, eval, subprocess, etc.)
+   - Protected paths (.git, .env, node_modules)
+   - Automatic backups in F:/assistant/backups/self_aware
+   - Comprehensive audit logging
+
 ### File Modification Workflow
 
 ```
-AI Response → Parse Instructions → Validate Code → Create Backup
-     ↓                                                    ↓
-User Approval ← Show Diff Preview ← Security Check ← Log Change
+User enters self-aware mode → Password authentication
      ↓
-Apply Changes → Update Audit Log
+AI suggests file change/command → Parse response
+     ↓
+Create approval request → WebSocket notification
+     ↓
+Show approval modal → User reviews details
+     ↓
+User approves/denies → Execute or cancel
+     ↓
+If approved: Create backup → Apply change → Log action
 ```
 
 ### Audit Trail Structure
@@ -411,11 +477,14 @@ Apply Changes → Update Audit Log
 ```
 
 ### Future Enhancements
-1. [ ] Frontend file browser UI
-2. [ ] Real-time diff approval interface
-3. [ ] WebSocket notifications for changes
-4. [ ] Integration with git for version control
-5. [ ] Automated testing of proposed changes
+1. [x] Frontend password authentication modal
+2. [x] Real-time diff approval interface
+3. [x] WebSocket notifications for changes
+4. [ ] Frontend file browser UI
+5. [ ] Integration with git for version control
+6. [ ] Automated testing of proposed changes
+7. [ ] Multi-user approval workflows
+8. [ ] Rollback functionality for changes
 
 ## System Monitoring
 

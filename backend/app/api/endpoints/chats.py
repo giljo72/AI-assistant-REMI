@@ -1,5 +1,5 @@
 from typing import Any, List, Dict, Optional, AsyncGenerator
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -206,7 +206,8 @@ async def generate_chat_response_endpoint(
     db: Session = Depends(get_db),
     chat_id: str,
     request: ChatGenerateRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None)
 ) -> Any:
     """
     Generate AI response for a chat message using NVIDIA NIM.
@@ -511,6 +512,55 @@ You can analyze code, suggest improvements, debug issues, and help with developm
             ai_response += chunk
         logger.info(f"Generated response: {ai_response[:100]}...")
         
+        # Check for self-aware mode actions
+        pending_actions = []
+        if request.context_mode == "self-aware" and authorization:
+            # Check if user has valid self-aware session
+            if authorization.startswith('Bearer '):
+                session_token = authorization.replace('Bearer ', '')
+                
+                try:
+                    from .self_aware_integration import response_parser
+                    from .action_approval import approval_queue
+                    
+                    # Parse response for actions
+                    actions = response_parser.parse_response(ai_response, session_token)
+                    
+                    # Submit actions for approval
+                    for action in actions:
+                        if action['type'] == 'file_write':
+                            action_id = await approval_queue.request_approval(
+                                action_type='file_write',
+                                details={
+                                    'filepath': action['filepath'],
+                                    'content_preview': action['content'][:500] + '...' if len(action['content']) > 500 else action['content'],
+                                    'content_length': len(action['content']),
+                                    'reason': action['reason']
+                                },
+                                session_token=session_token
+                            )
+                            pending_actions.append({'id': action_id, 'type': 'file_write'})
+                        
+                        elif action['type'] == 'command':
+                            action_id = await approval_queue.request_approval(
+                                action_type='command',
+                                details={
+                                    'command': action['command_str'],
+                                    'command_list': action['command'],
+                                    'working_directory': 'F:\\assistant',
+                                    'reason': action['reason']
+                                },
+                                session_token=session_token
+                            )
+                            pending_actions.append({'id': action_id, 'type': 'command'})
+                    
+                    # Inject approval status into response
+                    if pending_actions:
+                        ai_response = response_parser.inject_approval_status(ai_response, actions)
+                        
+                except Exception as e:
+                    logger.error(f"Failed to process self-aware actions: {e}")
+        
         # Save assistant message
         assistant_message = ChatMessageCreate(
             chat_id=chat_id,
@@ -605,7 +655,8 @@ async def generate_chat_response_stream(
     db: Session = Depends(get_db),
     chat_id: str,
     request: ChatGenerateRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None)
 ) -> StreamingResponse:
     """
     Generate AI response for a chat message with streaming.

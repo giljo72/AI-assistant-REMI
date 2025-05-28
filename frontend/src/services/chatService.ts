@@ -167,7 +167,16 @@ class ChatService {
    */
   async generateResponse(chatId: string, request: ChatGenerateRequest): Promise<ChatGenerateResponse> {
     try {
-      const response = await api.post(`/chats/${chatId}/generate`, request);
+      // Add self-aware token if in self-aware mode
+      const headers: any = {};
+      if (request.context_mode === 'self-aware') {
+        const token = localStorage.getItem('selfAwareToken');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+      
+      const response = await api.post(`/chats/${chatId}/generate`, request, { headers });
       return response.data;
     } catch (error) {
       console.error("Error generating response:", error);
@@ -273,11 +282,20 @@ class ChatService {
       active_user_prompt_id: options?.active_user_prompt_id
     };
 
+    // Add self-aware token if in self-aware mode
+    const headers: any = {
+      'Content-Type': 'application/json',
+    };
+    if (options?.context_mode === 'self-aware') {
+      const token = localStorage.getItem('selfAwareToken');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    
     const response = await fetch(`${api.defaults.baseURL}/chats/${chatId}/generate-stream`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(request),
     });
 

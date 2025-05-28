@@ -22,4 +22,32 @@ const api = axios.create({
   },
 });
 
+// Helper function for API requests
+export async function apiRequest<T = any>(
+  endpoint: string, 
+  options: {
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    body?: string;
+    headers?: Record<string, string>;
+  } = {}
+): Promise<T> {
+  const { method = 'GET', body, headers = {} } = options;
+  
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body,
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || `API request failed: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
 export default api;

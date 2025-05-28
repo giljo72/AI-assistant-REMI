@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware
+from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware, self_aware_auth, action_approval, self_aware_ops
 from .endpoints.fix_files import router as fix_files_router
 
 api_router = APIRouter()
@@ -46,6 +46,15 @@ api_router.include_router(system_resources.router, prefix="/system", tags=["syst
 
 # Add self-aware endpoints for code introspection
 api_router.include_router(self_aware.router, tags=["self_aware"])
+
+# Add self-aware authentication endpoints
+api_router.include_router(self_aware_auth.router, prefix="/self-aware", tags=["self_aware_auth"])
+
+# Add action approval endpoints
+api_router.include_router(action_approval.router, prefix="/approvals", tags=["approvals"])
+
+# Add self-aware operations endpoints
+api_router.include_router(self_aware_ops.router, prefix="/self-aware-ops", tags=["self_aware_ops"])
 
 # Add test endpoint for debugging
 from .endpoints import test_file_chat

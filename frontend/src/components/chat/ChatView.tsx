@@ -35,6 +35,8 @@ import {
   toggleProjectDocuments as toggleChatProjectDocuments,
   selectCurrentChatSettings,
 } from '../../store/chatSettingsSlice';
+import ActionApprovalModal from '../modals/ActionApprovalModal';
+import { selfAwareService, ActionRequest } from '../../services/selfAwareService';
 
 interface ChatViewProps {
   projectName: string;  
@@ -73,6 +75,10 @@ const ChatView: React.FC<ChatViewProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
+  // Self-aware mode approval state
+  const [pendingAction, setPendingAction] = useState<ActionRequest | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  
   const dispatch = useDispatch();
   const { openContextControls } = useContextControls();
   const { openUserPromptPanel, openSystemPromptPanel } = usePromptPanels();
@@ -94,6 +100,25 @@ const ChatView: React.FC<ChatViewProps> = ({
       dispatch(setCurrentChat(null));
     };
   }, [chatId, dispatch]);
+
+  // Listen for action approval requests in self-aware mode
+  useEffect(() => {
+    // Check if we're in self-aware mode and authenticated
+    if (chatSettings?.contextMode === 'self-aware' && selfAwareService.isAuthenticated()) {
+      // Subscribe to action requests
+      const unsubscribe = selfAwareService.onActionRequest((action) => {
+        setPendingAction(action);
+        setShowApprovalModal(true);
+      });
+
+      // Connect WebSocket if not already connected
+      if (selfAwareService.isAuthenticated()) {
+        // The service will handle the connection
+      }
+
+      return unsubscribe;
+    }
+  }, [chatSettings?.contextMode]);
 
   // Fetch active model from backend on mount
   useEffect(() => {
@@ -169,6 +194,27 @@ const ChatView: React.FC<ChatViewProps> = ({
       setTimeout(() => setCopiedMessageId(null), 2000);
     } catch (err) {
       console.error('Failed to copy message:', err);
+    }
+  };
+
+  // Handle approval of actions in self-aware mode
+  const handleApproveAction = async (actionId: string) => {
+    try {
+      await selfAwareService.approveAction(actionId, true);
+      setShowApprovalModal(false);
+      setPendingAction(null);
+    } catch (error) {
+      console.error('Failed to approve action:', error);
+    }
+  };
+
+  const handleDenyAction = async (actionId: string) => {
+    try {
+      await selfAwareService.approveAction(actionId, false);
+      setShowApprovalModal(false);
+      setPendingAction(null);
+    } catch (error) {
+      console.error('Failed to deny action:', error);
     }
   };
 
@@ -652,6 +698,14 @@ const ChatView: React.FC<ChatViewProps> = ({
           contextMode={chatSettings.contextMode}
         />
       </Box>
+
+      {/* Action Approval Modal */}
+      <ActionApprovalModal
+        isOpen={showApprovalModal}
+        action={pendingAction}
+        onApprove={handleApproveAction}
+        onDeny={handleDenyAction}
+      />
     </Box>
   );
 };

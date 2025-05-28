@@ -1348,3 +1348,89 @@ Reason: NVIDIA NIM requires minimum 4x H100 GPUs for 70B model, not compatible w
 - Modified LLM service to call orchestrator.switch_to_model() before using a model
 - Now when a user selects a model in chat, it properly loads and updates status to 'loaded'
 - Models will correctly show as active (green dot) in the AI Models page when in use
+
+## May 28, 2025 - Self-Aware Write Permissions Implementation
+
+### Major Feature: Full Write Access in Self-Aware Mode
+Implemented comprehensive file write and command execution capabilities with mandatory individual approval for every action.
+
+#### Security Implementation:
+1. **Password Authentication** (`self_aware_auth.py`)
+   - Password-protected self-aware mode (default: "dev-mode-2024")
+   - 1-hour session tokens with automatic expiration
+   - Session management with cleanup of expired tokens
+
+2. **Mandatory Individual Approvals** (`action_approval.py`)
+   - Every file write requires explicit user approval
+   - Every command execution requires explicit user approval
+   - NO batch approvals - each action approved separately
+   - WebSocket support for real-time approval notifications
+   - 5-minute timeout for approval requests
+
+3. **File Access Control** (`secure_file_ops.py`)
+   - Write operations restricted to F:\ drive only
+   - Command execution allowed from any path (for system tools)
+   - Dangerous code pattern detection (exec, eval, subprocess, etc.)
+   - Automatic backups before file modifications
+   - Protected paths (.git, .env, node_modules, etc.)
+
+4. **Chat Integration** (`self_aware_integration.py`)
+   - AI responses automatically parsed for file/command operations
+   - Pattern matching for code blocks and commands
+   - Actions submitted to approval queue
+   - Status messages injected into chat responses
+
+#### Frontend Implementation:
+1. **Visual Indicators**
+   - Bright red context badge with "🔴 SELF-AWARE" text
+   - Pulsing animation for high visibility
+   - Warning tooltip about F:\ drive access
+
+2. **Action Approval Modal**
+   - Detailed preview of file changes with syntax highlighting
+   - Command execution details with risk assessment
+   - Individual approve/deny buttons for each action
+   - No "approve all" functionality by design
+
+3. **WebSocket Integration**
+   - Real-time approval notifications
+   - Automatic reconnection on disconnect
+   - Action queue management
+
+#### How It Works:
+1. User selects "Self-Aware" from context mode
+2. Password modal appears for authentication
+3. Upon correct password, mode activates with red badge
+4. AI can suggest file modifications or commands
+5. Each suggestion triggers an approval modal
+6. User must individually approve/deny each action
+7. Approved actions execute with full audit trail
+
+#### Security Features:
+- ✅ Password protection required
+- ✅ F:\ drive write restrictions
+- ✅ Individual approval for EVERY action
+- ✅ No batch approvals possible
+- ✅ Automatic file backups
+- ✅ Dangerous code pattern detection
+- ✅ Audit logging for all actions
+- ✅ 1-hour session timeout
+
+#### Technical Notes:
+- Authorization header properly passed in chat requests
+- Self-aware token stored in localStorage
+- WebSocket connects after authentication
+- File operations limited to F:\ for safety
+- Commands can access C:\ tools but not write there
+
+#### Configuration Notes:
+- Password can be set via SELF_AWARE_PASSWORD in backend/.env file
+- The Settings class in config.py must include SELF_AWARE_PASSWORD field
+- Import must use absolute path: `from app.core.config import settings`
+- Backend automatically loads .env file via Pydantic Settings
+- Fixed z-index issue where password modal appeared behind context modal
+
+#### Known Issues Resolved:
+- Fixed ImportError by using absolute imports instead of relative
+- Fixed Pydantic validation error by adding SELF_AWARE_PASSWORD to Settings class
+- Password modal now appears on top with z-[100] z-index

@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Features
     PGVECTOR_AVAILABLE: bool = True
     
+    # Self-aware mode
+    SELF_AWARE_PASSWORD: str = "dev-mode-2024"
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

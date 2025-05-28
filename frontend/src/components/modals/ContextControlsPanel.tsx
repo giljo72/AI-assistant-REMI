@@ -38,9 +38,25 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
   const [isCustomMode, setIsCustomMode] = useState(settings.mode === 'create');
   const [showContextHelp, setShowContextHelp] = useState(false);
   const [newContextName, setNewContextName] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [previousMode, setPreviousMode] = useState<Mode>(settings.mode);
 
   // Handle mode change
   const handleModeChange = (mode: Mode) => {
+    if (mode === 'self-aware') {
+      // Store current mode before showing password modal
+      setPreviousMode(settings.mode);
+      // Show password modal for self-aware mode
+      setShowPasswordModal(true);
+      // Don't update settings yet - wait for authentication
+      return;
+    }
+    
+    // Update previous mode for other changes
+    setPreviousMode(mode);
+    
     if (mode === 'create') {
       setIsCustomMode(true);
       setSettings({
@@ -116,6 +132,43 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
     setIsCustomMode(true);
   };
 
+  // Handle password submission for self-aware mode
+  const handlePasswordSubmit = async () => {
+    try {
+      const response = await fetch('/api/self-aware/authenticate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Store token in localStorage
+        localStorage.setItem('selfAwareToken', data.token);
+        
+        // Apply self-aware settings
+        const selfAwareSettings: ContextSettings = {
+          mode: 'self-aware',
+          contextDepth: 90,
+          useProjectDocs: false,
+          useProjectChats: false,
+          useAllDocs: false,
+          useAllChats: false,
+        };
+        setSettings(selfAwareSettings);
+        setShowPasswordModal(false);
+        setPassword('');
+        setPasswordError('');
+      } else {
+        setPasswordError('Invalid password');
+      }
+    } catch (error) {
+      setPasswordError('Authentication failed');
+    }
+  };
+
   // Apply settings and close
   const handleApply = () => {
     onApplySettings(settings);
@@ -125,7 +178,54 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <>
+      {/* Password Modal for Self-Aware Mode */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+          <div className="bg-navy-light rounded-lg p-6 max-w-sm w-full relative z-[110]">
+            <h3 className="text-xl font-bold text-red-500 mb-4">🔒 Self-Aware Mode Authentication</h3>
+            <p className="text-gray-300 mb-4 text-sm">
+              Self-aware mode grants read and write access to the AI assistant's source code.
+              This requires authentication.
+            </p>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              placeholder="Enter password"
+              className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-red-500 text-white mb-2"
+              autoFocus
+            />
+            {passwordError && (
+              <p className="text-red-400 text-sm mb-3">{passwordError}</p>
+            )}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword('');
+                  setPasswordError('');
+                  // Reset the select to previous value since user cancelled
+                  // Don't change settings - keep the current mode
+                }}
+                className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePasswordSubmit}
+                className="px-4 py-2 bg-red-600 text-white font-medium rounded hover:bg-red-700"
+              >
+                Authenticate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Context Controls Modal */}
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-navy-light rounded-lg p-6 max-w-md w-full">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gold">Context Controls</h3>
@@ -144,7 +244,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
             Mode:
           </label>
           <select
-            value={settings.mode}
+            value={showPasswordModal ? previousMode : settings.mode}
             onChange={(e) => handleModeChange(e.target.value as Mode)}
             className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-gold text-white"
           >
@@ -347,6 +447,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 

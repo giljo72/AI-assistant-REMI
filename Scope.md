@@ -52,7 +52,14 @@ Clear indicators showing what information influences AI responses, document rele
 Live hardware utilization, model status, and service health tracking for optimal performance management.
 
 ### 7. Self-Aware Development Mode
-AI assistant can read and analyze its own source code, suggest improvements, and assist with debugging - enabling continuous self-improvement while maintaining security through validation and audit trails. The assistant has direct read access to all project files, displaying actual code content with syntax highlighting and proper formatting. This capability works across all context modes for maximum development efficiency.
+AI assistant can read and analyze its own source code, suggest improvements, and assist with debugging - enabling continuous self-improvement while maintaining security through validation and audit trails. The assistant has direct read access to all project files, displaying actual code content with syntax highlighting and proper formatting. 
+
+In password-protected self-aware mode, the assistant gains write capabilities:
+- **Write Access**: Can modify files on F:\ drive with user approval
+- **Command Execution**: Can run system commands with user approval
+- **Security First**: Every action requires individual approval - no batch operations
+- **Audit Trail**: All modifications backed up and logged
+- **Visual Indicators**: Bright red badge shows when write mode is active
 
 ## Success Criteria
 

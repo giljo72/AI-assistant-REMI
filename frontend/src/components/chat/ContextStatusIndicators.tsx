@@ -57,14 +57,20 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
 
   return (
     <div className="flex flex-wrap gap-2 justify-center">
-      {/* Context Mode Indicator - Yellow Box */}
+      {/* Context Mode Indicator - Yellow Box for standard, Bright Red for self-aware */}
       <button
         onClick={onOpenContextControls}
-        className="inline-flex items-center px-3 py-1 rounded text-sm mr-2 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-200 cursor-pointer transform hover:scale-105"
-        title="Click to change context mode"
+        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+          contextMode === 'self-aware'
+            ? 'bg-red-600/30 text-red-400 border border-red-500 hover:bg-red-600/40 hover:shadow-lg hover:shadow-red-500/30 animate-pulse'
+            : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 hover:shadow-lg hover:shadow-yellow-500/20'
+        }`}
+        title={contextMode === 'self-aware' ? '⚠️ SELF-AWARE MODE - Read/Write Access to F:\\ Drive' : 'Click to change context mode'}
       >
-        <span className="w-2 h-2 rounded-full mr-2 bg-yellow-400 animate-pulse"></span>
-        Context: <span className="font-semibold ml-1">{getContextModeDisplay(contextMode)}</span>
+        <span className={`w-2 h-2 rounded-full mr-2 ${
+          contextMode === 'self-aware' ? 'bg-red-500 animate-pulse' : 'bg-yellow-400 animate-pulse'
+        }`}></span>
+        {contextMode === 'self-aware' ? '🔴 SELF-AWARE' : `Context: ${getContextModeDisplay(contextMode)}`}
       </button>
 
       {/* System Prompt Indicator - Orange */}
