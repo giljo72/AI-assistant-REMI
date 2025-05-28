@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Define constants
-DEFAULT_CHUNK_SIZE = 3000  # Increased for better context
-DEFAULT_CHUNK_OVERLAP = 500  # More overlap for continuity
+DEFAULT_CHUNK_SIZE = 2000  # Reduced to fit within NIM's 512 token limit (~400 tokens)
+DEFAULT_CHUNK_OVERLAP = 400  # Proportional overlap for continuity
 
 class DocumentProcessor:
     """Handles document processing, chunking, and embedding generation."""
@@ -172,8 +172,25 @@ class DocumentProcessor:
                     text = []
                     for page_num in range(len(pdf_reader.pages)):
                         page = pdf_reader.pages[page_num]
-                        text.append(page.extract_text())
-                    return '\n'.join(text)
+                        page_text = page.extract_text()
+                        if page_text:
+                            # Clean up common PDF extraction issues
+                            # Remove null bytes
+                            page_text = page_text.replace('\x00', '')
+                            # Fix common encoding issues
+                            page_text = page_text.encode('utf-8', 'ignore').decode('utf-8')
+                            # Normalize whitespace
+                            page_text = ' '.join(page_text.split())
+                            text.append(page_text)
+                    
+                    result = '\n'.join(text)
+                    
+                    # Ensure we have some content
+                    if not result.strip():
+                        logger.warning(f"PDF extraction returned empty text for {file_path}")
+                        return "[PDF file appears to be empty or unreadable]"
+                    
+                    return result
             except Exception as e:
                 logger.error(f"Error extracting text from PDF: {str(e)}")
                 return f"[Error extracting PDF: {str(e)}]"

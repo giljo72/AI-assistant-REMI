@@ -338,6 +338,9 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
 
   // Track processing files for retry
   const [processingFileIds, setProcessingFileIds] = useState<Set<string>>(new Set());
+  
+  // Expandable file list state
+  const [isFileListExpanded, setIsFileListExpanded] = useState(false);
 
   // Function to fetch files based on current filters
   const fetchFiles = async () => {
@@ -896,6 +899,13 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
               <span className="text-blue-400 font-medium">{files.filter(f => isFileLinkedToProject(f.projectId)).length}</span>
               <span className="text-gray-400 ml-1">linked to projects</span>
             </span>
+            {files.some(f => f.processingFailed) && (
+              <span className="px-2 py-0.5 bg-navy rounded text-sm">
+                <span className="text-red-400">⚠</span>
+                <span className="text-red-400 font-medium ml-1">{files.filter(f => f.processingFailed).length}</span>
+                <span className="text-gray-400 ml-1">failed</span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex space-x-2">
@@ -968,19 +978,6 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                 {processingStats.failed_files ?? 0} failed
               </span>
             </div>
-            
-            {processingStats.gpu_usage !== undefined && (
-              <div className="flex items-center">
-                <div className="mr-3 text-gray-400">GPU Usage:</div>
-                <div className="flex-1 bg-navy rounded-full h-2.5">
-                  <div 
-                    className="bg-gold h-2.5 rounded-full" 
-                    style={{ width: `${processingStats.gpu_usage}%` }}
-                  ></div>
-                </div>
-                <div className="ml-3 text-gold">{processingStats.gpu_usage}%</div>
-              </div>
-            )}
             
             {processingStats.eta !== undefined && processingStats.eta > 0 && (
               <div className="text-sm text-gray-400">
@@ -1093,7 +1090,25 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
       </div>
       
       {/* Files List with bulk selection header */}
-      <div className="flex-1 bg-navy-light p-4 rounded-lg overflow-y-auto">
+      <div className={`bg-navy-light rounded-lg transition-all duration-300 ${
+        isFileListExpanded ? 'absolute inset-x-0 top-16 bottom-0 z-10' : 'flex-1'
+      }`}>
+        {/* Lift Tab */}
+        <div 
+          className="flex justify-center py-2 cursor-pointer hover:bg-navy-lighter transition-colors"
+          onClick={() => setIsFileListExpanded(!isFileListExpanded)}
+        >
+          <div className="flex items-center space-x-2 text-gray-400 hover:text-gold">
+            <span className="text-sm font-medium">
+              {isFileListExpanded ? 'Collapse' : 'Expand'} File List
+            </span>
+            <span className={`transform transition-transform ${isFileListExpanded ? 'rotate-180' : ''}`}>
+              ▲
+            </span>
+          </div>
+        </div>
+        
+        <div className="p-4 overflow-y-auto" style={{ height: isFileListExpanded ? 'calc(100% - 40px)' : 'auto' }}>
         <h3 className="text-lg font-medium text-gold mb-3 pb-2 border-b border-navy flex justify-between items-center">
           <div className="flex items-center">
             {isSearching ? (
@@ -1831,35 +1846,6 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
                     >
                       <Icon name="download" size={16} />
                     </button>
-                    {/* Retry Processing Button - Always visible for testing */}
-                    <button 
-                      onClick={async () => {
-                        try {
-                          // Immediately update UI to show processing
-                          setFiles(prevFiles => 
-                            prevFiles.map(f => 
-                              f.id === file.id 
-                                ? { ...f, processed: false, processingFailed: false, chunks: undefined }
-                                : f
-                            )
-                          );
-                          
-                          await fileService.retryProcessing(file.id);
-                          
-                          // Track for single refresh after processing
-                          setProcessingFileIds(prev => new Set(prev).add(file.id));
-                        } catch (err) {
-                          console.error('Error retrying processing:', err);
-                          setError('Failed to retry processing. Please try again.');
-                          // Revert on error
-                          await fetchFiles();
-                        }
-                      }}
-                      className="w-8 h-8 flex items-center justify-center bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded"
-                      title="Retry processing"
-                    >
-                      <Icon name="refresh" size={16} />
-                    </button>
                     
                     {/* Delete Button */}
                     <button 
@@ -1895,6 +1881,7 @@ const MainFileManager: React.FC<MainFileManagerProps> = () => {
             )}
           </div>
         )}
+        </div>
       </div>
       
       {/* File Details Panel */}

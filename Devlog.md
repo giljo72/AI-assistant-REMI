@@ -1126,6 +1126,34 @@ Separated high-frequency polling logs from main console output:
 
 3. **Implementation**: Updated run_server.py with custom filter configuration
 
+## May 27, 2025 - Enhanced Backend Console Logging
+
+### Added User-Friendly Console Output
+Integrated enhanced logging directly into run_server.py for cleaner architecture:
+
+1. **Enhanced run_server.py**:
+   - Added timestamps for every request (YYYY-MM-DD HH:MM:SS format)
+   - Friendly action names for common operations
+   - Status indicators (✓ for success, ✗ for errors)
+   - No external dependencies or extra files
+
+2. **Action Name Mapping**:
+   - Upload Document - File uploads
+   - Process Document - Document processing  
+   - Chat Message - User chat interactions
+   - List Files - File browsing
+   - Search Documents - Semantic search
+   - Project/Model/System operations
+
+3. **Console Output Format**:
+   ```
+   [2025-05-27 10:52:10] ✓ Upload Document - INFO: 127.0.0.1:52974 - "POST /api/files/upload HTTP/1.1" 200
+   [2025-05-27 10:52:11] ✓ Process Document - INFO: 127.0.0.1:52975 - "POST /api/files/123/process HTTP/1.1" 200
+   [2025-05-27 10:52:12] ✓ Chat Message - INFO: 127.0.0.1:52976 - "POST /api/chats/456/generate HTTP/1.1" 200
+   ```
+
+Result: Backend console now shows timestamps and friendly action names without adding complexity or fragmented test files.
+
 ## May 27, 2025 - Fixed Document Processing and Removed Mock Embeddings
 
 ### Fixed NIM Embedding Service
@@ -1139,3 +1167,55 @@ Separated high-frequency polling logs from main console output:
 - Updated document processor to require NIM embeddings with no fallback
 - Updated error handling to fail properly when NIM service is unavailable
 - System now uses only real NVIDIA NIM embeddings (1024 dimensions) for production quality
+
+## May 27, 2025 - Documentation Reorganization & Backend Logging Enhancement
+
+### 1. Documentation Cleanup
+Reorganized all documentation with clear separation of concerns:
+- **Scope.md**: WHAT & WHY (vision/intent only)
+- **implementation.md**: HOW (technical details, alternatives, upgrade paths)
+- **Devlog.md**: WHAT WE DID (chronological history)
+- **Readme.MD**: Quick summary for newcomers
+- **TECHNICAL_DEBT_TODO.md**: Comprehensive debt tracking with priority matrix
+- **NIM_MULTIMODAL_EXPLORATION.md**: Future considerations for multimodal extraction
+
+Deleted temporary planning documents:
+- DOCUMENTATION_REORGANIZATION_PLAN.md
+- IMMEDIATE_NEXT_STEPS.md
+- Cleanup_Opportunities.md
+- Project_Structure.md
+- RAG_Harmonization_Plan.md
+- Context_Controls_Implementation_Status.md
+- Context_status.md
+
+### 2. Backend Console Logging Enhancement
+Implemented user-friendly console logging in `backend/run_server.py`:
+
+**Features**:
+- Human-readable action names (e.g., "Upload Document" instead of "/api/files/upload")
+- Color-coded status indicators:
+  - 🟢 **GREEN**: Success (200, 201)
+  - 🔵 **CYAN**: Redirects (301, 302, 304, 307)
+  - 🟡 **YELLOW**: Client errors (400, 401, 403, 404)
+  - 🔴 **RED**: Server errors (500, 502, 503)
+- Formatted output: `[timestamp] icon action | method path | status`
+- Bold action names for better visibility
+
+**Implementation**:
+- Created `EnhancedAccessFormatter` class at module level
+- Integrated with uvicorn's logging configuration
+- Fixed multiprocessing issues for proper reloading
+- Resource monitoring endpoints auto-filtered
+
+**Example Output**:
+```
+[2025-05-27 11:50:23] ✓ List Projects            | GET    /api/projects                                 | 200 OK
+[2025-05-27 11:50:24] → Get System Prompts       | GET    /api/system-prompts                           | 307 Temporary Redirect
+[2025-05-27 11:50:25] ✗ Upload Document          | POST   /api/files/upload                             | 404 Not Found
+[2025-05-27 11:50:26] ⚠ Chat Message             | POST   /api/chats/123/generate                       | 500 Internal Server Error
+```
+
+### 3. Technical Clarifications
+- Confirmed current document processing uses PyPDF2/python-docx (simple approach)
+- NV-Ingest multimodal extraction noted as future consideration
+- Documented the distinction between current and planned implementations

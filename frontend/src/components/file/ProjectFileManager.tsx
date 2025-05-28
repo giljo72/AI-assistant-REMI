@@ -660,6 +660,13 @@ const ProjectFileManager: React.FC<ProjectFileManagerProps> = () => {
               <span className="text-orange-400 font-medium">{projectFiles.filter(f => !f.active).length}</span>
               <span className="text-gray-400 ml-1">inactive</span>
             </span>
+            {projectFiles.some(f => f.processingFailed) && (
+              <span className="px-2 py-0.5 bg-navy rounded text-sm">
+                <span className="text-red-400">⚠</span>
+                <span className="text-red-400 font-medium ml-1">{projectFiles.filter(f => f.processingFailed).length}</span>
+                <span className="text-gray-400 ml-1">failed</span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex space-x-2">

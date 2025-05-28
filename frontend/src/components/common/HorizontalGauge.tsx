@@ -34,7 +34,7 @@ export const HorizontalGauge: React.FC<HorizontalGaugeProps> = ({
         <div className="absolute inset-0 h-5 bg-gray-800 rounded-full overflow-hidden">
           {/* Progress fill */}
           <div 
-            className="h-full transition-all duration-500 ease-out rounded-full"
+            className="h-full transition-all duration-300 ease-out rounded-full"
             style={{ 
               width: `${percentage}%`,
               backgroundColor: color,

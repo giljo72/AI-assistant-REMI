@@ -294,19 +294,35 @@ class VectorStore:
             raise Exception("NIM embedding service is required but not configured")
             
         try:
+            # Validate and clean the text
+            if not text or not text.strip():
+                raise ValueError("Cannot generate embedding for empty text")
+            
+            # Clean the text - remove null bytes and normalize whitespace
+            cleaned_text = text.replace('\x00', '').strip()
+            
+            # Ensure text isn't too long (NIM might have limits)
+            max_length = 8192  # Typical limit for embedding models
+            if len(cleaned_text) > max_length:
+                logger.warning(f"Text too long ({len(cleaned_text)} chars), truncating to {max_length}")
+                cleaned_text = cleaned_text[:max_length]
+            
+            # Log text preview for debugging
+            logger.debug(f"Generating embedding for text: {cleaned_text[:100]}...")
+            
             # Check which method the embedding service supports
             if hasattr(self.embedding_service, 'embed_text'):
-                return await self.embedding_service.embed_text(text)
+                return await self.embedding_service.embed_text(cleaned_text)
             elif hasattr(self.embedding_service, 'embed_documents'):
                 # NIM uses embed_documents for text chunks
-                embeddings = await self.embedding_service.embed_documents([text])
+                embeddings = await self.embedding_service.embed_documents([cleaned_text])
                 if not embeddings or len(embeddings) == 0:
                     raise Exception("NIM returned empty embeddings")
                 return embeddings[0]
             else:
                 raise Exception("Embedding service has no compatible embed method")
         except Exception as e:
-            logger.error(f"Failed to generate NIM embedding: {e}")
+            logger.error(f"Failed to generate NIM embedding for text length {len(text)}: {e}")
             raise Exception(f"NIM embedding generation failed: {str(e)}")
     
     # Mock embedding method removed - NIM embeddings are required

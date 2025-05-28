@@ -192,7 +192,7 @@ class ProcessingStatusTracker:
                 "processing_files": processing_count,
                 "queued_files": queued_count,
                 "total_chunks": sum(
-                    entry.get("chunk_count", 0) for entry in self.processing_history 
+                    entry.get("chunk_count") or 0 for entry in self.processing_history 
                     if entry.get("success", False)
                 ),
                 "gpu_usage": self.gpu_usage,

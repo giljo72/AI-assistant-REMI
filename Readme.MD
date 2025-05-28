@@ -1,397 +1,142 @@
-# AI Assistant: Multi-Model Production System
+# AI Assistant
 
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](https://github.com)
-[![Architecture](https://img.shields.io/badge/Architecture-Multi--Model-blue)](https://github.com)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-orange)](https://github.com)
-[![Hardware](https://img.shields.io/badge/Hardware-RTX%204090%20Optimized-green)](https://github.com)
+A fully private, local AI assistant with multi-model support, document understanding, and project-based knowledge management. All processing happens on your hardware - your data never leaves your system.
 
-A complete, privacy-focused AI assistant with unified multi-model architecture, providing enterprise-grade capabilities while maintaining complete local control and data ownership.
+## What It Does
 
-## 🎯 Key Features
+The AI Assistant provides ChatGPT-like capabilities on your local machine with:
+- **Multiple AI Models**: Switch between fast responses, deep reasoning, or code generation
+- **Document Understanding**: Upload PDFs, Word docs, and spreadsheets for AI-powered search
+- **Project Organization**: Keep different projects' knowledge separate and organized
+- **Real-time Monitoring**: See exactly what resources the AI is using
+- **Complete Privacy**: Everything runs locally - no cloud, no data collection
 
-### 🚀 **Multi-Model AI Architecture**
-- **4 Production AI Models + Always-On Embeddings**: Qwen 2.5 32B, Llama 3.1 70B (NIM), Mistral-Nemo 12B, DeepSeek-Coder 16B + NVIDIA Embeddings
-- **Unified Interface**: Single API routing to NVIDIA NIM and Ollama backends
-- **Intelligent Routing**: Automatic service selection based on model type and performance requirements
-- **Real-time Management**: Load, unload, and switch between models with live status monitoring
+## Quick Start
 
-### 🔒 **Complete Privacy & Local Control**
-- **100% Local Processing**: No cloud dependencies or external API calls
-- **Data Ownership**: All documents and conversations remain on your hardware
-- **Offline Operation**: Full functionality without internet connectivity
-- **Enterprise Security**: Container isolation and encrypted storage
+### Prerequisites
+- Windows 11 with WSL2
+- NVIDIA RTX GPU (16GB+ VRAM recommended)
+- 32GB+ RAM
+- PostgreSQL 17
+- Docker Desktop
+- Python 3.10+
+- Node.js 18+
 
-### 📁 **Project-Centered Organization**
-- **Self-Contained Projects**: Each project is an isolated knowledge environment
-- **Context Optimization**: Project boundaries improve performance and relevance
-- **Flexible Expansion**: Option to search across projects when needed
-- **Intuitive Workflow**: Matches real-world project organization
+### Installation
 
-### 🔍 **Advanced Search & Retrieval**
-- **Universal Search**: Search across chats, knowledge base, and documents simultaneously
-- **NVIDIA NIM Embeddings**: NV-EmbedQA-E5-V5 (335M params) with 1024-dimensional vectors
-- **Multimodal Document Processing**: NVIDIA NV-Ingest extracts text, tables, charts from PDFs/DOCX
-- **Smart Model Loading**: Loads only necessary models based on file type (0-12GB VRAM)
-- **Intelligent Chunking**: Auto-detects document types for optimal chunk sizes (3000-8000 chars)
-- **Multi-Level Retrieval**: Business docs get multiple chunk sizes for context flexibility
-- **Semantic Understanding**: pgvector-powered similarity search optimized for NIM
-- **Document Context in Chat**: AI automatically retrieves relevant document chunks during conversation
-- **Project/Global Scope**: Toggle between project-specific or system-wide document search
-
-### 🎨 **Enhanced Visual Interface**
-- **Custom SVG Icons**: Complete icon system with hover effects and animations
-- **Yellow Theme**: Cohesive yellow scrollbars and accent colors
-- **Responsive Design**: Optimized for desktop and large screens
-- **Visual Indicators**: Clear status indicators for prompts, models, and system state
-- **Chat Context Controls**: Per-chat settings with visual feedback and hover effects
-- **Prompt Management**: System (orange) and user (gray) prompt indicators
-
-### 📊 **Real-Time System Resource Monitoring**
-- **Live Hardware Monitoring**: Integrated resource display in UI header with 10-second updates
-- **GPU Metrics**: NVIDIA GPU utilization (circular gauge) and VRAM usage with decimal precision
-- **CPU Monitoring**: Real-time usage with brand detection (Intel blue/AMD orange coloring)
-- **Memory Display**: RAM usage with speed detection and purple gauge visualization
-- **Storage Tracking**: Primary drive usage with type detection (HDD/SSD/M.2)
-- **Cross-Platform**: Windows WMI and Linux /proc filesystem support
-- **Clean Logging**: Resource polling logs filtered to separate file, preventing console spam
-
-## 🆕 Recent Updates (May 2025)
-
-### **NIM Embeddings Migration** ✅
-- Migrated from sentence-transformers to NVIDIA NIM embeddings (1024-dim)
-- No fallback - NIM container required on port 8081
-- Discovered optimal similarity threshold: 0.01 (vs traditional 0.3)
-
-### **Enhanced Document Processing** ✅  
-- Increased default chunk size from 1000 to 3000 characters (3x improvement)
-- Auto-detect document types from filenames (business, technical, default)
-- Multi-level chunking for business documents (3000 + 8000 char chunks)
-- Context modes will automatically select appropriate chunk levels
-
-### **Document Context Integration** ✅
-- Fixed pgvector storage to use proper Vector type
-- Updated to 1024 dimensions for NIM compatibility
-- Implemented real-time document retrieval during chat generation
-- Added semantic search with configurable project/global scope
-- Top 5 relevant chunks automatically included in AI context
-- Context toggles now control actual backend behavior
-
-### **Chat Settings Persistence** ✅
-- Each chat maintains independent context settings
-- Redux state management for per-chat configurations
-- Settings include: system prompt, user prompt, document toggles
-- Visual indicators with hover effects and animations
-
-### **System & User Prompts** ✅
-- Database-backed prompt storage with auto-activation
-- System prompts (orange) auto-activate by model type
-- User prompts (gray) with radio button selection
-- Visual feedback for active prompts in chat interface
-
-### **Upcoming Improvements** 🔄
-- Switch to NVIDIA NIM embeddings as default (currently using sentence-transformers)
-- Add embedding model visibility and switching in UI
-- Remove confusing active/inactive toggle for files (keep attach/detach only)
-
-## 🏗️ Architecture Overview
-
-### **Service Architecture**
-```
-Windows 11 Production Environment
-├── Docker Desktop (WSL2 Backend)
-│   ├── nim-embeddings:8001 → NVIDIA NV-EmbedQA-E5-V5
-│   └── nim-llm:8002 → Llama 3.1 70B (Optional, TensorRT)
-├── Ollama Service:11434
-│   ├── Mistral-Nemo 12B (Primary workhorse)
-│   ├── DeepSeek-Coder V2 16B (Code specialist)
-│   ├── Qwen 2.5 32B (Advanced reasoning)
-│   └── Llama 3.1 70B (Complex queries)
-├── PostgreSQL:5432 (Document storage + pgvector search)
-├── FastAPI Backend:8000 (Unified LLM routing)
-└── React Frontend:3000 (Model management interface)
-```
-
-### **AI Model Lineup**
-| Model | Type | VRAM | Use Case | Status |
-|-------|------|------|----------|--------|
-| **Mistral-Nemo 12B** | Ollama | 7.1GB | Primary workhorse | ✅ Active |
-| **DeepSeek-Coder V2 16B** | Ollama | 9GB | Code generation | ✅ Ready |
-| **Qwen 2.5 32B** | Ollama | 19GB | Advanced reasoning | ✅ Ready |
-| **Llama 3.1 70B** | Ollama | 40GB | Complex queries | ⚡ On-demand |
-| **NVIDIA Embeddings** | NIM | 1.2GB | Semantic search | 🔄 Always running |
-| **NeMo Document AI** | Mock | 0GB | Document processing | ✅ Ready |
-| **Sentence Transformers** | Hidden | 0.4GB | Fallback embeddings | 🔄 Active |
-
-## 🚀 Quick Start
-
-### **Prerequisites**
-- **Hardware**: NVIDIA RTX 4090 (24GB VRAM), 64GB RAM recommended
-- **OS**: Windows 11 with WSL2 enabled
-- **Software**: Docker Desktop, PostgreSQL 17, Node.js 18+, Python 3.10+
-
-### **Installation**
-
-1. **Clone Repository**
+1. **Clone and Setup**
    ```bash
-   git clone <repository-url>
+   git clone <repository>
    cd assistant
-   ```
-
-2. **Setup Environment**
-   ```bash
-   # Create Python virtual environment
    python -m venv venv_nemo
    venv_nemo\Scripts\activate
-   
-   # Install Python dependencies
+   ```
+
+2. **Install Dependencies**
+   ```bash
    cd backend
    pip install -r requirements.txt
-   
-   # Install Node.js dependencies
-   cd ..\frontend
+   cd ../frontend
    npm install
    ```
 
-3. **Setup Database**
+3. **Initialize Database**
    ```bash
-   # Initialize PostgreSQL with pgvector
-   cd ..\backend
+   cd backend
    python -m app.db.init_db
    ```
 
-4. **Configure Services**
+4. **Start Services**
    ```bash
-   # Install Ollama models
-   python install_models.py
-   
-   # Configure NGC API key (if not already set)
-   # Add to .env file: NGC_API_KEY=your_key_here
-   
-   # Test NIM integration
-   python test_nim_integration.py
-   
-   # Setup will automatically handle Docker containers
+   # From project root
+   startai.bat
+   ```
+   This launches all services and opens the browser automatically.
+
+5. **Stop Services**
+   ```bash
+   stopai.bat
    ```
 
-### **Launch Application**
+## Basic Usage
 
-**Easy Start** (Recommended):
-```bash
-# Start all services automatically
-startai.bat
+### Creating a Project
+1. Click "+" in the sidebar
+2. Name your project
+3. Add documents via drag-and-drop
+4. Start chatting with project context
+
+### Switching AI Models
+1. Click the "?" button in header
+2. Select desired model:
+   - **Qwen 2.5**: Default, best for general use
+   - **Mistral-Nemo**: Fast responses
+   - **DeepSeek Coder**: Code generation
+   - **Llama 70B**: Deep reasoning (solo mode)
+
+### Document Search
+1. Click search icon
+2. Select search scope (Chats/Knowledge/Documents)
+3. Enter query
+4. View results with relevance scores
+
+## Key Features
+
+- **100% Local**: No internet required after setup
+- **Multi-Model**: 4 different AI models for different tasks
+- **Smart Search**: Semantic understanding of documents
+- **Project Isolation**: Keep client data separate
+- **Resource Monitoring**: Real-time GPU/CPU/RAM usage
+- **Visual Context**: See what influences AI responses
+
+## Architecture Overview
+
+```
+Frontend (React + TypeScript)
+    ↓
+Backend (FastAPI + Python)  
+    ↓
+PostgreSQL + pgvector (Semantic Search)
+    ↓
+AI Services (Ollama + NVIDIA NIM)
 ```
 
-**Manual Start**:
-```bash
-# Backend
-cd backend
-..\venv_nemo\Scripts\activate
-uvicorn app.main:app --reload --port 8000
+## Documentation
 
-# Frontend (new terminal)
-cd frontend
-npm run dev
+- **Vision & Goals**: See [Scope.md](Scope.md)
+- **Technical Details**: See [Implementation.md](implementation.md)
+- **Development Log**: See [Devlog.md](Devlog.md)
+- **File Structure**: See [Project_Structure.md](Project_Structure.md)
 
-# Access application
-# http://localhost:3000
-```
+## Common Issues
 
-**Stop Services**:
-```bash
-# Stop all services cleanly
-stopai.bat
-```
+### GPU Not Detected
+- Ensure NVIDIA drivers are updated
+- Check Docker Desktop GPU support
+- Verify CUDA installation
 
-## 💻 Usage Guide
+### Services Won't Start
+- Check PostgreSQL is running
+- Verify Docker Desktop is running
+- Ensure ports 3000, 8000, 8081, 11434 are free
 
-### **Model Management**
-1. **Access System Panel**: Click the "❓" button in the top navigation
-2. **Switch Models**: Select desired model from the AI Models tab
-3. **Monitor Status**: View real-time memory usage and performance metrics
-4. **Load Models**: Pull new models or start/stop services as needed
+### Model Loading Fails
+- Check available VRAM (24GB recommended)
+- Try unloading other models first
+- Use smaller models if needed
 
-### **Project Workflow**
-1. **Create Project**: Click "Add Project" to create a new knowledge environment
-2. **Upload Documents**: Use the file manager to upload and process documents
-3. **Start Chat**: Create a new chat within your project
-4. **Select Model**: Choose the appropriate AI model for your task
-5. **Enhanced Conversations**: Benefit from project-specific context and document retrieval
+## Contributing
 
-### **Document Processing**
-- **Supported Formats**: PDF, DOCX, TXT, XLSX, and more
-- **NVIDIA NV-Ingest**: Multimodal extraction of text, tables, charts, and images
-- **Smart Model Loading**: 
-  - TXT/Code: Direct extraction (0GB VRAM)
-  - DOCX: Chart/table detection models (4-6GB VRAM)
-  - PDF: Full OCR + visual understanding (10-12GB VRAM)
-- **Automatic Processing**: Documents are intelligently chunked and indexed
-- **15x Faster**: NV-Ingest provides enterprise-grade extraction speed
-- **Semantic Search**: Advanced vector search across all document content
-- **Context Integration**: Documents automatically enhance chat conversations
+This is a private project, but if you have access:
+1. Create feature branch
+2. Make changes
+3. Test thoroughly
+4. Submit PR with clear description
 
-## 🛠️ Development
+## License
 
-### **Development Environment**
-- **Code Editing**: WSL2 Ubuntu environment for development
-- **Service Testing**: Cross-platform connectivity to Windows services
-- **Hot Reload**: Both frontend and backend support live code updates
-- **Debugging**: Comprehensive logging and error tracking
-
-### **Project Structure**
-```
-assistant/
-├── frontend/                 # React + TypeScript application
-│   ├── src/
-│   │   ├── components/      # UI components
-│   │   ├── services/        # API integration
-│   │   ├── store/          # Redux state management
-│   │   └── types/          # TypeScript definitions
-├── backend/                 # FastAPI application
-│   ├── app/
-│   │   ├── api/            # REST API endpoints
-│   │   ├── core/           # Core services (NIM, Ollama, etc.)
-│   │   ├── db/             # Database models and repositories
-│   │   ├── services/       # Business logic services
-│   │   └── schemas/        # Pydantic models
-├── docker-compose.yml      # NVIDIA NIM container configuration
-├── startai.bat            # Automated startup script
-└── stopai.bat             # Automated shutdown script
-```
-
-### **API Endpoints**
-```
-# Project Management
-GET    /api/projects              # List all projects
-POST   /api/projects              # Create new project
-GET    /api/projects/{id}         # Get project details
-PUT    /api/projects/{id}         # Update project
-DELETE /api/projects/{id}         # Delete project
-
-# Chat Operations
-GET    /api/chats/project/{id}    # Get project chats
-POST   /api/chats                 # Create new chat
-POST   /api/chats/{id}/generate   # Generate AI response
-
-# File Management
-POST   /api/files/upload          # Upload document
-GET    /api/files/project/{id}    # Get project files
-POST   /api/files/search          # Semantic search
-
-# System Control
-GET    /api/system/status         # Get system health
-POST   /api/system/models/load    # Load AI model
-POST   /api/system/models/switch  # Switch active model
-```
-
-## ⚡ Performance Optimization
-
-### **Memory Management (RTX 4090 - 24GB VRAM)**
-- **Conservative Mode**: 1 model + embeddings (6-9GB used)
-- **Balanced Mode**: 2 models + embeddings (13-16GB used)
-- **Maximum Mode**: 70B model + embeddings (19GB used)
-- **Automatic Management**: Dynamic loading/unloading based on usage
-
-### **Hardware Utilization**
-- **GPU Acceleration**: All models utilize CUDA cores and Tensor cores
-- **TensorRT Optimization**: NVIDIA NIM models are TensorRT-optimized
-- **Memory Efficiency**: 4-bit quantization for larger models
-- **Parallel Processing**: Concurrent embedding and inference operations
-
-## 🔧 Configuration
-
-### **Environment Variables**
-```bash
-# Ollama Configuration
-OLLAMA_HOST=0.0.0.0:11434
-OLLAMA_MODELS=C:\Users\{username}\.ollama\models
-
-# NVIDIA NIM Configuration  
-NGC_API_KEY=your_ngc_api_key_here
-
-# Database Configuration
-DATABASE_URL=postgresql://user:pass@localhost:5432/ai_assistant
-```
-
-### **Model Configuration**
-Models are automatically configured but can be customized:
-- **Ollama Models**: Pull via `ollama pull <model-name>`
-- **NIM Containers**: Configure in `docker-compose.yml`
-- **Memory Limits**: Adjust container resource limits as needed
-
-## 🆘 Troubleshooting
-
-### **Common Issues**
-
-**Service Connection Issues**:
-```bash
-# Check service status
-docker ps                    # NIM containers
-ollama list                  # Ollama models  
-pg_ctl status               # PostgreSQL
-
-# Restart services
-startai.bat                 # Restart all services
-```
-
-**Model Loading Issues**:
-- Ensure sufficient VRAM available
-- Check NVIDIA drivers are updated
-- Verify NGC API key for NIM containers
-
-**Performance Issues**:
-- Monitor GPU memory usage in System Panel
-- Switch to smaller models if experiencing memory pressure
-- Ensure adequate cooling for sustained workloads
-
-### **Getting Help**
-- **System Health**: Use the built-in system monitoring panel
-- **Logs**: Check console outputs in service windows
-- **Documentation**: Refer to implementation.md for technical details
-
-## ⚠️ Known Issues
-
-### **Redux/Navigation State Synchronization**
-- **Issue**: Occasional crashes when rapidly navigating between chats
-- **Symptoms**: "Cannot read properties of undefined" errors
-- **Workaround**: Refresh the page if you encounter this error
-- **Status**: Mitigated but requires architectural refactoring for complete fix
-- **Details**: See implementation.md for technical details
-
-## 📋 System Requirements
-
-### **Minimum Requirements**
-- **GPU**: NVIDIA RTX 3080 (10GB VRAM)
-- **RAM**: 32GB system memory
-- **Storage**: 500GB available space
-- **OS**: Windows 10/11 with WSL2
-- **Docker**: Docker Desktop with WSL2 backend
-- **NIM Container**: nvidia/nv-embedqa-e5-v5 running on port 8081
-
-### **Recommended Requirements**
-- **GPU**: NVIDIA RTX 4090 (24GB VRAM)
-- **RAM**: 64GB system memory
-- **Storage**: 1TB NVMe SSD
-- **OS**: Windows 11 with WSL2
-- **CPU**: AMD Ryzen 7800X3D or Intel i7-13700K
-
-## 🎉 What's New
-
-### **Latest Updates**
-- ✅ **Complete Ollama Integration**: Full HTTP API support with model management
-- ✅ **Unified LLM Service**: Single interface for all AI model backends
-- ✅ **Automated Service Management**: One-click startup/shutdown scripts
-- ✅ **Cross-Platform Development**: WSL2 development with Windows production
-- ✅ **Real-time Model Monitoring**: Live status and performance tracking
-- ✅ **Enhanced Chat Deletion**: Fixed chat management in project interface
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our contributing guidelines and submit pull requests for any improvements.
+Private project - all rights reserved.
 
 ---
 
-**Built with ❤️ for privacy-conscious users who demand both performance and control over their AI assistance.**
+For detailed technical information, consult the documentation files in the repository.

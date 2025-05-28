@@ -33,11 +33,28 @@ class NIMEmbeddingService:
             if isinstance(texts, str):
                 texts = [texts]
             
+            # Filter out empty texts and log them
+            valid_texts = []
+            for i, text in enumerate(texts):
+                if text and text.strip():
+                    valid_texts.append(text)
+                else:
+                    logger.warning(f"Skipping empty text at index {i}")
+            
+            if not valid_texts:
+                raise ValueError("No valid texts to embed after filtering")
+            
+            # Log the first 100 chars of each text for debugging
+            for i, text in enumerate(valid_texts[:3]):  # Only log first 3
+                logger.debug(f"Text {i} preview: {text[:100]}...")
+            
             payload = {
-                "input": texts,
+                "input": valid_texts,
                 "model": "nvidia/nv-embedqa-e5-v5",
                 "input_type": "passage"  # Use passage for document chunks
             }
+            
+            logger.debug(f"Sending {len(valid_texts)} texts to NIM for embedding")
             
             response = await self.client.post(
                 f"{self.base_url}/v1/embeddings",
@@ -48,9 +65,12 @@ class NIMEmbeddingService:
             result = response.json()
             embeddings = [item["embedding"] for item in result["data"]]
             
-            logger.info(f"Generated embeddings for {len(texts)} texts (dimension: {len(embeddings[0]) if embeddings else 0})")
+            logger.info(f"Generated embeddings for {len(valid_texts)} texts (dimension: {len(embeddings[0]) if embeddings else 0})")
             return embeddings
             
+        except httpx.HTTPStatusError as e:
+            logger.error(f"NIM API error: {e.response.status_code} - {e.response.text}")
+            raise
         except Exception as e:
             logger.error(f"Failed to generate embeddings: {e}")
             raise

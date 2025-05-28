@@ -1,694 +1,489 @@
-# AI Assistant: Multi-Model Production Implementation
+# AI Assistant: Implementation Plan & Technical Architecture
 
-## Project Status: ✅ PRODUCTION READY
+## Implementation Status Overview
 
-The AI Assistant is fully operational with a complete multi-model architecture, providing enterprise-grade AI capabilities with full local control and privacy. Document context retrieval is now fully implemented.
+| Component | Status | Progress |
+|-----------|--------|----------|
+| Frontend (React) | ✅ Complete | 100% |
+| Backend (FastAPI) | ✅ Complete | 100% |
+| Database (PostgreSQL) | ✅ Complete | 100% |
+| AI Models | ✅ Complete | 100% |
+| Document Processing | ✅ Working | 85% |
+| Vector Search | ✅ Complete | 100% |
+| System Monitoring | ✅ Complete | 100% |
+| Context Controls | ⚠️ Frontend Only | 60% |
 
-## Architecture Overview
+## Current Implementation
 
-### Core Philosophy
-* **100% Local Processing**: Complete privacy and data ownership with no cloud dependencies
-* **Multi-Model Flexibility**: Unified interface supporting 4 production AI models + embeddings
-* **Project-Centered Organization**: Intuitive knowledge management matching real-world workflows
-* **Hardware Optimization**: Full RTX 4090 utilization with intelligent memory management
-* **Cross-Platform Development**: WSL2 development environment with Windows production deployment
-
-### Technology Stack
-
-#### Frontend (React + TypeScript)
+### Architecture Overview
 ```
-├── React 18 with Vite build system
-├── Redux Toolkit for state management
-├── Tailwind CSS for responsive design
-├── TypeScript for type safety
-└── Real-time model status monitoring
-```
-
-#### Backend (FastAPI + Python)
-```
-├── FastAPI with async/await support
-├── SQLAlchemy ORM with PostgreSQL
-├── pgvector for semantic search
-├── Unified LLM service routing
-└── Multi-model API integration
-```
-
-#### AI Model Infrastructure
-```
-├── NVIDIA NIM Containers (TensorRT optimized)
-│   ├── Llama 3.1 70B (Solo Mode - Deep reasoning)
-│   └── NV-EmbedQA-E5-V5 (REQUIRED - 1024-dim embeddings)
-├── Ollama Service (local models)
-│   ├── Qwen 2.5 32B (Default - Full document support)
-│   ├── Mistral-Nemo 12B (Quick responses)
-│   └── DeepSeek Coder V2 16B (Self-aware coding)
-└── Document Processing
-    ├── NVIDIA NV-Ingest (multimodal extraction)
-    ├── Smart model loading by file type
-    ├── Auto-detect chunking (3000 char default)
-    ├── Multi-level chunks for business docs
-    └── NIM embeddings (no fallback)
+┌─────────────────────────────────────────────────────────┐
+│                   Frontend (React)                       │
+│  - TypeScript + Vite    - Redux State Management        │
+│  - Tailwind CSS         - Real-time Updates            │
+└────────────────────────┬────────────────────────────────┘
+                         │ HTTP/WebSocket
+┌────────────────────────┴────────────────────────────────┐
+│                   Backend (FastAPI)                      │
+│  - Async Python         - Unified LLM Service           │
+│  - SQLAlchemy ORM       - Document Processing           │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│                    Data Layer                            │
+├─────────────────┬──────────────┬────────────────────────┤
+│ PostgreSQL      │ File Storage │ Docker Services        │
+│ + pgvector      │ (Local FS)   │ - NIM Containers      │
+│ (1024 dims)     │              │ - Ollama Service      │
+└─────────────────┴──────────────┴────────────────────────┘
 ```
 
-## Multi-Model Architecture
+### Technology Choices & Rationale
 
-### Unified LLM Service
-The system implements a sophisticated routing layer that provides a single interface for all AI models:
+#### Frontend Stack
+**Choice**: React + TypeScript + Vite
+- **Why**: Modern, fast development with hot reload
+- **Alternatives Considered**: 
+  - Vue.js (less ecosystem)
+  - Angular (too heavy)
+  - Vanilla JS (too much boilerplate)
+- **Trade-offs**: Requires Node.js toolchain
 
+#### Backend Framework  
+**Choice**: FastAPI
+- **Why**: Native async, automatic API docs, Python ecosystem
+- **Alternatives Considered**:
+  - Django (too monolithic)
+  - Flask (less modern)
+  - Node.js (less AI library support)
+- **Trade-offs**: Python GIL limitations
+
+#### Database
+**Choice**: PostgreSQL + pgvector
+- **Why**: Production-grade, native vector support
+- **Alternatives Considered**:
+  - Chroma (less mature)
+  - Weaviate (requires separate service)
+  - Pinecone (cloud-only)
+- **Trade-offs**: Requires extension installation
+
+#### AI Model Hosting
+**Choice**: Hybrid (Ollama + NVIDIA NIM)
+- **Why**: Best of both worlds - flexibility + performance
+- **Alternatives Considered**:
+  - Pure Ollama (no TensorRT optimization)
+  - Pure NIM (less model variety)
+  - Transformers (higher complexity)
+- **Trade-offs**: Multiple services to manage
+
+## Document Processing Implementation
+
+### Current Approach (Simple & Working)
 ```python
-class UnifiedLLMService:
-    async def generate_chat_response(
-        self,
-        messages: List[Dict[str, str]],
-        model_name: Optional[str] = None,
-        model_type: Optional[str] = None,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None
-    ) -> str:
-        # Routes to appropriate service based on model type
-        # Handles NVIDIA NIM, Ollama, Transformers, and NeMo
+# Text extraction using proven libraries
+- PyPDF2: PDF text extraction
+- python-docx: Word document processing  
+- pandas: Spreadsheet handling
+- Direct file reading: Plain text
+
+# Chunking strategy
+- Default: 3000 chars (3x original plan)
+- Business docs: Multi-level (3000 + 8000)
+- Overlap: 500 chars for context continuity
 ```
 
-### Model Selection Strategy
+### Why This Approach
+1. **Simplicity**: Well-documented, mature libraries
+2. **Reliability**: Proven in production environments
+3. **Performance**: No additional GPU overhead
+4. **Maintainability**: Easy to debug and extend
 
-#### Production Models with Clear Purpose
-1. **Qwen 2.5 32B (Q4_K_M)** - Default Primary Model (19GB VRAM)
-   - Full document and RAG support (runs with embeddings)
-   - Advanced reasoning and analysis capabilities
-   - Best for general questions and document interaction
-   - 32k context window for comprehensive understanding
+### Alternatives Considered
 
-2. **Llama 3.1 70B (NIM)** - Solo Mode Deep Reasoning (22GB VRAM)
-   - Runs alone - automatically unloads ALL other models
-   - Maximum VRAM allocation for complex reasoning
-   - TensorRT optimized for best performance
-   - Use when deep analysis is needed without distractions
+#### 1. NVIDIA NV-Ingest (Advanced Multimodal)
+**Pros**:
+- Extract tables, charts, images
+- Preserve document structure
+- State-of-the-art accuracy
 
-3. **Mistral-Nemo 12B (Latest)** - Quick Responses (7GB VRAM)
-   - Fast responses when speed is priority
-   - Runs with embeddings for document support
-   - 128k context window for efficiency
-   - Ideal for quick drafts and simple queries
+**Cons**:
+- Complex Docker orchestration
+- 10-15GB additional VRAM
+- Poor documentation
+- Significant complexity increase
 
-4. **DeepSeek Coder V2 16B (Q4_K_M)** - Self-Aware Coding (9GB VRAM)
-   - Specialized for code generation and analysis
-   - Runs with embeddings for code documentation
-   - Optimized for programming tasks
-   - Use in self-aware mode for coding
+**Decision**: Deferred to future enhancement
 
-5. **NVIDIA NV-EmbedQA-E5-V5** - Always-On Embeddings (2GB VRAM)
-   - Active with all models EXCEPT Llama 70B solo mode
-   - Enterprise-grade semantic search
-   - Real-time document processing and RAG
-   - Critical for knowledge retrieval
+#### 2. LlamaIndex Document Processing
+**Pros**:
+- Sophisticated chunking
+- Built-in document understanding
+- Good community support
 
-### Memory Management Strategy
-The system intelligently manages RTX 4090's 24GB VRAM based on model selection:
+**Cons**:
+- Heavy dependency
+- Opinionated architecture
+- Performance overhead
 
-- **Qwen Mode (Default)**: Qwen 32B + embeddings (21GB used)
-- **Quick Mode**: Mistral-Nemo + embeddings (9GB used)
-- **Coding Mode**: DeepSeek + embeddings (11GB used)
-- **Solo Mode**: Llama 70B alone (22GB used, embeddings unloaded)
-- **System Reserve**: 1GB for stability
+**Decision**: Too restrictive for our needs
 
-#### Automatic Model Switching
-- When switching to Llama 70B: All models unloaded first
-- When switching from Llama 70B: Embeddings reloaded automatically
-- Smart unloading based on last-used timestamps
-- Protection for embeddings model (except in solo mode)
+#### 3. Unstructured.io
+**Pros**:
+- Handles many formats
+- Good accuracy
+- Active development
 
-## Service Architecture
+**Cons**:
+- Large dependency footprint
+- Slower processing
+- Memory intensive
 
-### Windows Production Environment
+**Decision**: Overkill for current needs
+
+### Upgrade Path for Document Processing
+
+#### Phase 1: Enhanced Text Extraction (Next)
+- [ ] Add OCR for scanned PDFs (pytesseract)
+- [ ] Extract table structure (tabula-py)
+- [ ] Preserve heading hierarchy
+- [ ] Extract metadata (author, date, etc.)
+
+#### Phase 2: Structured Understanding
+- [ ] Implement semantic chunking
+- [ ] Add document type detection
+- [ ] Create specialized processors per type
+- [ ] Enhance chunk metadata
+
+#### Phase 3: Multimodal Integration (Future)
+- [ ] Integrate NV-Ingest for visual elements
+- [ ] Add chart data extraction
+- [ ] Implement layout understanding
+- [ ] Enable image text extraction
+
+## Embedding & Vector Search
+
+### Current Implementation
+```python
+# NVIDIA NIM Embeddings (Required)
+Model: nvidia/nv-embedqa-e5-v5
+Dimensions: 1024
+Endpoint: http://localhost:8081
+Input Types: "query" | "passage"
+
+# pgvector Configuration
+CREATE EXTENSION vector;
+ALTER TABLE document_chunks 
+ADD COLUMN embedding vector(1024);
+
+# Similarity Search
+SELECT content, 
+       1 - (embedding <=> query_embedding) as similarity
+FROM document_chunks
+WHERE 1 - (embedding <=> query_embedding) > 0.01
+ORDER BY similarity DESC
+LIMIT 5;
 ```
-Windows 11 Host
-├── Docker Desktop (WSL2 Backend)
-│   ├── nim-embeddings:8001 → NVIDIA NV-EmbedQA-E5-V5
-│   └── nim-generation-70b:8000 → Llama 3.1 70B (TensorRT)
-├── Ollama Service:11434
-│   ├── qwen2.5:32b-instruct-q4_K_M (Default)
-│   ├── mistral-nemo:latest (Quick)
-│   └── deepseek-coder-v2:16b-lite-instruct-q4_K_M (Coding)
-├── PostgreSQL:5432 (Document storage + pgvector)
-├── FastAPI Backend:8000 (Unified LLM routing)
-└── React Frontend:3000 (Model management interface)
+
+### Why NIM Embeddings
+1. **Quality**: State-of-the-art retrieval performance
+2. **Speed**: TensorRT optimized inference
+3. **Integration**: Native NVIDIA ecosystem
+4. **Dimensions**: 1024 provides optimal quality/size
+
+### Alternatives Considered
+
+#### 1. Sentence-Transformers (Original Plan)
+**Pros**: Easy to use, good quality, CPU support
+**Cons**: Slower, smaller dimensions (384-768)
+**Decision**: Upgraded to NIM for better quality
+
+#### 2. OpenAI Embeddings
+**Pros**: Excellent quality, well-documented
+**Cons**: Cloud dependency, privacy concerns, cost
+**Decision**: Violates local-only principle
+
+#### 3. Custom Trained Embeddings
+**Pros**: Domain-specific optimization
+**Cons**: Requires training data, expertise, time
+**Decision**: Unnecessary complexity
+
+## AI Model Architecture
+
+### Current Multi-Model Setup
+
+#### 1. Primary Models (Ollama)
+```yaml
+Qwen 2.5 32B:
+  Role: Default assistant
+  VRAM: 19GB
+  Features: Full RAG support
+
+Mistral-Nemo 12B:
+  Role: Quick responses
+  VRAM: 7GB
+  Features: Fast inference
+
+DeepSeek Coder V2 16B:
+  Role: Code generation
+  VRAM: 9GB
+  Features: Code understanding
 ```
 
-### WSL2 Development Environment
+#### 2. Advanced Models (NVIDIA NIM)
+```yaml
+Llama 3.1 70B:
+  Role: Deep reasoning
+  VRAM: 22GB (exclusive)
+  Features: Solo mode, no RAG
+
+NV-EmbedQA-E5-V5:
+  Role: Embeddings
+  VRAM: 1.2GB
+  Features: Always running
 ```
-Ubuntu 22.04 in WSL2
-├── Code editing and testing
-├── Cross-platform networking to Windows services
-├── Git version control and collaboration
-└── Development tool integration
-```
 
-## Core Features Implementation
+### Model Orchestration Strategy
+1. **Intelligent Routing**: Based on query type
+2. **Dynamic Loading**: Load/unload as needed
+3. **VRAM Management**: Stay within 24GB limit
+4. **Fallback Logic**: Graceful degradation
 
-### Project-Centered Containment ✅
-Projects act as self-contained knowledge environments:
+### Future Model Considerations
+- **Llama 3.2 Vision**: For image understanding
+- **Mixtral 8x7B**: For balanced performance
+- **Custom Fine-tunes**: For specialized domains
 
+## Context Management
+
+### Current Implementation (Frontend Only)
 ```typescript
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  chats: Chat[];
-  documents: Document[];
-  settings: ProjectSettings;
-}
+// Context modes in UI
+- Self-Aware: Can read codebase
+- Standard: Basic chat
+- Business: Enhanced reasoning
+- Custom: User-defined
+
+// Visual indicators
+- Yellow context badge
+- Mode selection modal
+- Per-chat persistence
 ```
 
-**Implementation Status:**
-- ✅ Database models with proper relationships
-- ✅ File-project linking with persistence
-- ✅ Project-specific chats and navigation
-- ✅ UI components for project management
-- ⚠️ Context isolation not enforced in backend
+### Missing Backend Implementation
+The context controls exist in UI but don't affect backend behavior. Need to:
 
-### Unified Search System ✅
-Comprehensive search across all knowledge domains:
+1. [ ] Pass context settings in API calls
+2. [ ] Implement context-aware retrieval
+3. [ ] Add prompt modification based on mode
+4. [ ] Create context filtering logic
 
-- ✅ **Multi-Domain Search**: Chats, Knowledge Base, Documents
-- ✅ **Relevance Scoring**: 0-100% probability scores
-- ✅ **Context Expansion**: Expandable result snippets
-- ✅ **Project Awareness**: Context-sensitive results
-- ✅ **Universal Search Modal**: Accessible from sidebar
-
-### Real-time Model Management ✅
-Dynamic model loading and switching:
-
+### Planned Implementation
 ```python
-# Model switching with automatic container management
-await llm_service.set_active_model(
-    model_name="mistral-nemo:12b-instruct-2407-q4_0",
-    model_type="ollama"
-)
+class ContextManager:
+    def build_context(self, mode: str, settings: dict):
+        context = []
+        
+        if settings.get("system_prompt"):
+            context.append(self.get_system_prompt())
+            
+        if settings.get("project_docs"):
+            context.extend(self.get_relevant_docs())
+            
+        if mode == "self_aware":
+            context.extend(self.get_codebase_context())
+            
+        return self.optimize_context(context)
 ```
 
-**Implemented Features:**
-- ✅ Live status monitoring with WebSocket updates
-- ✅ Automatic VRAM management (24GB limit)
-- ✅ Health checks and failover
-- ✅ Performance metrics and response times
-- ✅ Solo mode for Llama 70B
-- ✅ Model orchestrator with LRU unloading
+## System Monitoring
 
-## Database Schema
-
-### Core Entities
-```sql
--- Projects: Self-contained knowledge environments
-CREATE TABLE projects (
-    id UUID PRIMARY KEY,
-    name VARCHAR NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Documents: Files with vector embeddings
-CREATE TABLE documents (
-    id UUID PRIMARY KEY,
-    filename VARCHAR NOT NULL,
-    filepath VARCHAR NOT NULL,
-    project_id UUID REFERENCES projects(id),
-    is_processed BOOLEAN DEFAULT FALSE,
-    embeddings VECTOR(1024) -- pgvector for semantic search
-);
-
--- Chats: Project-specific conversations
-CREATE TABLE chats (
-    id UUID PRIMARY KEY,
-    name VARCHAR NOT NULL,
-    project_id UUID REFERENCES projects(id),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Messages: Chat conversation history
-CREATE TABLE messages (
-    id UUID PRIMARY KEY,
-    chat_id UUID REFERENCES chats(id),
-    content TEXT NOT NULL,
-    is_user BOOLEAN NOT NULL,
-    model_used VARCHAR,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-## API Architecture
-
-### RESTful Endpoints
-```
-GET    /api/projects              # List projects
-POST   /api/projects              # Create project
-GET    /api/projects/{id}         # Get project details
-PUT    /api/projects/{id}         # Update project
-DELETE /api/projects/{id}         # Delete project
-
-GET    /api/chats/project/{id}    # Get project chats
-POST   /api/chats                 # Create chat
-POST   /api/chats/{id}/generate   # Generate AI response
-
-POST   /api/files/upload          # Upload document
-GET    /api/files/project/{id}    # Get project files
-POST   /api/files/search          # Semantic search
-
-GET    /api/system/status         # System health
-POST   /api/system/models/load    # Load AI model
-POST   /api/system/models/switch  # Switch active model
-```
-
-### Model Integration API
+### Current Implementation
 ```python
-# Unified chat completion interface
-POST /api/chats/{chat_id}/generate
-{
-    "message": "User query",
-    "model_name": "mistral-nemo:12b-instruct-2407-q4_0",
-    "model_type": "ollama",
-    "temperature": 0.7,
-    "max_length": 150,
-    "include_context": true
-}
+# Resource monitoring (10-second polling)
+GET /api/system/resources
+- CPU usage & model
+- RAM usage & speed  
+- GPU utilization
+- Storage metrics
+
+# Model status
+GET /api/models/status/quick
+- Active models
+- VRAM usage
+- Performance metrics
 ```
 
-## Service Management ✅
+### Monitoring Architecture
+1. **Frontend**: ResourceMonitor component
+2. **Backend**: Cross-platform hardware detection
+3. **Logging**: Filtered to separate file
+4. **Display**: Real-time gauges and metrics
 
-### Automated Startup (startai.bat) ✅
-Complete service orchestration in proper sequence:
-1. ✅ Docker Desktop verification/startup
-2. ✅ PostgreSQL database service
-3. ✅ NVIDIA NIM container deployment
-4. ✅ Ollama service with network binding
-5. ✅ FastAPI backend with virtual environment
-6. ✅ React frontend development server
-7. ✅ Automatic browser launch
+### Enhanced Backend Console Logging
+Implemented user-friendly console logging with timestamps and action names in `backend/run_server.py`:
 
-### Graceful Shutdown (stopai.bat) ✅
-Clean service termination preserving data integrity:
-1. ✅ NIM container shutdown
-2. ✅ Ollama service termination
-3. ✅ Frontend process cleanup
-4. ✅ Backend process termination
-5. ✅ Database and Docker preservation
+#### Features
+1. **Human-Readable Actions**: Converts API endpoints to friendly names
+   - `POST /api/files/upload` → "Upload Document"
+   - `POST /api/chats/*/generate` → "Chat Message"
+   - `GET /api/projects` → "List Projects"
 
-## Development Workflow
+2. **Color-Coded Status**: Visual feedback based on HTTP status
+   - 🟢 **GREEN**: Success (200, 201)
+   - 🔵 **CYAN**: Redirects (301, 302, 304, 307)
+   - 🟡 **YELLOW**: Client errors (400, 401, 403, 404)
+   - 🔴 **RED**: Server errors (500, 502, 503)
 
-### Cross-Platform Development
-- **Code Editing**: WSL2 Ubuntu environment with full Linux toolchain
-- **Service Testing**: Direct connection to Windows services via network
-- **Version Control**: Git integration with proper line ending handling
-- **Debugging**: Cross-platform debugging with service isolation
+3. **Structured Format**:
+   ```
+   [timestamp] icon action | method path | status
+   [2025-05-27 11:50:23] ✓ List Projects | GET /api/projects | 200 OK
+   ```
 
-### Service Integration Testing
+4. **Resource Filtering**: System resource endpoints auto-filtered to reduce noise
+
+#### Implementation
 ```python
-# Automated service health verification
-async def verify_system_health():
-    services = {
-        "ollama": await ollama_service.health_check(),
-        "nim_embeddings": await nim_service.health_check_embeddings(),
-        "nim_generation": await nim_service.health_check_generation(),
-        "postgres": await db_service.health_check(),
-        "fastapi": await api_service.health_check()
-    }
-    return all(services.values())
+class EnhancedAccessFormatter(logging.Formatter):
+    # ANSI color codes
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    CYAN = '\033[96m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    
+    def format(self, record):
+        # Parse uvicorn log format
+        # Apply color based on status
+        # Return formatted message
 ```
+
+## Service Management
+
+### Current Setup
+```batch
+# Start all services
+startai.bat
+- PostgreSQL check/start
+- Docker containers
+- Ollama service
+- Backend server
+- Frontend dev server
+
+# Stop all services  
+stopai.bat
+- Graceful shutdown
+- Preserve data
+- Clean process termination
+```
+
+### Service Dependencies
+```
+PostgreSQL (5432)
+    ↓
+NIM Containers (8081)
+    ↓
+Ollama Service (11434)
+    ↓
+Backend API (8000)
+    ↓
+Frontend (3000)
+```
+
+## Testing Strategy
+
+### Current Test Coverage
+- Unit tests: ❌ Not implemented
+- Integration tests: ⚠️ Manual only
+- E2E tests: ❌ Not implemented
+- System tests: ✅ Basic scripts
+
+### Planned Testing Implementation
+1. [ ] Jest for frontend unit tests
+2. [ ] Pytest for backend tests
+3. [ ] Playwright for E2E tests
+4. [ ] Load testing with Locust
+
+## Deployment Architecture
+
+### Current: Development Mode
+- Frontend: Vite dev server
+- Backend: Uvicorn with reload
+- Services: Manual startup
+
+### Production Deployment Plan
+1. [ ] Frontend: Static build with nginx
+2. [ ] Backend: Gunicorn with workers
+3. [ ] Services: Systemd management
+4. [ ] Monitoring: Prometheus + Grafana
+
+## Security Considerations
+
+### Current Security
+- Local-only by design
+- No authentication (single user)
+- File system permissions
+- Docker isolation
+
+### Future Security Enhancements
+1. [ ] Optional authentication
+2. [ ] API key management
+3. [ ] Encrypted storage
+4. [ ] Audit logging
 
 ## Performance Optimization
 
-### Hardware Utilization
-- **GPU Memory**: Dynamic allocation based on active models
-- **CUDA Cores**: Parallel processing for embeddings and inference
-- **System RAM**: Intelligent caching for frequently accessed documents
-- **Storage**: SSD optimization for document indexing and retrieval
+### Current Optimizations
+- Async Python backends
+- React memo/callbacks
+- Database indexing
+- Model quantization
 
-### Network Optimization
-- **Local Services**: All communication via localhost for minimum latency
-- **Service Binding**: Proper interface binding for WSL/Windows communication
-- **Connection Pooling**: Persistent connections for database and AI services
-- **Async Processing**: Non-blocking I/O for concurrent request handling
+### Planned Optimizations
+1. [ ] Redis caching layer
+2. [ ] CDN for static assets
+3. [ ] Database query optimization
+4. [ ] Model batching
 
-## Security and Privacy
+## Technical Debt & Cleanup
 
-### Data Protection
-- **100% Local Processing**: No external API calls or data transmission
-- **Encrypted Storage**: Database encryption for sensitive documents
-- **Access Control**: Project-based permission system
-- **Audit Logging**: Complete activity tracking for compliance
+See `Cleanup_Opportunities.md` for detailed analysis of:
+- Test scripts consolidation
+- One-time setup scripts
+- Duplicate "cleaned" files
+- Deprecated code removal
 
-### Model Security
-- **Local Models**: All AI models run locally without external dependencies
-- **Container Isolation**: Docker containers provide service isolation
-- **Resource Limits**: Controlled resource allocation preventing system exhaustion
-- **Safe Defaults**: Conservative configuration with security-first approach
+## Upgrade Roadmap
 
-## Embedding & Document Processing 🚧
+### Immediate (This Quarter)
+1. [ ] Complete context backend
+2. [ ] Add unit test coverage
+3. [ ] Clean up technical debt
+4. [ ] Document API fully
 
-### NVIDIA NV-Ingest Integration (In Progress)
-Advanced multimodal document extraction using NVIDIA's NV-Ingest (NeMo Retriever):
+### Short Term (6 Months)
+1. [ ] NV-Ingest evaluation
+2. [ ] Production deployment
+3. [ ] Performance optimization
+4. [ ] Security enhancements
 
-```yaml
-# NV-Ingest Microservices
-Document Processing Models:
-  - nv-yolox-structured-image: Chart/table detection (1-2GB VRAM)
-  - PaddleOCR: Text extraction from images (2-3GB VRAM)
-  - DePlot: Chart data extraction (2-4GB VRAM)
-  - C-RADIO: Visual feature extraction (2-3GB VRAM)
+### Long Term (1 Year)
+1. [ ] Multi-user support
+2. [ ] Plugin architecture
+3. [ ] Mobile interface
+4. [ ] Cloud sync option
 
-Smart Loading Strategy:
-  - TXT/Code: Direct extraction (0GB VRAM, 0s load time)
-  - DOCX: YOLOX + DePlot (4-6GB VRAM, 8-10s load time)
-  - PDF: Full suite (10-12GB VRAM, 15-20s load time)
-  - XLSX: DePlot only (2-3GB VRAM, 5s load time)
+## Decision Log
 
-Processing Features:
-  - 15x faster than traditional extraction
-  - Multimodal: text, tables, charts, images
-  - Structured JSON output with spatial layout
-  - Progressive model loading based on content
-```
+Major technical decisions and rationale:
 
-### NVIDIA NIM Embeddings (REQUIRED)
-The system exclusively uses NVIDIA NIM embeddings - no fallback:
+1. **pgvector over dedicated vector DB**: Simplicity and integration
+2. **NIM embeddings required**: Quality over flexibility
+3. **Simple text extraction**: Reliability over features
+4. **Multiple model backends**: Flexibility over simplicity
+5. **React over Vue**: Ecosystem and talent pool
+6. **FastAPI over Django**: Modern async capabilities
+7. **Local-only design**: Privacy over convenience
 
-```python
-# NIM Configuration
-- Model: nvidia/nv-embedqa-e5-v5
-- Dimensions: 1024 (increased from 768)
-- Port: 8081 (Docker container)
-- Input types: "query" for search, "passage" for documents
-```
-
-### Enhanced Document Chunking
-Intelligent auto-detect chunking based on document type:
-
-```python
-CHUNK_CONFIGS = {
-    "business": {
-        "detect_keywords": ["strategy", "plan", "proposal", "report"],
-        "chunks": [
-            {"size": 3000, "overlap": 500},   # Standard chunks
-            {"size": 8000, "overlap": 1500}   # Large context chunks
-        ]
-    },
-    "technical": {
-        "detect_keywords": ["api", "specification", "documentation"],
-        "chunks": [
-            {"size": 3000, "overlap": 500},   # Standard chunks
-            {"size": 5000, "overlap": 1000}   # Technical chunks
-        ]
-    },
-    "default": {
-        "chunks": [{"size": 3000, "overlap": 500}]  # 3x larger than before
-    }
-}
-```
-
-### Integration Points
-- **Vector Store**: Uses pgvector with 1024 dimensions
-- **Document Processing**: Auto-detects type and creates appropriate chunks
-- **Chat Context**: Low similarity threshold (0.01) for NIM normalization
-- **Performance**: <5ms query embedding, <100ms document embedding
-
-## System Resource Monitoring
-
-### Real-Time Hardware Monitoring ✅
-The system includes comprehensive hardware monitoring integrated into the UI header:
-
-#### Frontend Components
-```typescript
-// ResourceMonitor.tsx - Main monitoring component
-- Polls system resources every 10 seconds
-- Displays GPU, CPU, RAM, and storage metrics
-- Brand-aware color coding (Intel blue, AMD orange)
-- Responsive layout with horizontal gauges
-
-// HorizontalGauge.tsx - Reusable gauge component
-- Customizable colors and labels
-- Percentage-based visualization
-- Smooth animations on value changes
-```
-
-#### Backend API Endpoints
-```python
-GET /api/system/resources
-# Returns real-time hardware statistics
-{
-    "cpu": {
-        "usage": 45.2,
-        "brand": "AMD",
-        "model": "AMD Ryzen 7 7800X3D"
-    },
-    "ram": {
-        "used_gb": 24.5,
-        "total_gb": 64,
-        "speed": "5600 MHz"
-    },
-    "disk": {
-        "used_gb": 812.3,
-        "total_gb": 2000.0,
-        "type": "M.2",
-        "model": "Samsung 990 PRO"
-    }
-}
-
-GET /api/models/status/quick
-# Returns GPU and model status
-{
-    "system": {
-        "gpu_utilization": 76,
-        "gpu_name": "NVIDIA GeForce RTX 4090",
-        "total_vram_gb": 24.0,
-        "used_vram_gb": 15.2
-    }
-}
-```
-
-#### Hardware Detection Implementation
-```python
-# Cross-platform hardware detection
-- Windows: Uses WMI (Windows Management Instrumentation)
-- Linux: Uses /proc filesystem and lshw
-- GPU: NVIDIA GPUtil library
-- CPU: psutil with platform-specific enhancements
-```
-
-#### Logging Infrastructure
-```python
-# Resource monitoring logs filtered from console
-- ResourceEndpointFilter in logging_filter.py
-- Logs written to backend/logs/resource_monitoring.log
-- RotatingFileHandler with 10MB max, 3 backups
-- Prevents console spam while maintaining debug info
-```
-
-### Visual Design Features
-- **GPU Gauge**: Circular gauge with percentage display
-- **VRAM Display**: Decimal precision (e.g., "15.2/24.0 GB")
-- **CPU Bar**: Horizontal gauge with brand coloring
-- **RAM Bar**: Purple horizontal gauge with whole numbers
-- **Storage Bar**: White horizontal gauge with drive type
-
-## Monitoring and Maintenance
-
-### System Health Monitoring
-- **Real-time Metrics**: Live GPU, memory, and service status tracking
-- **Automated Alerts**: Service failure detection and recovery
-- **Performance Analytics**: Usage patterns and optimization recommendations
-- **Resource Planning**: Capacity monitoring and scaling recommendations
-
-### Maintenance Procedures
-- **Database Optimization**: Regular index maintenance and cleanup
-- **Model Updates**: Streamlined process for model version updates
-- **Service Updates**: Rolling updates with zero-downtime deployment
-- **Backup Procedures**: Automated data backup and recovery systems
-
-## Current Implementation Gaps
-
-### Knowledge/RAG Architecture ✅ Complete
-- **Embedding Service**: NVIDIA NIM embeddings (1024-dim) - no fallback
-- **Document Chunking**: Auto-detect with multi-level support
-- **Similarity Search**: Adjusted for NIM's low threshold requirements (0.01)
-- **Context Integration**: Full document retrieval in chat responses
-- **Performance**: GPU-accelerated with <100ms response times
-
-### Context Controls Backend ❌
-- **UI Implemented**: Mode-based selection with visual indicators
-- **Backend Missing**: No processing of context control settings
-- **Current Workaround**: Context applied through prompts only
-- **Impact**: Limited ability to dynamically adjust context scope
-
-### Personal Profiles Database Migration ✅
-- **Completed**: Migrated from localStorage to PostgreSQL
-- **Tables Created**: personal_profiles, user_preferences, message_contexts
-- **API Endpoints**: Full CRUD operations with privacy controls
-- **Auto-Migration**: Frontend automatically migrates on first use
-- **Gap**: Profiles not yet integrated into chat context generation
-
-### Hierarchical Document Processing ✅ Implemented
-- **Auto-Detection**: Documents categorized by filename patterns
-- **Multi-Level Chunking**: Business docs get 3000 + 8000 char chunks
-- **Smart Defaults**: Standard 3000 char chunks (3x improvement)
-- **Future Integration**: Context modes will select appropriate chunk levels
-
-### UI/UX Polish ✅ Visual Update Complete
-- **Loading States**: No spinner when entering chats (poor UX)
-- **Icons**: ✅ Replaced all emojis/MUI icons with custom SVG icons
-- **Scrollbars**: ✅ Consistent yellow scrollbar styling throughout
-- **Icon System**: ✅ Reusable Icon component with tooltips and hover effects
-- **Hover Effects**: ✅ All icons have scale, brightness, and shadow animations
-- **Chat Copy**: ✅ Assistant messages have copy button with copy.svg icon
-- **Prompt UI**: ✅ Edit icons 50% larger, consistent styling
-- **Performance Monitoring**: No visual indicators for system resources
-
-## Proposed Architecture Improvements
-
-### Unified Knowledge System
-**Goal**: Create a harmonized system where prompts, knowledge, and context work seamlessly together.
-
-1. **Project Prompt Simplification**
-   - Convert project prompts to just be project descriptions
-   - Descriptions automatically become part of the context
-   - Reduces confusion between "prompt" and "description"
-   - More intuitive for users
-
-2. **Knowledge Hierarchy**
-   ```
-   System Prompt (base behavior)
-   └── User Prompts (user preferences)
-       └── Project Description (as context)
-           └── Document Context (RAG retrieval)
-               └── Chat History (immediate context)
-   ```
-
-3. **Smart Context Assembly**
-   - Respect project boundaries by default
-   - Expand to global only when explicitly requested
-   - Weight relevance based on hierarchy
-   - Optimize token usage with smart truncation
-
-4. **Model Architecture Rebalancing**
-   - Consider dedicated embedding model (not just NV-EmbedQA)
-   - Separate reasoning model from retrieval model
-   - Optimize VRAM allocation between models
-   - Implement proper retrieval-augmented generation flow
-
-## Additional Implemented Features Not in Original Scope
-
-### System Prompts Management ✅
-- Database-backed system prompt storage
-- Auto-activation based on selected model
-- Visual indicators for active system prompts (orange)
-- Separate from user prompts for clarity
-- Modal interface with yellow labels and white borders
-- Disabled fields with improved readability (0.7 opacity)
-
-### User Prompts Management ✅
-- Project-specific and global prompt support
-- Radio button selection with Redux state management
-- Visual indicators in chat (gray when active)
-- Always visible in chat controls (disabled when none selected)
-- Backend supports both global and project prompts
-- Activation syncs across sidebar and chat controls
-
-### Chat-Specific Context Settings ✅
-- Each chat maintains its own context settings
-- Redux store manages settings per chat ID
-- Includes: context mode, system/user prompt toggles, project settings
-- Settings persist across chat navigation
-- Automatic initialization with defaults
-- Backend schema updated for persistence (ready for API integration)
-
-### Personal Profiles System ✅
-- Database-backed storage with PostgreSQL
-- Multiple profiles with default selection
-- Privacy controls and team sharing options
-- Custom fields for flexibility
-- Automatic migration from localStorage
-- **Gap**: Not yet integrated into chat context
-
-### Document Context Retrieval ✅
-- Real-time semantic search during chat generation
-- Project-scoped and global document search options
-- Top 5 most relevant chunks retrieved per query
-- Similarity threshold of 0.3 for quality control
-- Document chunks included in system message context
-- Frontend toggles control backend behavior
-- Currently using sentence-transformers embeddings (fallback)
-- pgvector with proper Vector(768) column type
-- **Planned**: Switch to NVIDIA NIM embeddings as default
-
-### Embedding Models Architecture ⚠️
-- **Primary**: NVIDIA NV-EmbedQA-E5-V5 (335M params, GPU-accelerated)
-- **Fallback**: sentence-transformers/all-mpnet-base-v2 (109M params)
-- Both produce 768-dimensional vectors (compatible)
-- Can switch between models without data migration
-- **Current Issue**: Using fallback instead of superior NIM model
-- **Planned**: Make embedding models visible in UI for transparency
-
-### Streaming Responses ✅
-- Server-Sent Events (SSE) implementation
-- Real-time token generation display
-- Progress indicators during generation
-- Critical for 40-70 second Llama 70B responses
-
-### Model Orchestrator ✅
-- Intelligent VRAM management
-- LRU-based model unloading
-- Priority scoring for model retention
-- Automatic solo mode handling
-
-## Known Architectural Issues
-
-### Redux/Navigation State Synchronization
-**Issue**: Race conditions between navigation state and Redux state updates can cause crashes when accessing chat settings.
-
-**Current Mitigation**: 
-- Added initialization in useEffect when navigating to chats
-- Fixed property name mismatches (settingsByChat vs chats)
-- Added null checks and optional chaining
-
-**Root Causes**:
-1. **Multiple Sources of Truth**: Navigation state (activeChatId) and Redux state (currentChatId) are separate
-2. **Async Initialization**: Components render before Redux state is ready
-3. **No Guaranteed Order**: Navigation → Render → Redux Update (should be Navigation → Redux → Render)
-
-**Proper Fix Would Require**:
-- Moving navigation state into Redux as single source of truth
-- Middleware to ensure Redux initialization before navigation completes
-- Synchronous guards preventing renders until state is ready
-- Proper loading states in all components
-
-**Impact**: Medium - App works for normal usage but edge cases (rapid navigation, slow API) may still cause issues.
-
-### File Active/Inactive Toggle Confusion
-**Issue**: The active/inactive toggle for files doesn't actually prevent them from being searched.
-
-**Current Behavior**:
-- Toggle shows visual state change but backend still searches "inactive" files
-- Creates confusion about what "active" means in a project context
-- Conflicts with chat memory (discussed files in other chats remain findable)
-
-**Conceptual Problem**:
-- If project knowledge should be comprehensive, why hide individual files?
-- Active/inactive creates unclear mental model
-- Attach/detach is clearer: attached = in project, detached = not in project
-
-**Proposed Solution**:
-- Remove active/inactive toggle entirely
-- Keep only attach/detach functionality
-- Simplifies user mental model and implementation
-
-**Impact**: Low - Feature works but is conceptually confusing.
-
-## Conclusion
-
-The AI Assistant is production-ready with a robust multi-model architecture. While minor gaps exist (primarily in context controls backend), the system provides enterprise-grade AI capabilities with complete privacy. The simplified implementations (mode-based context, flat document processing) work effectively for current use cases while leaving room for future enhancements.
-
-Key achievements:
-- ✅ 4 production AI models with intelligent switching
-- ✅ Complete project-centered architecture
-- ✅ Streaming responses for better UX
-- ✅ Comprehensive prompt management
-- ❌ Context controls backend (future enhancement)
-- ⚠️ Some architectural simplifications from original vision
+This implementation plan provides the technical foundation for achieving the vision outlined in Scope.md while maintaining flexibility for future enhancements.

@@ -49,8 +49,20 @@ export const ResourceMonitor: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch model status
-  const fetchStatus = async () => {
+  // Fetch GPU status only (more frequent)
+  const fetchGPUStatus = async () => {
+    try {
+      const modelData = await modelService.getQuickModelStatus();
+      setModelStatus(modelData);
+      setError(null);
+    } catch (err: any) {
+      console.error('[ResourceMonitor] Failed to fetch GPU status:', err);
+      setError('Connection Error');
+    }
+  };
+
+  // Fetch all resources (less frequent)
+  const fetchAllResources = async () => {
     try {
       const [modelData, systemData] = await Promise.all([
         modelService.getQuickModelStatus(),
@@ -73,7 +85,7 @@ export const ResourceMonitor: React.FC = () => {
       
       setError(null);
     } catch (err: any) {
-      console.error('[ResourceMonitor] Failed to fetch status:', err);
+      console.error('[ResourceMonitor] Failed to fetch resources:', err);
       setError('Connection Error');
     } finally {
       setLoading(false);
@@ -81,13 +93,19 @@ export const ResourceMonitor: React.FC = () => {
   };
 
   useEffect(() => {
-    // Initial fetch
-    fetchStatus();
+    // Initial fetch of all resources
+    fetchAllResources();
 
-    // Poll every 10 seconds for real-time updates (reduced to minimize logs)
-    const interval = setInterval(fetchStatus, 10000);
+    // Poll GPU every 2 seconds for real-time updates
+    const gpuInterval = setInterval(fetchGPUStatus, 2000);
+    
+    // Poll other resources every 10 seconds
+    const resourceInterval = setInterval(fetchAllResources, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(gpuInterval);
+      clearInterval(resourceInterval);
+    };
   }, []);
 
   // Get active model info

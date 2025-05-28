@@ -14,21 +14,21 @@ CHUNK_CONFIGS = {
     "business": {
         "detect_keywords": ["strategy", "plan", "proposal", "report", "analysis", "roadmap"],
         "chunks": [
-            {"name": "standard", "size": 3000, "overlap": 500},
-            {"name": "large", "size": 8000, "overlap": 1500}
+            {"name": "standard", "size": 2000, "overlap": 400},
+            {"name": "large", "size": 2000, "overlap": 400}  # Reduced to fit NIM limits
         ]
     },
     "technical": {
         "detect_keywords": ["api", "technical", "specification", "documentation", "architecture"],
         "chunks": [
-            {"name": "standard", "size": 3000, "overlap": 500},
-            {"name": "technical", "size": 5000, "overlap": 1000}
+            {"name": "standard", "size": 2000, "overlap": 400},
+            {"name": "technical", "size": 2000, "overlap": 400}  # Reduced to fit NIM limits
         ]
     },
     "default": {
         "detect_keywords": [],
         "chunks": [
-            {"name": "standard", "size": 3000, "overlap": 500}
+            {"name": "standard", "size": 2000, "overlap": 400}
         ]
     }
 }
