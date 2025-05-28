@@ -362,17 +362,6 @@ class AIAssistantLauncher:
                 time.sleep(10)
                 self.log("[OK] nim-embeddings - Created and started", "SUCCESS")
                 
-            # Check but don't auto-start 70B model (high VRAM usage)
-            if "nim-generation-70b" in containers:
-                if containers["nim-generation-70b"] == "running":
-                    self.log("[OK] nim-generation-70b - Already running (22GB VRAM)", "SUCCESS")
-                else:
-                    self.log("[X] nim-generation-70b - Not running", "INFO")
-                    self.log("  To start: docker-compose up nim-generation-70b", "INFO")
-            else:
-                self.log("[X] nim-generation-70b - Not created", "INFO")
-                self.log("  To create and start: docker-compose up nim-generation-70b", "INFO")
-                self.log("  Note: Requires 22GB VRAM, will unload other models", "INFO")
                 
         except FileNotFoundError:
             self.log("Docker or docker-compose not found", "WARNING")

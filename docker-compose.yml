@@ -53,32 +53,6 @@ services:
       retries: 3
       start_period: 300s
 
-  # NVIDIA NIM - Llama 3.1 70B for high-quality text generation (RTX 4090)
-  nim-generation-70b:
-    image: nvcr.io/nim/meta/llama-3.1-70b-instruct:latest
-    container_name: nim-generation-70b
-    ports:
-      - "8000:8000"  # Map to port 8000 as configured in orchestrator
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=0  # Use GPU 0 (RTX 4090)
-      - NGC_API_KEY=${NGC_API_KEY}
-    volumes:
-      - nim_cache:/opt/nim/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    restart: "no"  # Manual start due to high VRAM usage
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 600s  # Longer startup time for 70B model
-
 
 volumes:
   nim_cache:

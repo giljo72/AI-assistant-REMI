@@ -71,8 +71,9 @@ The AI Assistant provides ChatGPT-like capabilities on your local machine with:
 2. Select desired model:
    - **Qwen 2.5**: Default, best for general use
    - **Mistral-Nemo**: Fast responses
-   - **DeepSeek Coder**: Code generation
-   - **Llama 70B**: Deep reasoning (solo mode)
+   - **DeepSeek Coder**: Code generation + self-aware mode
+   
+Note: Llama 3.1 70B was removed as it requires 40GB+ VRAM (exceeds RTX 4090 capacity)
 
 ### Document Search
 1. Click search icon
@@ -83,11 +84,13 @@ The AI Assistant provides ChatGPT-like capabilities on your local machine with:
 ## Key Features
 
 - **100% Local**: No internet required after setup
-- **Multi-Model**: 4 different AI models for different tasks
+- **Multi-Model**: 3 different AI models for different tasks
 - **Smart Search**: Semantic understanding of documents
 - **Project Isolation**: Keep client data separate
 - **Resource Monitoring**: Real-time GPU/CPU/RAM usage
 - **Visual Context**: See what influences AI responses
+- **Self-Aware Mode**: AI can read its own source code with syntax highlighting
+- **Enhanced Code Display**: Markdown rendering with VS Code Dark+ theme
 
 ## Architecture Overview
 
@@ -100,6 +103,18 @@ PostgreSQL + pgvector (Semantic Search)
     ↓
 AI Services (Ollama + NVIDIA NIM)
 ```
+
+## Self-Aware Mode
+
+The AI assistant can read and analyze its own source code to help with development:
+
+1. **How it works**: The assistant has direct read access to the F:\assistant directory
+2. **Usage**: Simply ask to see any file (e.g., "show me backend/app/main.py")
+3. **Features**:
+   - Full syntax highlighting with language detection
+   - Actual file content display (not generic examples)
+   - Works in any context mode, not just self-aware
+   - Supports all common code file types
 
 ## Documentation
 

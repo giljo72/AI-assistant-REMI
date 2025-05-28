@@ -277,50 +277,8 @@ def get_ai_models() -> List[ModelInfo]:
         # Skip NIM Generation 8B - not in our optimized model set
         # (Removed as redundant with Mistral Nemo for light tasks)
         
-        # Check NIM Generation 70B
-        try:
-            response = requests.get("http://localhost:8083/v1/health/ready", timeout=2)
-            if response.status_code == 200:
-                models.append(ModelInfo(
-                    name="meta/llama-3.1-70b-instruct",
-                    type="nvidia-nim",
-                    status="loaded",
-                    size="22GB",
-                    parameters="70B",
-                    quantization="TensorRT",
-                    context_length=131072,
-                    memory_usage=22000,
-                    last_used="Active"
-                ))
-                logger.info("Detected NVIDIA NIM Generation 70B model (running)")
-            else:
-                # Add it as unloaded
-                models.append(ModelInfo(
-                    name="meta/llama-3.1-70b-instruct",
-                    type="nvidia-nim",
-                    status="unloaded",
-                    size="22GB",
-                    parameters="70B",
-                    quantization="TensorRT",
-                    context_length=131072,
-                    memory_usage=22000,
-                    last_used="Available"
-                ))
-                logger.info("NVIDIA NIM Generation 70B model available but not running")
-        except:
-            # Add it as unloaded even if container doesn't exist
-            models.append(ModelInfo(
-                name="meta/llama-3.1-70b-instruct",
-                type="nvidia-nim",
-                status="unloaded",
-                size="22GB",
-                parameters="70B",
-                quantization="TensorRT",
-                context_length=131072,
-                memory_usage=22000,
-                last_used="Available"
-            ))
-            logger.info("NVIDIA NIM Generation 70B not accessible - showing as available")
+        # Skip NIM Generation 70B - requires 4x H100 GPUs minimum
+        # (Not compatible with single RTX 4090)
             
     except Exception as e:
         logger.info(f"NVIDIA NIM check failed: {e}")

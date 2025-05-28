@@ -34,7 +34,12 @@
       "Bash(curl:*)",
       "Bash(git checkout:*)",
       "Bash(psql:*)",
-      "Bash(./venv_nemo/Scripts/python.exe check_file_status.py:*)"
+      "Bash(./venv_nemo/Scripts/python.exe check_file_status.py:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(ollama list:*)",
+      "Bash(npm install:*)"
     ],
     "deny": []
   }

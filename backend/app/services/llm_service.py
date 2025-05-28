@@ -14,10 +14,18 @@ from .ollama_service import get_ollama_service, OllamaService
 
 # Import model orchestrator with error handling
 try:
-    from .model_orchestrator import orchestrator as model_orchestrator
+    from .model_orchestrator import orchestrator as model_orchestrator, ModelStatus
 except ImportError as e:
     logger.warning(f"Could not import model orchestrator: {e}")
     model_orchestrator = None
+    # Define ModelStatus fallback if import fails
+    from enum import Enum
+    class ModelStatus(Enum):
+        UNLOADED = "unloaded"
+        LOADING = "loading"
+        LOADED = "loaded"
+        ERROR = "error"
+        UNLOADING = "unloading"
 
 class UnifiedLLMService:
     """Unified service to route requests to different LLM backends with orchestration"""
@@ -103,8 +111,15 @@ class UnifiedLLMService:
             else:
                 raise ValueError(f"Model {model_name} not found")
             
-        # Mark model as in use
+        # Switch to the requested model if it's not already loaded
         if self.orchestrator:
+            model_status = self.orchestrator.models.get(model_name)
+            if model_status and model_status.status != ModelStatus.LOADED:
+                logger.info(f"Switching to model: {model_name}")
+                # Use asyncio to call async method
+                switch_success = await self.orchestrator.switch_to_model(model_name)
+                if not switch_success:
+                    logger.warning(f"Failed to switch to model {model_name}, using current model")
             self.orchestrator.mark_model_used(model_name)
         
         try:
@@ -174,11 +189,8 @@ class UnifiedLLMService:
     ) -> AsyncGenerator[str, None]:
         """Generate streaming response using NVIDIA NIM"""
         
-        # Determine which NIM service to use
-        if "70b" in model_name.lower():
-            nim_service = NIMGenerationService(model_size="70b")
-        else:
-            nim_service = NIMGenerationService(model_size="8b")
+        # Use 8B NIM service (70B not supported on single RTX 4090)
+        nim_service = NIMGenerationService(model_size="8b")
         
         async for chunk in nim_service.generate_chat_response_stream(
             messages=messages,

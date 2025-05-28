@@ -14,6 +14,10 @@ import {
   MenuItem,
   FormControl,
 } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import systemService from '../../services/systemService';
 import ContextStatusIndicators from './ContextStatusIndicators';
 import { RootState } from '../../store';
@@ -280,19 +284,79 @@ const ChatView: React.FC<ChatViewProps> = ({
                     overflow: 'visible'
                   }}
                 >
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      fontSize: {
-                        xs: '0.875rem', // Smaller on mobile
-                        sm: '1rem'      // Normal on larger screens
-                      }
-                    }}
-                  >
-                    {message.content}
-                  </Typography>
+                  {message.sender === 'assistant' ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              style={vscDarkPlus}
+                              language={match[1]}
+                              PreTag="div"
+                              customStyle={{
+                                margin: '8px 0',
+                                borderRadius: '6px',
+                                fontSize: '0.9rem',
+                                backgroundColor: '#0d1929', // Darker blue background
+                                border: '1px solid #1a2b47', // Subtle border matching message bg
+                              }}
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          ) : (
+                            <code className={className} {...props} style={{ 
+                              backgroundColor: '#0d1929', 
+                              padding: '2px 4px', 
+                              borderRadius: '3px',
+                              fontSize: '0.9em',
+                              border: '1px solid #1a2b47'
+                            }}>
+                              {children}
+                            </code>
+                          );
+                        },
+                        p: ({ children }) => (
+                          <Typography variant="body1" sx={{ mb: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                            {children}
+                          </Typography>
+                        ),
+                        h1: ({ children }) => (
+                          <Typography variant="h5" sx={{ mb: 2, mt: 2, fontWeight: 'bold' }}>{children}</Typography>
+                        ),
+                        h2: ({ children }) => (
+                          <Typography variant="h6" sx={{ mb: 1.5, mt: 1.5, fontWeight: 'bold' }}>{children}</Typography>
+                        ),
+                        h3: ({ children }) => (
+                          <Typography variant="subtitle1" sx={{ mb: 1, mt: 1, fontWeight: 'bold' }}>{children}</Typography>
+                        ),
+                        ul: ({ children }) => (
+                          <Box component="ul" sx={{ pl: 3, mb: 1 }}>{children}</Box>
+                        ),
+                        ol: ({ children }) => (
+                          <Box component="ol" sx={{ pl: 3, mb: 1 }}>{children}</Box>
+                        ),
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: {
+                          xs: '0.875rem',
+                          sm: '1rem'
+                        }
+                      }}
+                    >
+                      {message.content}
+                    </Typography>
+                  )}
                 </Paper>
                 
                 {/* Copy button for assistant messages */}

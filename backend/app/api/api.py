@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources
+from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware
 from .endpoints.fix_files import router as fix_files_router
 
 api_router = APIRouter()
@@ -43,3 +43,10 @@ api_router.include_router(system_fast.router, prefix="/system", tags=["system"])
 
 # Add system resources monitoring endpoints
 api_router.include_router(system_resources.router, prefix="/system", tags=["system_resources"])
+
+# Add self-aware endpoints for code introspection
+api_router.include_router(self_aware.router, tags=["self_aware"])
+
+# Add test endpoint for debugging
+from .endpoints import test_file_chat
+api_router.include_router(test_file_chat.router, prefix="/test", tags=["test"])

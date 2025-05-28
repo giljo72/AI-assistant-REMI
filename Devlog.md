@@ -1,5 +1,116 @@
 # AI Assistant Dev Log
 
+## January 27, 2025 - Self-Aware File Reading & Syntax Highlighting
+
+### Major Achievement: Working Self-Aware File Reading
+Successfully implemented file reading capability that allows the AI to access and display local files from F:\assistant.
+
+#### Implementation Details:
+1. **Simplified File Access** (`simple_file_access.py`)
+   - Works in ANY context mode (removed complex security boundaries)
+   - Pattern matching for file requests
+   - Full file content injection (no chunking for files < 5MB)
+   - Supports all code file types (.py, .js, .ts, .md, .txt, etc.)
+
+2. **Backend Integration**
+   - Added file content injection to both regular and streaming chat endpoints
+   - File content added as system message before user message
+   - Logging shows successful file reads with content size
+
+3. **Frontend Syntax Highlighting**
+   - Installed react-markdown, remark-gfm, react-syntax-highlighter
+   - Implemented proper markdown rendering in ChatView and TypewriterMessage
+   - VS Code Dark+ theme with custom darker blue background (#0d1929)
+   - Code blocks now have proper syntax highlighting:
+     - Python: purple keywords, yellow functions, green comments
+     - Markdown: proper header formatting
+     - All languages supported by Prism
+
+4. **Visual Improvements**
+   - Code blocks have darker blue background that flows with chat UI
+   - Subtle border (#1a2b47) matches assistant message background
+   - Inline code also styled consistently
+   - Maintains readability while looking cohesive
+
+### Technical Decisions:
+- Chose simplicity over complex security for local-only assistant
+- Full file reading instead of chunking for better code context
+- Markdown rendering for all assistant messages (user messages stay plain text)
+
+### What Works Now:
+- "show stop_assistant.py" - displays full file with syntax highlighting
+- "read test.md" - shows markdown files properly formatted
+- "display backend/app/main.py" - reads files from subdirectories
+- All file types supported with appropriate syntax highlighting
+
+## January 27, 2025 - Removed Llama 70B Model Support
+
+### Reason: Hardware Incompatibility
+NVIDIA NIM requires minimum 4x H100 GPUs (or 2x A100 80GB) for 70B models. Single RTX 4090 (24GB) cannot run it.
+
+### Changes Made:
+1. **Frontend**
+   - Removed Llama 3.1 70B from model selection dropdowns
+   - Removed from SystemModelsPanel and ElegantSystemModelsPanel
+   - Removed from chat model selector
+
+2. **Backend**
+   - Removed from model_orchestrator.py
+   - Removed BUSINESS_DEEP operational mode (70B-specific)
+   - Removed special solo mode handling for 70B
+
+3. **Infrastructure**
+   - Removed nim-generation-70b container from docker-compose.yml
+   - Deleted setup_llama_70b_nim.bat script
+   - Updated start_assistant.py to remove 70B container checks
+
+### Current Model Lineup:
+- Qwen 2.5 32B (default)
+- Mistral-Nemo 12B (fast)
+- DeepSeek Coder V2 16B (code-focused)
+- NV-EmbedQA (embeddings)
+
+## January 27, 2025 - Self-Aware Context Implementation
+
+### Major Features Added:
+1. **Self-Aware API Endpoints** (`/api/self-aware/*`)
+   - `GET /files` - List files in F:/assistant with security filtering
+   - `GET /read` - Read file content with size limits and encoding detection
+   - `POST /validate` - Validate code for dangerous patterns
+   - `POST /update` - Update files with backup and audit trail
+   - `GET /modifications` - View modification history
+
+2. **Security Implementation**
+   - Path traversal protection
+   - Dangerous code pattern detection (exec, eval, subprocess, etc.)
+   - Protected paths filtering (.git, .env, etc.)
+   - File size limits (1MB max)
+   - Automatic backup creation before modifications
+   - Comprehensive audit logging
+
+3. **Self-Aware Service**
+   - Parses AI responses for file modification requests
+   - Extracts code blocks and file paths
+   - Creates diff previews
+   - Validates modifications before applying
+   - Formats human-readable summaries
+
+4. **Integration Points**
+   - Self-aware mode already exists in chat system
+   - Ready for frontend UI implementation
+   - Prepared for testing with DeepSeek model
+
+### Security Considerations:
+- All file operations confined to F:/assistant
+- Dangerous patterns blocked: exec(), eval(), os.system(), subprocess, pickle
+- Audit trail maintained in logs/file_modifications.jsonl
+- Backup system for all file changes
+
+### Next Steps:
+- Create frontend UI for file browsing and diff approval
+- Test with DeepSeek-coder model
+- Add real-time file watching for external changes
+
 ## January 26, 2025 - UI Cleanup and Sidebar Improvements
 
 ### UI Refinements: Prompt Display Cleanup
@@ -1219,3 +1330,21 @@ Implemented user-friendly console logging in `backend/run_server.py`:
 - Confirmed current document processing uses PyPDF2/python-docx (simple approach)
 - NV-Ingest multimodal extraction noted as future consideration
 - Documented the distinction between current and planned implementations
+## 2025-05-27 - Removed Llama 70B Model Support
+
+- Removed Llama 3.1 70B model from UI model selection panels
+- Removed 70B model configuration from backend model orchestrator
+- Removed BUSINESS_DEEP operational mode that was specific to 70B
+- Removed nim-generation-70b container from docker-compose.yml
+- Deleted setup_llama_70b_nim.bat script
+- Updated start_assistant.py to remove 70B container checks
+
+Reason: NVIDIA NIM requires minimum 4x H100 GPUs for 70B model, not compatible with single RTX 4090
+
+## 2025-05-27 - Fixed Model Status Synchronization
+
+- Fixed issue where model status wasn't updating in AI Models page when switching models in chat
+- Added model switching logic to both chat endpoints (regular and streaming)
+- Modified LLM service to call orchestrator.switch_to_model() before using a model
+- Now when a user selects a model in chat, it properly loads and updates status to 'loaded'
+- Models will correctly show as active (green dot) in the AI Models page when in use

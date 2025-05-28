@@ -140,7 +140,6 @@ export const EnhancedSystemModelsPanel: React.FC = () => {
               disabled={switching}
               label="Mode"
             >
-              <MenuItem value="business_deep">Business Deep (Llama 70B)</MenuItem>
               <MenuItem value="business_fast">Business Fast (Qwen 32B)</MenuItem>
               <MenuItem value="development">Development (DeepSeek)</MenuItem>
               <MenuItem value="quick">Quick Response (Mistral)</MenuItem>

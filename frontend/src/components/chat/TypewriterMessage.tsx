@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Typography } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface TypewriterMessageProps {
   content: string;
@@ -83,24 +87,70 @@ const TypewriterMessage: React.FC<TypewriterMessageProps> = ({
 
   return (
     <div ref={containerRef}>
-      <Typography 
-        variant="body1" 
-        sx={{ 
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          fontSize: fontSize,
-          position: 'relative',
-          '&::after': isTyping ? {
-            content: '"▋"',
+      <div style={{ position: 'relative' }}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              return !inline && match ? (
+                <SyntaxHighlighter
+                  style={vscDarkPlus}
+                  language={match[1]}
+                  PreTag="div"
+                  customStyle={{
+                    margin: '8px 0',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    backgroundColor: '#0d1929', // Darker blue background
+                    border: '1px solid #1a2b47', // Subtle border matching message bg
+                  }}
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props} style={{ 
+                  backgroundColor: '#0d1929', 
+                  padding: '2px 4px', 
+                  borderRadius: '3px',
+                  fontSize: '0.9em',
+                  border: '1px solid #1a2b47'
+                }}>
+                  {children}
+                </code>
+              );
+            },
+            p: ({ children }) => (
+              <Typography variant="body1" sx={{ mb: 1, fontSize }}>
+                {children}
+              </Typography>
+            ),
+            h1: ({ children }) => (
+              <Typography variant="h5" sx={{ mb: 2, mt: 2, fontWeight: 'bold' }}>{children}</Typography>
+            ),
+            h2: ({ children }) => (
+              <Typography variant="h6" sx={{ mb: 1.5, mt: 1.5, fontWeight: 'bold' }}>{children}</Typography>
+            ),
+            h3: ({ children }) => (
+              <Typography variant="subtitle1" sx={{ mb: 1, mt: 1, fontWeight: 'bold' }}>{children}</Typography>
+            ),
+          }}
+        >
+          {displayedContent}
+        </ReactMarkdown>
+        {isTyping && (
+          <span style={{
             animation: 'blink 1s infinite',
-            color: 'inherit',
             opacity: 0.7,
-            marginLeft: '2px'
-          } : {}
-        }}
-      >
-        {displayedContent}
-      </Typography>
+            marginLeft: '2px',
+            position: 'absolute',
+            bottom: '4px'
+          }}>
+            ▋
+          </span>
+        )}
+      </div>
     </div>
   );
 };

@@ -15,7 +15,7 @@ from ...db.repositories.chat_repository import chat_repository
 from ...schemas.chat import Chat, ChatCreate, ChatUpdate, ChatMessage, ChatMessageCreate
 from ...services.nim_service import get_nim_service
 from ...services.llm_service import get_llm_service
-from ...services.model_orchestrator import orchestrator
+from ...services.model_orchestrator import orchestrator, ModelStatus
 
 router = APIRouter()
 
@@ -269,6 +269,7 @@ async def generate_chat_response_endpoint(
         
         # Check if we're in self-aware mode (from context mode, not user prompts)
         is_self_aware = request.context_mode == "self-aware"
+        logger.info(f"Context mode: {request.context_mode}, is_self_aware: {is_self_aware}")
         
         # Build comprehensive system message
         from datetime import datetime
@@ -292,18 +293,30 @@ Core behaviors:
         # Add model and system information
         system_content += f"\n\nSystem Information:\n- Model: {model_name} ({model_type})\n- Date: {current_date}\n- Available models: {model_list}"
 
-        if is_self_aware:
+        if is_self_aware and request.context_mode == "self-aware":
             # Self-aware mode - add project structure knowledge
+            from .code_formatter_prompt import get_code_display_prompt
+            
             system_content += f"""
 
 SELF-AWARE MODE ACTIVE:
-You have access to knowledge about your own implementation at F:\\assistant. This is a FastAPI + React application with:
+You have full read access to your own source code at F:\\assistant. This is a FastAPI + React application.
+
+FILE ACCESS CAPABILITIES:
+- Read any file: "show backend/app/main.py" or "read frontend/src/App.tsx"
+- List directories: "list backend/app" or "show files in frontend/src"
+- Search files: "search for 'config'" or "find all .py files"
+- View structure: "show project tree" or "display directory structure"
+
+{get_code_display_prompt()}
+
+Architecture:
 - Backend: FastAPI, SQLAlchemy, PostgreSQL with pgvector
 - Frontend: React, TypeScript, Redux Toolkit, Tailwind CSS
-- LLM Integration: Ollama, NVIDIA NIM, Transformers
+- LLM Integration: Ollama, NVIDIA NIM
 - Key features: Project management, document processing, RAG, user prompts
 
-You can help improve your own code, debug issues, and suggest enhancements. When asked about your implementation, reference specific files and provide accurate technical details."""
+You can analyze code, suggest improvements, debug issues, and help with development. Always show complete file contents when requested."""
         
         # Add custom context if provided
         if request.context_mode == "custom" and request.custom_context:
@@ -394,79 +407,66 @@ You can help improve your own code, debug issues, and suggest enhancements. When
             except Exception as e:
                 logger.error(f"Failed to add document context: {e}", exc_info=True)
         
-        # Process file operations in self-aware mode
-        if is_self_aware:
-            from ...services.file_reader_service import get_file_reader
-            file_reader = get_file_reader()
-            
-            # Check if the user is asking about files
-            user_msg_lower = request.message.lower()
-            file_context = ""
-            
-            # Auto-detect file-related queries
-            if any(keyword in user_msg_lower for keyword in ['file', 'code', 'show', 'read', 'list', 'search', 'find', 'look at', 'check']):
-                # Extract potential file paths from the message
-                import re
-                
-                # Look for file paths (e.g., backend/app/main.py or app.py)
-                file_patterns = [
-                    r'[\'"`]([^\'"`]+\.[a-zA-Z]+)[\'"`]',  # Quoted filenames
-                    r'\b(\w+/[\w/]+\.\w+)\b',  # Path-like patterns
-                    r'\b(\w+\.\w+)\b',  # Simple filenames
-                ]
-                
-                potential_files = []
-                for pattern in file_patterns:
-                    matches = re.findall(pattern, request.message)
-                    potential_files.extend(matches)
-                
-                # Try to read mentioned files
-                files_read = []
-                for file_path in potential_files:
-                    result = file_reader.read_file(file_path)
-                    if result["success"]:
-                        files_read.append({
-                            "path": file_path,
-                            "content": result["content"]  # Full file content, no truncation
-                        })
-                
-                # If files were found and read, add them to context
-                if files_read:
-                    file_context = "\n\nFile Contents:\n"
-                    for file_info in files_read:
-                        file_context += f"\n=== {file_info['path']} ===\n{file_info['content']}\n"
-                
-                # If asking to list files in a directory
-                if 'list' in user_msg_lower and ('file' in user_msg_lower or 'directory' in user_msg_lower):
-                    # Extract directory from message
-                    dir_match = re.search(r'(?:in|from)\s+[\'"`]?([^\'"`\s]+)[\'"`]?', request.message)
-                    directory = dir_match.group(1) if dir_match else ""
-                    
-                    files = file_reader.list_files(directory)
-                    if files:
-                        file_context += f"\n\nFiles in {directory or 'root directory'}:\n"
-                        for f in files[:20]:  # Limit to 20 files
-                            file_context += f"- {f['type']}: {f['path']}\n"
-                
-                # If searching for something in files
-                if 'search' in user_msg_lower or 'find' in user_msg_lower:
-                    search_match = re.search(r'(?:search|find)\s+(?:for\s+)?[\'"`]([^\'"`]+)[\'"`]', request.message)
-                    if search_match:
-                        search_term = search_match.group(1)
-                        results = file_reader.search_in_files(search_term, max_results=10)
-                        if results:
-                            file_context += f"\n\nSearch results for '{search_term}':\n"
-                            for r in results:
-                                file_context += f"- {r['file']}:{r['line']}: {r['content']}\n"
-            
-            # Add file context if any was gathered
-            if file_context:
-                file_message = {
+        # SIMPLIFIED FILE ACCESS - works in any context for easier debugging
+        # TODO: Add authentication later if needed
+        try:
+            from .simple_file_access import inject_file_content_if_requested
+            file_content = inject_file_content_if_requested(request.message)
+            if file_content:
+                messages.append({
                     "role": "system",
-                    "content": file_context
-                }
-                messages.append(file_message)
-                logger.info("Added file reading context to self-aware mode")
+                    "content": file_content
+                })
+                logger.info(f"Injected file content: {len(file_content)} chars")
+        except Exception as e:
+            logger.error(f"File injection failed: {e}")
+        
+        # Process file operations in self-aware mode with enhanced handling
+        # TEMPORARILY DISABLED - using simple file access above
+        if False and is_self_aware and request.context_mode == "self-aware":
+            try:
+                # Use simplified self-aware file reading
+                from .enhanced_self_aware import build_self_aware_context
+                
+                file_context = build_self_aware_context(request.message)
+                
+                if file_context:
+                    file_message = {
+                        "role": "system", 
+                        "content": file_context
+                    }
+                    messages.append(file_message)
+                    logger.info("Added self-aware file reading context")
+                    logger.debug(f"File context length: {len(file_context)} chars")
+            except Exception as e:
+                logger.error(f"Failed to build self-aware context: {e}", exc_info=True)
+                # Try direct fallback
+                try:
+                    from ...services.file_reader_service import get_file_reader
+                    file_reader = get_file_reader()
+                    
+                    # Simple pattern matching
+                    import re
+                    # Look specifically for .py files since those seem problematic
+                    py_pattern = r'(\b\w+\.py\b)'
+                    py_files = re.findall(py_pattern, request.message, re.IGNORECASE)
+                    
+                    file_context = ""
+                    for py_file in py_files:
+                        result = file_reader.read_file(py_file)
+                        if result["success"]:
+                            file_context = f"\n=== FILE: {py_file} ===\n```python\n{result['content']}\n```\n"
+                            messages.append({
+                                "role": "system",
+                                "content": f"SELF-AWARE MODE - File Contents:\n{file_context}"
+                            })
+                            logger.info(f"Added Python file via direct fallback: {py_file}")
+                            break
+                except Exception as e2:
+                    logger.error(f"Fallback also failed: {e2}")
+        elif is_self_aware and request.context_mode != "self-aware":
+            # Log security warning - self-aware should only work with proper context mode
+            logger.warning("Self-aware mode attempted without proper context mode setting")
         
         # Add current user message
         messages.append({"role": "user", "content": request.message})
@@ -475,6 +475,19 @@ You can help improve your own code, debug issues, and suggest enhancements. When
         llm_service = get_llm_service()
         
         logger.info(f"Generating response using {model_name} ({model_type})...")
+        
+        # Switch to the requested model if using orchestrator and it's an Ollama model
+        if orchestrator and model_type == "ollama":
+            from ...services.model_orchestrator import ModelStatus
+            model_status = orchestrator.models.get(model_name)
+            if model_status and model_status.status != ModelStatus.LOADED:
+                logger.info(f"Switching to model: {model_name}")
+                try:
+                    switch_success = await orchestrator.switch_to_model(model_name)
+                    if not switch_success:
+                        logger.warning(f"Failed to switch to model {model_name}")
+                except Exception as e:
+                    logger.error(f"Error switching model: {e}")
         
         # Check service health for the model type
         health = await llm_service.health_check(model_type)
@@ -730,8 +743,33 @@ You can help improve your own code, debug issues, and suggest enhancements."""
                     logger.error(f"Failed to retrieve document context: {str(e)}")
                     # Continue without document context rather than failing the request
             
+            # SIMPLIFIED FILE ACCESS - inject file content if requested
+            try:
+                from .simple_file_access import inject_file_content_if_requested
+                file_content = inject_file_content_if_requested(request.message)
+                if file_content:
+                    messages.append({
+                        "role": "system",
+                        "content": file_content
+                    })
+                    logger.info(f"[STREAMING] Injected file content: {len(file_content)} chars")
+            except Exception as e:
+                logger.error(f"[STREAMING] File injection failed: {e}")
+            
             # Add current user message
             messages.append({"role": "user", "content": request.message})
+            
+            # Switch to the requested model if using orchestrator and it's an Ollama model
+            if orchestrator and model_type == "ollama":
+                model_status = orchestrator.models.get(model_name)
+                if model_status and model_status.status != ModelStatus.LOADED:
+                    logger.info(f"Switching to model: {model_name}")
+                    try:
+                        switch_success = await orchestrator.switch_to_model(model_name)
+                        if not switch_success:
+                            logger.warning(f"Failed to switch to model {model_name}")
+                    except Exception as e:
+                        logger.error(f"Error switching model: {e}")
             
             # Start streaming response
             llm_service = get_llm_service()

@@ -3,11 +3,10 @@ Model Orchestrator Service
 Manages multi-model lifecycle and intelligent routing
 
 Model Selection Strategy:
-1. Llama 70B (Solo Mode): For deep reasoning - runs alone, all other models unloaded
-2. Qwen 2.5 32B (Default): Primary model with document/RAG support
-3. Mistral Nemo: Quick responses when speed is priority
-4. DeepSeek Coder: Code generation in self-aware mode
-5. NV-Embedqa: Always runs with Qwen/Mistral/DeepSeek for document/RAG support
+1. Qwen 2.5 32B (Default): Primary model with document/RAG support
+2. Mistral Nemo: Quick responses when speed is priority
+3. DeepSeek Coder: Code generation in self-aware mode
+4. NV-Embedqa: Always runs with all models for document/RAG support
 """
 
 import asyncio
@@ -56,7 +55,6 @@ class ModelStatus(Enum):
     UNLOADING = "unloading"
 
 class OperationalMode(Enum):
-    BUSINESS_DEEP = "business_deep"    # Llama 70B solo
     BUSINESS_FAST = "business_fast"    # Qwen 32B + embeddings
     DEVELOPMENT = "development"        # DeepSeek + embeddings
     QUICK = "quick"                   # Mistral + embeddings
@@ -98,7 +96,6 @@ class ModelOrchestrator:
         self._cached_vram_usage = 0
         self._last_vram_update = time.time()
         self.mode_configs = {
-            OperationalMode.BUSINESS_DEEP: ["llama3.1:70b-instruct-q4_K_M"],
             OperationalMode.BUSINESS_FAST: ["qwen2.5:32b-instruct-q4_K_M", "nv-embedqa-e5-v5"],
             OperationalMode.DEVELOPMENT: ["deepseek-coder-v2:16b-lite-instruct-q4_K_M", "nv-embedqa-e5-v5"],
             OperationalMode.QUICK: ["mistral-nemo:latest", "nv-embedqa-e5-v5"],
@@ -109,21 +106,6 @@ class ModelOrchestrator:
     def _initialize_models(self) -> Dict[str, ModelInfo]:
         """Initialize available models configuration"""
         return {
-            "llama3.1:70b-instruct-q4_K_M": ModelInfo(
-                name="llama3.1:70b-instruct-q4_K_M",
-                backend="nim",
-                purpose="reasoning",
-                memory_gb=22,
-                max_context=32768,
-                endpoint="http://localhost:8000",
-                display_name="Llama 3.1 70B (Deep Reasoning)",
-                description="Solo mode - Unloads all other models for maximum reasoning power",
-                response_time_estimates={
-                    "simple": "6-12 seconds",
-                    "analysis": "40-70 seconds",
-                    "complex": "60-120 seconds"
-                }
-            ),
             "qwen2.5:32b-instruct-q4_K_M": ModelInfo(
                 name="qwen2.5:32b-instruct-q4_K_M",
                 backend="ollama",
@@ -304,9 +286,6 @@ class ModelOrchestrator:
         total_needed = await self.calculate_memory_requirement(target_models)
         current_usage = await self.get_current_vram_usage()
         
-        # If switching to business_deep (Llama 70B), unload everything first
-        if mode == OperationalMode.BUSINESS_DEEP:
-            await self.unload_all_models()
             
         # Load the target models
         success = True
@@ -321,31 +300,27 @@ class ModelOrchestrator:
         """Switch to a specific model configuration"""
         self.active_primary_model = model_name
         
-        # Special handling for Llama 70B - solo mode
-        if model_name == "llama3.1:70b-instruct-q4_K_M":
-            return await self.switch_mode(OperationalMode.BUSINESS_DEEP)
-        else:
-            # For all other models, ensure embeddings is loaded
-            embeddings_loaded = await self.ensure_embeddings_loaded()
+        # For all models, ensure embeddings is loaded
+        embeddings_loaded = await self.ensure_embeddings_loaded()
+        
+        # Check memory before loading
+        model = self.models.get(model_name)
+        if model:
+            # Smart unload to make room
+            current_usage = await self.get_current_vram_usage()
+            embeddings_memory = 2 if embeddings_loaded else 0
+            available = self.max_vram_gb - self.reserved_vram_gb - current_usage
             
-            # Check memory before loading
-            model = self.models.get(model_name)
-            if model:
-                # Smart unload to make room
-                current_usage = await self.get_current_vram_usage()
-                embeddings_memory = 2 if embeddings_loaded else 0
-                available = self.max_vram_gb - self.reserved_vram_gb - current_usage
-                
-                if available < model.memory_gb:
-                    # Need to unload something
-                    needed = model.memory_gb - available
-                    await self.smart_unload(needed, preserve_embeddings=True)
-            
-            # Load the requested model
-            model_loaded = await self.load_model(model_name)
-            
-            await self._notify_status_change()
-            return embeddings_loaded and model_loaded
+            if available < model.memory_gb:
+                # Need to unload something
+                needed = model.memory_gb - available
+                await self.smart_unload(needed, preserve_embeddings=True)
+        
+        # Load the requested model
+        model_loaded = await self.load_model(model_name)
+        
+        await self._notify_status_change()
+        return embeddings_loaded and model_loaded
     
     async def ensure_embeddings_loaded(self) -> bool:
         """Ensure embeddings model is loaded for document/RAG support"""
@@ -711,9 +686,7 @@ class ModelOrchestrator:
     async def select_model(self, request_type: str, complexity: str, domain: str, context_size: int) -> Optional[str]:
         """Select the best model for a given request based on type, complexity, and domain"""
         # If in specific mode, use the configured models
-        if self.mode == OperationalMode.BUSINESS_DEEP:
-            return "llama3.1:70b-instruct-q4_K_M"
-        elif self.mode == OperationalMode.DEVELOPMENT:
+        if self.mode == OperationalMode.DEVELOPMENT:
             if request_type == "code_analysis":
                 return "deepseek-coder-v2:16b-lite-instruct-q4_K_M"
         
@@ -726,10 +699,8 @@ class ModelOrchestrator:
             return self.active_primary_model
         
         elif domain == "business" and complexity == "high":
-            # For complex business, prefer larger models
-            if self.models["llama3.1:70b-instruct-q4_K_M"].status == ModelStatus.LOADED:
-                return "llama3.1:70b-instruct-q4_K_M"
-            elif self.models["qwen2.5:32b-instruct-q4_K_M"].status == ModelStatus.LOADED:
+            # For complex business, use Qwen 32B
+            if self.models["qwen2.5:32b-instruct-q4_K_M"].status == ModelStatus.LOADED:
                 return "qwen2.5:32b-instruct-q4_K_M"
         
         elif context_size > 32000:

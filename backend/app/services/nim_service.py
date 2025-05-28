@@ -110,11 +110,8 @@ class NIMGenerationService:
     
     def __init__(self, model_size: str = "8b", base_url: str = None):
         if base_url is None:
-            # Auto-select port based on model size
-            if model_size == "70b":
-                base_url = "http://localhost:8083"
-            else:
-                base_url = "http://localhost:8082"
+            # Use 8B model port (70B not supported on single RTX 4090)
+            base_url = "http://localhost:8082"
         
         self.base_url = base_url.rstrip('/')
         self.model_size = model_size

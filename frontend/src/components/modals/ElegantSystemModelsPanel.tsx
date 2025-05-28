@@ -26,16 +26,6 @@ const MODEL_DETAILS: Record<string, { description: string; useCase: string; capa
     useCase: 'Best for: Daily driver, general AI tasks, document analysis, multi-turn chats',
     capabilities: ['reasoning', 'analysis', 'chat', 'documents', 'rag-support']
   },
-  'llama3.1:70b-instruct-q4_K_M': {
-    description: 'Llama 3.1 70B - Maximum intelligence via NVIDIA NIM',
-    useCase: 'Best for: Complex analysis, deep reasoning, critical business decisions',
-    capabilities: ['deep-reasoning', 'complex-analysis', 'research', 'nim-optimized']
-  },
-  'meta/llama-3.1-70b-instruct': {
-    description: 'Llama 3.1 70B - Maximum intelligence via NVIDIA NIM',
-    useCase: 'Best for: Complex analysis, deep reasoning, critical business decisions',
-    capabilities: ['deep-reasoning', 'complex-analysis', 'research', 'nim-optimized']
-  },
   'mistral-nemo:latest': {
     description: 'Mistral Nemo 12B - Lightning-fast responses',
     useCase: 'Best for: Quick queries, chat, summarization, low VRAM usage (4GB)',

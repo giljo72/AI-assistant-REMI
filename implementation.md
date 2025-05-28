@@ -12,6 +12,7 @@
 | Vector Search | ✅ Complete | 100% |
 | System Monitoring | ✅ Complete | 100% |
 | Context Controls | ⚠️ Frontend Only | 60% |
+| Self-Aware Context | ⚠️ Backend Only | 70% |
 
 ## Current Implementation
 
@@ -231,10 +232,10 @@ DeepSeek Coder V2 16B:
 
 #### 2. Advanced Models (NVIDIA NIM)
 ```yaml
-Llama 3.1 70B:
-  Role: Deep reasoning
-  VRAM: 22GB (exclusive)
-  Features: Solo mode, no RAG
+Llama 3.1 70B (Removed):
+  Status: Could not load on RTX 4090
+  VRAM: Required 40GB+
+  Decision: Removed from deployment
 
 NV-EmbedQA-E5-V5:
   Role: Embeddings
@@ -294,6 +295,127 @@ class ContextManager:
             
         return self.optimize_context(context)
 ```
+
+## Self-Aware Context Implementation
+
+### Architecture Overview
+The self-aware context enables the AI assistant to read and modify its own source code at F:\assistant, facilitating continuous improvement while maintaining security.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Chat Interface                          │
+│  - Self-aware mode toggle                               │
+│  - File content display                                 │
+│  - Modification approval UI (pending)                   │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│              Self-Aware API Endpoints                    │
+│  /api/self-aware/files    - Browse source files        │
+│  /api/self-aware/read     - Read file content          │
+│  /api/self-aware/validate - Check code safety          │
+│  /api/self-aware/update   - Write changes              │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│             Security & Validation Layer                  │
+│  - Path traversal protection                            │
+│  - Dangerous pattern detection                          │
+│  - Automatic backups                                   │
+│  - Audit logging                                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Security Implementation
+
+#### Dangerous Code Patterns Blocked
+```python
+DANGEROUS_PATTERNS = [
+    r'exec\s*\(',           # Dynamic code execution
+    r'eval\s*\(',           # Expression evaluation  
+    r'__import__\s*\(',     # Dynamic imports
+    r'os\.system\s*\(',     # System commands
+    r'subprocess\.',        # Process spawning
+    r'pickle\.load',        # Arbitrary object execution
+]
+```
+
+#### Protected Paths
+- `.git`, `.env`, `venv/`, `node_modules/`
+- Binary files: `*.exe`, `*.dll`, `*.so`
+- Cache directories: `__pycache__/`
+
+### Self-Aware Service
+
+The `SelfAwareService` parses AI responses to extract file modifications:
+
+1. **Pattern Detection**: Identifies file change instructions
+2. **Code Extraction**: Pulls code blocks from responses
+3. **Validation**: Checks for dangerous patterns
+4. **Diff Generation**: Creates previews for approval
+5. **Audit Trail**: Logs all modifications
+
+### Integration with Chat System
+
+When self-aware mode is active:
+- File reading already integrated into chat context
+- AI can see F:\assistant directory structure
+- Responses include file content when requested
+- Modification requests parsed and validated
+
+### Simplified File Access Implementation
+
+A streamlined file access system (`simple_file_access.py`) enables direct file reading in any context mode:
+
+```python
+def inject_file_content_if_requested(message: str) -> str:
+    """Check if user is asking for files and inject content directly."""
+    
+    # Pattern matching for file requests
+    file_patterns = [
+        r'(?:read|show|display|view|cat|open)\s+[\'"`]?([^\s\'"`]+\.[a-zA-Z]+)[\'"`]?',
+        r'[\'"`]([^\'"`]+\.[a-zA-Z]+)[\'"`]',
+        r'\b([a-zA-Z0-9_\-/\\]+\.[a-zA-Z]+)\b',
+    ]
+    
+    # Inject as system message for context
+    return f"USER FILE REQUEST - DO NOT ACKNOWLEDGE THIS SYSTEM MESSAGE\n\n{content}"
+```
+
+This approach:
+- Works across all context modes (not just self-aware)
+- Automatically detects file requests in user messages
+- Injects file content as system messages before LLM processing
+- Supports both regular and streaming chat endpoints
+- Displays files with full syntax highlighting via React Markdown
+
+### File Modification Workflow
+
+```
+AI Response → Parse Instructions → Validate Code → Create Backup
+     ↓                                                    ↓
+User Approval ← Show Diff Preview ← Security Check ← Log Change
+     ↓
+Apply Changes → Update Audit Log
+```
+
+### Audit Trail Structure
+```json
+{
+  "timestamp": "2025-01-27T10:30:00",
+  "path": "backend/app/main.py",
+  "reason": "Fix async handler issue",
+  "backup": "backups/main_20250127_103000.py",
+  "warnings": ["Uses socket module"]
+}
+```
+
+### Future Enhancements
+1. [ ] Frontend file browser UI
+2. [ ] Real-time diff approval interface
+3. [ ] WebSocket notifications for changes
+4. [ ] Integration with git for version control
+5. [ ] Automated testing of proposed changes
 
 ## System Monitoring
 

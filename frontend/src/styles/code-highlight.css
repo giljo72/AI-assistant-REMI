@@ -1,0 +1,93 @@
+/* Enhanced code highlighting for chat messages */
+
+/* Override blue background for code blocks */
+.assistant-message pre {
+  background-color: #1e1e1e !important; /* Dark background for code */
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.assistant-message code {
+  background-color: transparent !important;
+  color: #e6e6e6 !important;
+}
+
+/* Syntax highlighting colors that work on dark background */
+.assistant-message .token.comment,
+.assistant-message .token.prolog,
+.assistant-message .token.doctype,
+.assistant-message .token.cdata {
+  color: #6a9955; /* Green comments */
+}
+
+.assistant-message .token.punctuation {
+  color: #d4d4d4;
+}
+
+.assistant-message .token.property,
+.assistant-message .token.tag,
+.assistant-message .token.boolean,
+.assistant-message .token.number,
+.assistant-message .token.constant,
+.assistant-message .token.symbol,
+.assistant-message .token.deleted {
+  color: #b5cea8; /* Light green */
+}
+
+.assistant-message .token.selector,
+.assistant-message .token.attr-name,
+.assistant-message .token.string,
+.assistant-message .token.char,
+.assistant-message .token.builtin,
+.assistant-message .token.inserted {
+  color: #ce9178; /* Orange strings */
+}
+
+.assistant-message .token.operator,
+.assistant-message .token.entity,
+.assistant-message .token.url,
+.assistant-message .language-css .token.string,
+.assistant-message .style .token.string {
+  color: #d4d4d4;
+}
+
+.assistant-message .token.atrule,
+.assistant-message .token.attr-value,
+.assistant-message .token.keyword {
+  color: #c586c0; /* Purple keywords */
+}
+
+.assistant-message .token.function,
+.assistant-message .token.class-name {
+  color: #dcdcaa; /* Yellow functions */
+}
+
+.assistant-message .token.regex,
+.assistant-message .token.important,
+.assistant-message .token.variable {
+  color: #9cdcfe; /* Light blue variables */
+}
+
+/* Line numbers if present */
+.assistant-message .line-numbers {
+  color: #858585;
+  border-right: 1px solid #444;
+  padding-right: 8px;
+  margin-right: 8px;
+}
+
+/* Markdown headers in code */
+.assistant-message h1 code,
+.assistant-message h2 code,
+.assistant-message h3 code {
+  color: #569cd6 !important; /* Blue headers */
+  font-weight: bold;
+}
+
+/* Special markers from our formatter */
+.assistant-message .emoji-marker {
+  font-size: 1.2em;
+  margin-right: 4px;
+}
