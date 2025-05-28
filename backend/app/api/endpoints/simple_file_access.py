@@ -62,10 +62,11 @@ def inject_file_content_if_requested(message: str) -> str:
             ext = Path(file_path).suffix.lower()
             lang_map = {
                 '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
-                '.md': 'markdown', '.txt': 'text', '.json': 'json',
+                # Use 'plaintext' for markdown and text files to ensure they display in code blocks
+                '.md': 'plaintext', '.txt': 'plaintext', '.json': 'json',
                 '.yml': 'yaml', '.yaml': 'yaml', '.sh': 'bash'
             }
-            lang = lang_map.get(ext, 'text')
+            lang = lang_map.get(ext, 'plaintext')
             
             file_contents.append(f"\n=== FILE: {file_path} ===")
             file_contents.append(f"```{lang}")

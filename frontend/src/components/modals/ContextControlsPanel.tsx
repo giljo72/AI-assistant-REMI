@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { selfAwareService } from '../../services/selfAwareService';
 
 type Mode = 'standard' | 'project-focus' | 'deep-research' | 'quick-response' | 'self-aware' | 'create';
 
@@ -135,19 +136,9 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
   // Handle password submission for self-aware mode
   const handlePasswordSubmit = async () => {
     try {
-      const response = await fetch('/api/self-aware/authenticate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      });
+      const response = await selfAwareService.authenticate(password);
       
-      if (response.ok) {
-        const data = await response.json();
-        // Store token in localStorage
-        localStorage.setItem('selfAwareToken', data.token);
-        
+      if (response.success) {
         // Apply self-aware settings
         const selfAwareSettings: ContextSettings = {
           mode: 'self-aware',
@@ -158,6 +149,8 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
           useAllChats: false,
         };
         setSettings(selfAwareSettings);
+        // Apply the settings immediately to update the badge
+        onApplySettings(selfAwareSettings);
         setShowPasswordModal(false);
         setPassword('');
         setPasswordError('');
@@ -165,7 +158,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
         setPasswordError('Invalid password');
       }
     } catch (error) {
-      setPasswordError('Authentication failed');
+      setPasswordError('Invalid password');
     }
   };
 

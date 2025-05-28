@@ -1,212 +1,146 @@
-*IMPORTANT* Behaviour expectations
-- ALWAYS Read the project documentation to be familiar with the scope, implementation and intended workflows and framework.  ASK questions if something is unclear.
-- AVOID creating cascading changes without also changing other scripts and code, always make sure a change flows through the project files
-- AVOID creating new files to solve a problem/diagnosis, unless absolutely neccesary, in order to prevent a cascading list of diagnostics programs to solve an issue.  I prefer one diagnistics application which we can add too over time with various test but must ALWAYS delete and revise if a function is no longer applicable.
-- ALWAYS update scope.md and Implementation.MD and REadme.MD if we are adding folders, files or maching other achitectural changes.
-- ALWYS recommend to rewrite a complete file if it benefits the project for effciency, isntead of appending to existing files and then creating fix after fix making the file monolithic.
-- ALWAYS think modal of monolithic file structures.
-- REMEMBER When testing you must remember you are running in a terminal mode within Visual Studio Code on Ubuntu.
-- REMEMBER The application is running in Windows 11, consider this when doing tests or executing scripts
-- Update the Devlog for every MAJOR step automatically by abbending to it with todays date
-- I am a novice developer so I am relying heavily on logic and reasoning of the AI assistant when resolving issues.
-- When giving me steps to try or execute, like instructions, give me one step at a time and ask to continue.
-- Summarize my requests so I can ensure you understand my instructions as I will be very VERBOSE, and then ask to execute the code changes.
-
-
 # AI Assistant Development Guide
 
-## Project Overview
+## CRITICAL ENVIRONMENT INFORMATION
+**IMPORTANT**: Development is done in WSL (Ubuntu), but the application runs on Windows 11. Docker Desktop runs in WSL2 mode for our NVIDIA NIM container. When providing commands or paths, be mindful of this hybrid environment.
 
-This AI Assistant is a FastAPI + React application providing a local AI assistant with project-centered containment, prioritized document retrieval, and adaptive reasoning capabilities.
+## DEVELOPMENT BEHAVIOR EXPECTATIONS
 
-## Development Workflow
+### Core Principles
+- **ALWAYS** read project documentation (Scope.md, implementation.md, README.md, Devlog.md) before making changes
+- **ASK** questions if something is unclear rather than making assumptions
+- **AVOID** creating cascading changes without updating related scripts and code
+- **AVOID** creating new diagnostic files - use existing test files and extend them
+- **UPDATE** Scope.md, implementation.md, and README.md when adding architectural changes
+- **RECOMMEND** complete file rewrites when it improves efficiency over repeated patches
+- **THINK** modular over monolithic file structures
+- **REMEMBER** application runs on Windows 11, consider this for tests and scripts
+- **APPEND** to Devlog.md for every MAJOR step with today's date
 
-#### Prerequisites
-- PostgreSQL 17 with pgvector extension (1024 dimensions)
-- Python 3.10+
-- Node.js 18+
-- NVIDIA GPU (RTX 4090 recommended)
-- CUDA Toolkit 12.0+ (for GPU acceleration)
-- Docker Desktop with NVIDIA NIM container on port 8081
+### Developer Support
+- User is a novice developer relying on AI logic and reasoning
+- Provide one-step-at-a-time instructions when giving directions
+- Summarize verbose requests before executing code changes
 
-#### Quick Start
+### Learning from Past Issues (from Devlog.md)
+- **Deprecated Patterns**: 
+  - Avoid `find` and `grep` commands - use built-in search tools
+  - Use `rg` (ripgrep) instead of grep when necessary
+  - NEVER update git config
+- **Fixed Issues**:
+  - Markdown files in chat should use 'plaintext' language identifier
+  - pgvector embeddings must use Vector column type, not Text
+  - NIM requires very low similarity thresholds (0.01 vs 0.3)
+  - Self-aware mode password is "dev-mode-2024" (not in .env)
+
+## PROJECT TECHNICAL DETAILS
+
+### Environment Setup
+- **Virtual Environment**: `venv_nemo` (NOT `venv`)
+- **Python**: 3.10+
+- **PostgreSQL**: 17 with pgvector (1024 dimensions)
+- **GPU**: NVIDIA RTX 4090 (24GB VRAM limit)
+- **Ports**:
+  - Frontend: 3000
+  - Backend: 8000
+  - NVIDIA NIM: 8081
+  - Ollama: 11434
+  - PostgreSQL: 5432
+
+### Quick Start Commands
 ```bash
 # Start all services
-./start_services.bat
+./startai.bat
 
 # Stop all services
-./stop_services.bat
-```
+./stopai.bat
 
-#### Manual Backend Setup
-```bash
+# Backend only
 cd backend
-# The project uses venv_nemo as its virtual environment
-python -m venv venv_nemo
-venv_nemo\Scripts\activate
-pip install -r requirements.txt
-python -m app.db.init_db
-uvicorn app.main:app --reload --port 8000
-```
-
-#### Manual Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Development Commands
-
-#### Frontend
-```bash
-# Start development server
-cd frontend
-npm run dev
-
-# Build for production
-npm run build
-
-# Lint code
-npm run lint
-```
-
-#### Backend
-```bash
-# Start development server with virtual environment
-cd backend
-..\venv_nemo\Scripts\activate
+../venv_nemo/Scripts/activate  # Note: venv_nemo is in parent directory
 uvicorn app.main:app --reload --port 8000
 
-# Initialize database
-python -m app.db.init_db
+# Frontend only
+cd frontend
+npm run dev
 ```
 
-## Architecture Overview
+### Key Technical Constraints
+- **100% Local**: No cloud dependencies
+- **NIM Required**: No fallback embeddings (1024 dimensions)
+- **VRAM Management**: Stay within 24GB limit
+- **File Paths**: Always use absolute paths
+- **Chunk Size**: 2000 chars (NIM token limit)
 
-### Tech Stack
-- **Frontend**: React + TypeScript with Vite build system
-- **State Management**: Redux Toolkit
-- **CSS Framework**: Tailwind CSS
-- **Backend**: FastAPI + SQLAlchemy + PostgreSQL with pgvector
-- **LLM Integration**: Ollama with TensorRT optimization
-- **Embeddings**: Sentence-transformers (all-mpnet-base-v2) with GPU acceleration
-- **Document Processing**: NeMo Document AI, LlamaIndex, PyPDF, docx2txt
-- **Visual Assets**: Custom SVG icons with consistent design language
+### Active Models
+- **Qwen 2.5 32B**: Default model
+- **Mistral-Nemo 12B**: Fast responses
+- **DeepSeek Coder V2 16B**: Code specialist
+- **NV-EmbedQA**: Always-on embeddings
 
-### Core Data Models
+### Self-Aware Mode
+- **Read Access**: Works in all modes for F:\assistant
+- **Write Access**: Password-protected ("dev-mode-2024")
+- **Security**: Individual approval for EVERY action
+- **Visual**: Bright red "🔴 SELF-AWARE" badge
+- **Restrictions**: Write operations limited to F:\ drive
 
-#### Project
-The central organizational unit. Projects act as self-contained knowledge environments.
-- `id`: UUID string
-- `name`: Project name
-- `description`: Project description
-- Relationships: Chats, Documents, UserPrompts
+## DEVELOPMENT WORKFLOW
 
-#### Document
-Files uploaded to the system for processing and retrieval.
-- `id`: UUID string
-- `filename`: Original filename
-- `filepath`: Path to stored file
-- `filetype`: File type/extension
-- `is_processed`: Whether the document has been processed
-- `is_active`: Whether the document is active in the context
-- Relationships: Projects, Chunks
+### Before Making Changes
+1. Review relevant documentation files
+2. Check Devlog.md for past issues and learnings
+3. Understand the hybrid WSL/Windows environment
+4. Ask clarifying questions if needed
 
-#### Chat
-Project-specific conversation container.
-- `id`: UUID string
-- `name`: Chat name
-- `project_id`: Linked project
-- Relationships: Messages, Project
+### When Making Changes
+1. Follow existing code conventions and patterns
+2. Check if libraries are already in use before adding new ones
+3. Update documentation for architectural changes
+4. Test considering the Windows runtime environment
+5. Append major steps to Devlog.md
 
-#### UserPrompt
-Custom instructions for the assistant's behavior.
-- `id`: UUID string
-- `name`: Prompt name
-- `content`: Prompt content
-- `is_active`: Whether prompt is currently active
-- `project_id`: Optional linked project
+### Code Style Guidelines
+- DO NOT add comments unless explicitly requested
+- Prefer modular over monolithic structures
+- Follow existing patterns in the codebase
+- Ensure security best practices
 
-### API Endpoints
+### File Management
+- ALWAYS prefer editing existing files over creating new ones
+- Delete temporary files after use
+- Only create documentation files when explicitly requested
+- Use the TodoWrite tool for task tracking
 
-#### Projects API
-- `GET /api/projects`: List all projects
-- `POST /api/projects`: Create a new project
-- `GET /api/projects/{id}`: Get project details
-- `PUT /api/projects/{id}`: Update a project
-- `DELETE /api/projects/{id}`: Delete a project
+## COMMON OPERATIONS
 
-#### Files API
-- `POST /api/files/upload`: Upload a new file
-- `GET /api/files`: List all files
-- `GET /api/files/project/{id}`: Get files for a project
-- `POST /api/files/search`: Search files by content
+### Database Migrations
+```bash
+cd backend
+python run_migration.py
+```
 
-#### Chats API
-- `GET /api/chats/project/{id}`: Get chats for a project
-- `POST /api/chats`: Create a new chat
-- `GET /api/chats/{id}`: Get chat details
-- `POST /api/chats/{id}/messages`: Send a message
+### Seeding System Prompts
+```bash
+cd backend
+python -m app.db.seed_system_prompts
+```
 
-#### User Prompts API
-- `GET /api/user-prompts`: List all user prompts
-- `POST /api/user-prompts`: Create a new user prompt
-- `PUT /api/user-prompts/{id}`: Update a user prompt
-- `PUT /api/user-prompts/{id}/activate`: Activate a user prompt
+### Testing Document Upload
+```bash
+# Use the frontend UI or API endpoints
+# Documents are processed with NIM embeddings (2000 char chunks)
+```
 
-### Frontend Structure
+### Checking Model Status
+```bash
+# Use the Admin Settings panel in the UI
+# Or check http://localhost:8000/api/models/status
+```
 
-#### Key Components
-- `App.tsx`: Main application component
-- `MainLayout`: Layout wrapper with sidebar
-- `ProjectManagerView`: Project overview
-- `ChatView`: Chat interface
-- `DocumentView`: Document viewer
-- `MainFileManager`: Global file manager
-- `ProjectFileManager`: Project-specific file manager
-
-#### Services
-- `projectService`: Project CRUD operations
-- `fileService`: File upload and management
-- `chatService`: Chat and message management
-- `userPromptService`: Custom prompts management
-
-### Core Features
-
-1. **Project-Centered Containment**
-   - Projects as self-contained knowledge environments
-   - Documents attached to specific projects
-   - Project-specific chats and settings
-
-2. **Document Processing**
-   - Auto-detect chunking (3000-8000 chars based on document type)
-   - PDF, DOCX, and text file support
-   - Semantic vector search with pgvector (1024-dim NIM embeddings)
-
-3. **Prioritized Document Retrieval**
-   - Project-attached documents given higher priority
-   - Context-aware document retrieval
-   - Hierarchical document structure preservation
-
-4. **User Prompt System**
-   - Create and manage custom prompts
-   - Project-specific prompt activation
-   - Visual indicators for active prompts
-
-## Implementation Status
-
-The project is production-ready with the following status:
-- NVIDIA NIM embeddings required (no fallback)
-- Enhanced chunking system (3x larger chunks, multi-level for business docs)
-- Project management: ✅ Completed
-- Chat interface: ✅ Completed with streaming
-- Document management: ✅ Completed with vector search
-- Document processing: ✅ NIM embeddings with auto-chunking
-- User prompts: ✅ Completed with database persistence
-- System prompts: ✅ Completed with auto-activation
-- Visual interface: ✅ Custom SVG icons and consistent theming
-- Multi-model support: ✅ 4 production models + embeddings
-- Context controls: ⚠️ UI complete, backend pending
-- Vector search: Implemented with pgvector
-- User prompts: Completed
+## IMPORTANT REMINDERS
+- Virtual environment is `venv_nemo`, not `venv`
+- Application runs on Windows, development in WSL
+- Docker Desktop uses WSL2 mode
+- No Llama 70B support (requires 4x H100 GPUs)
+- NIM embeddings are required (no fallback)
+- Self-aware write mode requires password authentication

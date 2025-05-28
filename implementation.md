@@ -296,6 +296,88 @@ class ContextManager:
         return self.optimize_context(context)
 ```
 
+## Chat System & Conversation Management
+
+### Architecture Overview
+The chat system manages conversations between users and AI models, maintaining context and handling message flow.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Chat Interface                          │
+│  - Message history display                              │
+│  - Real-time streaming responses                        │
+│  - Model selection                                      │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│              Chat API Endpoints                          │
+│  POST /chats/{id}/generate      - Standard response    │
+│  POST /chats/{id}/generate-stream - Streaming response │
+│  GET  /chats/{id}/messages      - Message history      │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│           Context Building & Management                  │
+│  - System prompts                                       │
+│  - Conversation history (100 messages)                 │
+│  - Document context (RAG)                              │
+│  - User/Project prompts                                │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Context Window Management (Updated 5/28/2025)
+
+#### Problem Solved
+- **Issue**: Large content (transcripts, documents) would fall out of context after 10 messages
+- **Root Cause**: Limited context window of 10 messages
+- **Impact**: AI would "forget" important information and ask for it again
+
+#### Solution Implemented
+```python
+# Previous configuration
+context_messages: int = 10  # Too small for long conversations
+
+# New configuration  
+context_messages: int = 100  # Maintains context for ~50 exchanges
+```
+
+#### Benefits
+- Transcripts and large documents stay in context much longer
+- No need to re-paste information during long conversations
+- Better continuity for complex discussions
+- Minimal resource impact (only ~200KB RAM per chat)
+
+### Message Deduplication Fix (5/28/2025)
+
+#### Problem Solved
+- **Issue**: User messages appeared twice in AI context
+- **Root Cause**: Message saved to DB then included in context fetch
+- **Impact**: AI processed the same message twice, causing confusion
+
+#### Solution
+```python
+# Filter out just-saved message from context
+filtered_messages = [
+    msg for msg in recent_messages 
+    if msg.id != user_msg_obj.id
+][:request.context_messages]
+```
+
+### Model Context Limits
+Each model has different context window capabilities:
+- **Qwen 2.5 32B**: ~32K tokens
+- **Mistral-Nemo 12B**: ~128K tokens (best for long contexts)
+- **DeepSeek Coder 16B**: ~16K tokens
+
+With 100 messages in context, typical usage is 5-10K tokens, well within all model limits.
+
+### Future Enhancements
+1. [ ] Dynamic context sizing based on message importance
+2. [ ] Message pinning to keep critical info in context
+3. [ ] Context compression for very long conversations
+4. [ ] Token usage monitoring and warnings
+5. [ ] Automatic summarization when approaching limits
+
 ## Self-Aware Context Implementation
 
 ### Architecture Overview

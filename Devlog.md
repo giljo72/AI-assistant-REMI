@@ -1,5 +1,23 @@
 # AI Assistant Dev Log
 
+## January 28, 2025 - Fixed Markdown/Text File Display in Chat
+
+### Issue Fixed: Markdown and Text Files Breaking UI
+Fixed an issue where .md and .txt files were not displaying properly in code blocks like Python files. The markdown files were being rendered as HTML, causing UI layout issues with large fonts and disappearing sidebars.
+
+#### Root Cause:
+- Backend was using 'markdown' and 'text' as language identifiers in code blocks
+- Frontend ReactMarkdown component was interpreting these as content to render rather than display as code
+- SyntaxHighlighter was treating 'markdown' differently than languages like 'python'
+
+#### Solution:
+Changed `simple_file_access.py` to use 'plaintext' language identifier for .md and .txt files:
+- `.md`: 'plaintext' (was 'markdown')
+- `.txt`: 'plaintext' (was 'text')
+- This ensures all text-based files display consistently in dark code blocks
+
+Now all file types (.py, .md, .txt, etc.) display uniformly in dark-themed code blocks with proper formatting.
+
 ## January 27, 2025 - Self-Aware File Reading & Syntax Highlighting
 
 ### Major Achievement: Working Self-Aware File Reading
@@ -1429,8 +1447,48 @@ Implemented comprehensive file write and command execution capabilities with man
 - Import must use absolute path: `from app.core.config import settings`
 - Backend automatically loads .env file via Pydantic Settings
 - Fixed z-index issue where password modal appeared behind context modal
+- **IMPORTANT**: The current password is set to `"patrik"` in backend/.env (overrides default "dev-mode-2024")
 
 #### Known Issues Resolved:
 - Fixed ImportError by using absolute imports instead of relative
 - Fixed Pydantic validation error by adding SELF_AWARE_PASSWORD to Settings class
 - Password modal now appears on top with z-[100] z-index
+
+## May 28, 2025 - Resolved Self-Aware Login Issue
+
+### Issue: Invalid Password Error
+- User reported being unable to login to self-aware mode with "invalid password" error
+- Investigation revealed password is set in backend/.env file as `SELF_AWARE_PASSWORD="patrik"`
+- This overrides the default password "dev-mode-2024" set in config.py
+- Solution: Removed the ENV entry to use default password "dev-mode-2024"
+- Backend restart required after .env modification
+
+### Frontend API Path Issue Fixed
+- Discovered frontend was using incorrect API path: `/api/self-aware/authenticate`
+- This resulted in double `/api` in the URL (e.g., `http://localhost:8000/api/api/self-aware/authenticate`)
+- No backend logs appeared because the request never reached the correct endpoint
+- Fixed by:
+  1. Importing `selfAwareService` in ContextControlsPanel.tsx
+  2. Using `selfAwareService.authenticate()` instead of direct fetch
+  3. This ensures proper API base URL handling
+- Authentication now works correctly with password "dev-mode-2024"
+
+## May 28, 2025 - Fixed Self-Aware Mode Badge Display
+
+### Issue: Badge Not Updating to Red After Authentication
+- User reported that after successful self-aware authentication, the badge still showed "Context: Standard" in yellow
+- The mode was actually active (file reading worked) but the UI didn't reflect it
+
+### Fix Applied:
+- Updated `handlePasswordSubmit` in ContextControlsPanel to call `onApplySettings(selfAwareSettings)`
+- This ensures the Redux store is updated immediately after authentication
+- The badge now correctly shows red "🔴 SELF-AWARE" after login
+
+### File Write Issue with DeepSeek Model:
+- DeepSeek model provides Python scripts instead of triggering file writes
+- The self-aware integration parser expects specific patterns:
+  - `write to filename.ext: ```content````
+  - `save to filename.ext: ```content````
+  - `update filename.ext with: ```content````
+- DeepSeek needs prompt engineering to output in the expected format
+- Consider adding a system prompt for self-aware mode to guide the AI's response format

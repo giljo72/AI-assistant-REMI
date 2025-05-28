@@ -179,7 +179,7 @@ class ChatGenerateRequest(BaseModel):
     max_length: int = 4096  # Increased from 150 to allow full responses
     temperature: float = 0.7
     include_context: bool = True
-    context_messages: int = 10  # Number of previous messages to include in context
+    context_messages: int = 100  # Increased from 10 to maintain longer conversation context
     model_name: Optional[str] = None
     model_type: Optional[str] = None
     context_mode: Optional[str] = None  # standard, project-focus, deep-research, quick-response, self-aware, custom
@@ -341,12 +341,18 @@ You can analyze code, suggest improvements, debug issues, and help with developm
         
         if request.include_context:
             recent_messages = chat_repository.get_chat_messages(
-                db, chat_id=chat_id, skip=0, limit=10
+                db, chat_id=chat_id, skip=0, limit=11  # Get 11 to account for filtering
             )
+            # Filter out the message we just saved to avoid duplication
+            filtered_messages = [
+                msg for msg in recent_messages 
+                if msg.id != user_msg_obj.id
+            ][:10]  # Take only 10 after filtering
+            
             # Convert to format expected by NIM (OpenAI-compatible)
             context_messages = [
                 {"role": "user" if msg.is_user else "assistant", "content": msg.content}
-                for msg in reversed(recent_messages)  # Reverse to get chronological order
+                for msg in reversed(filtered_messages)  # Reverse to get chronological order
             ]
             messages.extend(context_messages)
         
@@ -735,9 +741,15 @@ You can help improve your own code, debug issues, and suggest enhancements."""
             # Add context messages if requested
             if request.include_context:
                 recent_messages = chat_repository.get_chat_messages(
-                    db, chat_id=chat_id, skip=0, limit=request.context_messages
+                    db, chat_id=chat_id, skip=0, limit=request.context_messages + 1  # Get extra to account for filtering
                 )
-                for msg in reversed(recent_messages[:-1]):  # Exclude the just-saved user message
+                # Filter out the message we just saved to avoid duplication
+                filtered_messages = [
+                    msg for msg in recent_messages 
+                    if msg.id != user_msg_obj.id
+                ][:request.context_messages]  # Take only requested amount after filtering
+                
+                for msg in reversed(filtered_messages):
                     role = "user" if msg.is_user else "assistant"
                     messages.append({"role": role, "content": msg.content})
             

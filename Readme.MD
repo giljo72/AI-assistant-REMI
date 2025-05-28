@@ -91,6 +91,8 @@ Note: Llama 3.1 70B was removed as it requires 40GB+ VRAM (exceeds RTX 4090 capa
 - **Visual Context**: See what influences AI responses
 - **Self-Aware Mode**: AI can read its own source code with syntax highlighting
 - **Enhanced Code Display**: Markdown rendering with VS Code Dark+ theme
+- **Extended Context Memory**: Maintains 100 messages of conversation history
+- **Long Document Support**: Transcripts and large content stay in context
 
 ## Architecture Overview
 

@@ -53,8 +53,13 @@ async def authenticate_self_aware_mode(request: AuthRequest):
     """
     cleanup_expired_sessions()
     
+    # Debug logging
+    logger.info(f"Self-aware auth attempt - Expected password: {SELF_AWARE_PASSWORD}")
+    logger.info(f"Self-aware auth attempt - Received password: {request.password}")
+    logger.info(f"Self-aware auth attempt - Passwords match: {request.password == SELF_AWARE_PASSWORD}")
+    
     if request.password != SELF_AWARE_PASSWORD:
-        logger.warning("Failed self-aware mode authentication attempt")
+        logger.warning(f"Failed self-aware mode authentication attempt - Expected: '{SELF_AWARE_PASSWORD}', Got: '{request.password}'")
         raise HTTPException(status_code=403, detail="Invalid password")
     
     # Generate session token
