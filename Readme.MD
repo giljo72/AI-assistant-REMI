@@ -93,6 +93,8 @@ Note: Llama 3.1 70B was removed as it requires 40GB+ VRAM (exceeds RTX 4090 capa
 - **Enhanced Code Display**: Markdown rendering with VS Code Dark+ theme
 - **Extended Context Memory**: Maintains 100 messages of conversation history
 - **Long Document Support**: Transcripts and large content stay in context
+- **Personal Profiles**: Remember context about people you interact with
+- **Visibility Controls**: Private, shared, or global knowledge management
 
 ## Architecture Overview
 
@@ -143,6 +145,30 @@ When you activate self-aware mode with password authentication:
    - Set environment variable: `SELF_AWARE_PASSWORD=your-password`
    - Or modify default in `/backend/app/api/endpoints/self_aware_auth.py`
    - Sessions expire after 1 hour
+
+## Personal Profiles
+
+The AI assistant can remember information about people you interact with:
+
+### Managing Profiles
+1. Click the "People" button in the header
+2. Add profiles with:
+   - Basic info: Name, relationship, organization, role
+   - Key dates: Birthday, when you first met
+   - Communication: Preferred contact method, timezone
+   - Context: What they're currently working on
+   - Notes: Any additional information (markdown supported)
+
+### Visibility Settings
+- **🔒 Private**: Only you can see this profile
+- **👥 Shared**: Visible to project collaborators (future feature)
+- **🌍 Global**: Visible to all users
+
+### How It Works
+- Profiles automatically enhance chat conversations
+- Ask questions like "What should I discuss with Johan?"
+- The AI will use profile context for personalized suggestions
+- Respects visibility settings for privacy
 
 ## Documentation
 

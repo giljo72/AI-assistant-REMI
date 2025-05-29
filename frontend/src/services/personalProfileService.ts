@@ -3,142 +3,234 @@ import api from './api';
 export interface PersonalProfile {
   id: string;
   name: string;
+  preferred_name?: string;
+  relationship: 'colleague' | 'family' | 'friend' | 'client' | 'acquaintance' | 'other';
+  organization?: string;
   role?: string;
-  custom_fields: Array<{ key: string; value: string }>;
-  is_default: boolean;
-  is_private: boolean;
-  shared_with_team: boolean;
+  birthday?: string;
+  first_met?: string;
+  preferred_contact?: string;
+  timezone?: string;
+  current_focus?: string;
+  notes?: string;
+  visibility: 'private' | 'shared' | 'global';
+  user_id: string;
+  is_active: boolean;
   created_at: string;
   updated_at?: string;
 }
 
-export interface CreatePersonalProfileRequest {
-  user_id: string;
+export interface PersonalProfileCreate {
   name: string;
+  preferred_name?: string;
+  relationship: 'colleague' | 'family' | 'friend' | 'client' | 'acquaintance' | 'other';
+  organization?: string;
   role?: string;
-  custom_fields?: Array<{ key: string; value: string }>;
-  is_default?: boolean;
-  is_private?: boolean;
-  shared_with_team?: boolean;
+  birthday?: string;
+  first_met?: string;
+  preferred_contact?: string;
+  timezone?: string;
+  current_focus?: string;
+  notes?: string;
+  visibility: 'private' | 'shared' | 'global';
 }
 
-export interface UpdatePersonalProfileRequest {
+export interface PersonalProfileUpdate {
   name?: string;
+  preferred_name?: string;
+  relationship?: 'colleague' | 'family' | 'friend' | 'client' | 'acquaintance' | 'other';
+  organization?: string;
   role?: string;
-  custom_fields?: Array<{ key: string; value: string }>;
-  is_default?: boolean;
-  is_private?: boolean;
-  shared_with_team?: boolean;
+  birthday?: string;
+  first_met?: string;
+  preferred_contact?: string;
+  timezone?: string;
+  current_focus?: string;
+  notes?: string;
+  visibility?: 'private' | 'shared' | 'global';
+  is_active?: boolean;
 }
 
 class PersonalProfileService {
-  private getUserId(): string {
-    // In production, this would come from authentication
-    // For now, use a default user ID stored in localStorage
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-      const newUserId = `user_${Date.now()}`;
-      localStorage.setItem('userId', newUserId);
-      return newUserId;
+  /**
+   * Get all personal profiles for the current user
+   */
+  async getProfiles(includeGlobal: boolean = false): Promise<PersonalProfile[]> {
+    const params = new URLSearchParams({
+      user_id: 'default_user',
+      include_global: includeGlobal.toString()
+    });
+    const response = await api.get(`/personal-profiles/?${params}`);
+    return response.data;
+  }
+
+  /**
+   * Search profiles by name, organization, role, or notes
+   */
+  async searchProfiles(
+    query: string,
+    includeShared: boolean = true,
+    includeGlobal: boolean = true
+  ): Promise<PersonalProfile[]> {
+    const params = new URLSearchParams({
+      query,
+      user_id: 'default_user',
+      include_shared: includeShared.toString(),
+      include_global: includeGlobal.toString()
+    });
+    const response = await api.get(`/personal-profiles/search?${params}`);
+    return response.data;
+  }
+
+  /**
+   * Get profiles for chat context
+   */
+  async getProfilesForContext(
+    projectId?: string,
+    includeGlobal: boolean = true
+  ): Promise<PersonalProfile[]> {
+    const params = new URLSearchParams({
+      user_id: 'default_user',
+      include_global: includeGlobal.toString()
+    });
+    if (projectId) {
+      params.append('project_id', projectId);
     }
-    return userId;
-  }
-
-  async getProfiles(includeShared = false): Promise<PersonalProfile[]> {
-    const userId = this.getUserId();
-    const response = await api.get('/personal-profiles/', {
-      params: { user_id: userId, include_shared: includeShared }
-    });
+    const response = await api.get(`/personal-profiles/context?${params}`);
     return response.data;
   }
 
+  /**
+   * Get a specific profile by ID
+   */
   async getProfile(profileId: string): Promise<PersonalProfile> {
-    const userId = this.getUserId();
-    const response = await api.get(`/personal-profiles/${profileId}`, {
-      params: { user_id: userId }
-    });
+    const response = await api.get(`/personal-profiles/${profileId}?user_id=default_user`);
     return response.data;
   }
 
-  async createProfile(data: Omit<CreatePersonalProfileRequest, 'user_id'>): Promise<PersonalProfile> {
-    const userId = this.getUserId();
-    const response = await api.post('/personal-profiles/', {
-      ...data,
-      user_id: userId
-    });
+  /**
+   * Create a new personal profile
+   */
+  async createProfile(profile: PersonalProfileCreate): Promise<PersonalProfile> {
+    const response = await api.post('/personal-profiles/?user_id=default_user', profile);
     return response.data;
   }
 
-  async updateProfile(profileId: string, data: UpdatePersonalProfileRequest): Promise<PersonalProfile> {
-    const userId = this.getUserId();
-    const response = await api.put(`/personal-profiles/${profileId}`, data, {
-      params: { user_id: userId }
-    });
+  /**
+   * Update an existing profile
+   */
+  async updateProfile(profileId: string, update: PersonalProfileUpdate): Promise<PersonalProfile> {
+    const response = await api.put(`/personal-profiles/${profileId}?user_id=default_user`, update);
     return response.data;
   }
 
+  /**
+   * Delete a profile (soft delete)
+   */
   async deleteProfile(profileId: string): Promise<void> {
-    const userId = this.getUserId();
-    await api.delete(`/personal-profiles/${profileId}`, {
-      params: { user_id: userId }
-    });
+    await api.delete(`/personal-profiles/${profileId}?user_id=default_user`);
   }
 
+  /**
+   * Get formatted profile for display
+   */
+  async getFormattedProfile(profileId: string): Promise<{ profile_id: string; name: string; formatted_context: string }> {
+    const response = await api.get(`/personal-profiles/formatted/${profileId}?user_id=default_user`);
+    return response.data;
+  }
+
+  /**
+   * Format profile for display in UI
+   */
+  formatProfileForDisplay(profile: PersonalProfile): string {
+    const parts = [`${profile.name}`];
+    
+    if (profile.preferred_name && profile.preferred_name !== profile.name) {
+      parts.push(`(${profile.preferred_name})`);
+    }
+    
+    if (profile.role && profile.organization) {
+      parts.push(`- ${profile.role} at ${profile.organization}`);
+    } else if (profile.role) {
+      parts.push(`- ${profile.role}`);
+    } else if (profile.organization) {
+      parts.push(`- ${profile.organization}`);
+    }
+    
+    parts.push(`- ${profile.relationship}`);
+    
+    return parts.join(' ');
+  }
+
+  /**
+   * Get visibility icon and color
+   */
+  getVisibilityDisplay(visibility: 'private' | 'shared' | 'global'): { iconName: 'lock' | 'users' | 'global'; color: string; label: string } {
+    switch (visibility) {
+      case 'private':
+        return { iconName: 'lock', color: '#ff4444', label: 'Private' };
+      case 'shared':
+        return { iconName: 'users', color: '#4a9eff', label: 'Shared' };
+      case 'global':
+        return { iconName: 'global', color: '#52c41a', label: 'Global' };
+    }
+  }
+
+  /**
+   * Format a list of profiles for the assistant prompt
+   */
+  formatProfilesForPrompt(profiles: PersonalProfile[]): string | undefined {
+    if (!profiles || profiles.length === 0) {
+      return undefined;
+    }
+
+    const formatted = profiles.map(profile => {
+      let context = `Person: ${profile.name}`;
+      
+      if (profile.preferred_name && profile.preferred_name !== profile.name) {
+        context += `\nPrefers to be called: ${profile.preferred_name}`;
+      }
+      
+      context += `\nRelationship: ${profile.relationship}`;
+      
+      if (profile.organization) {
+        context += `\nOrganization: ${profile.organization}`;
+      }
+      if (profile.role) {
+        context += `\nRole: ${profile.role}`;
+      }
+      
+      if (profile.birthday) {
+        const date = new Date(profile.birthday);
+        context += `\nBirthday: ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+      }
+      
+      if (profile.current_focus) {
+        context += `\nCurrently focused on: ${profile.current_focus}`;
+      }
+      
+      if (profile.notes) {
+        context += `\nAdditional context: ${profile.notes}`;
+      }
+      
+      return context;
+    }).join('\n\n---\n\n');
+
+    return `Personal Context Information:\n${'='.repeat(40)}\n${formatted}`;
+  }
+
+  /**
+   * Get the default profile for the current user
+   */
   async getDefaultProfile(): Promise<PersonalProfile | null> {
     try {
-      const userId = this.getUserId();
-      const response = await api.get(`/personal-profiles/default/${userId}`);
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        return null;
-      }
-      throw error;
-    }
-  }
-
-  // Format profile for inclusion in prompts
-  formatProfileForPrompt(profile: PersonalProfile): string {
-    let prompt = `Personal Information:\n`;
-    prompt += `Name: ${profile.name}\n`;
-    
-    if (profile.role) {
-      prompt += `Role: ${profile.role}\n`;
-    }
-    
-    if (profile.custom_fields && profile.custom_fields.length > 0) {
-      profile.custom_fields.forEach(field => {
-        prompt += `${field.key}: ${field.value}\n`;
-      });
-    }
-    
-    return prompt;
-  }
-
-  // Migrate existing localStorage profiles to database
-  async migrateFromLocalStorage(): Promise<void> {
-    const localProfiles = localStorage.getItem('personalProfiles');
-    if (!localProfiles) return;
-
-    try {
-      const profiles = JSON.parse(localProfiles);
-      
-      for (const profile of profiles) {
-        await this.createProfile({
-          name: profile.name,
-          role: profile.role,
-          custom_fields: profile.customFields || [],
-          is_default: profile.isDefault || false
-        });
-      }
-      
-      // Remove from localStorage after successful migration
-      localStorage.removeItem('personalProfiles');
-      console.log('Successfully migrated profiles to database');
+      const profiles = await this.getProfiles(false);
+      return profiles.length > 0 ? profiles[0] : null;
     } catch (error) {
-      console.error('Failed to migrate profiles:', error);
+      console.error('Error fetching default profile:', error);
+      return null;
     }
   }
 }
 
-export default new PersonalProfileService();
+export const personalProfileService = new PersonalProfileService();

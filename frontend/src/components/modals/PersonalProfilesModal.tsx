@@ -1,566 +1,578 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
+  Modal,
   Box,
   Typography,
+  IconButton,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  TextareaAutosize,
   Chip,
+  Card,
+  CardContent,
+  CardActions,
+  Grid,
+  Tooltip,
+  Alert,
+  Divider,
+  FormHelperText,
   CircularProgress,
-  Alert
 } from '@mui/material';
-import {
-  Person as PersonIcon
-} from '@mui/icons-material';
-import personalProfileService, { PersonalProfile } from '../../services/personalProfileService';
-import { Icon, HelpIcon } from '../common/Icon';
+import { Icon } from '../common/Icon';
+import { personalProfileService, PersonalProfile, PersonalProfileCreate, PersonalProfileUpdate } from '../../services/personalProfileService';
 
 interface PersonalProfilesModalProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
 }
 
-const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ isOpen, onClose }) => {
+const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onClose }) => {
+  // Common styles for form fields
+  const fieldStyles = {
+    '& .MuiInputLabel-root': { color: '#FCC000' },
+    '& .MuiOutlinedInput-root': {
+      color: '#fff',
+      '& fieldset': { borderColor: '#1a2b47' },
+      '&:hover fieldset': { borderColor: '#FCC000' },
+      '&.Mui-focused fieldset': { borderColor: '#FCC000' }
+    },
+    '& .MuiSelect-icon': { color: '#FCC000' }
+  };
+
   const [profiles, setProfiles] = useState<PersonalProfile[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<PersonalProfile | null>(null);
-  const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Form state
-  const [formData, setFormData] = useState({
+  const [editingProfile, setEditingProfile] = useState<PersonalProfile | null>(null);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [formData, setFormData] = useState<Partial<PersonalProfileCreate>>({
     name: '',
+    preferred_name: '',
+    relationship: 'colleague',
+    organization: '',
     role: '',
-    custom_fields: [] as Array<{ key: string; value: string }>
+    birthday: '',
+    first_met: '',
+    preferred_contact: '',
+    timezone: '',
+    current_focus: '',
+    notes: '',
+    visibility: 'private'
   });
 
-  // Load profiles when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (open) {
       loadProfiles();
-      // Check for migration on first open
-      personalProfileService.migrateFromLocalStorage();
     }
-  }, [isOpen]);
+  }, [open]);
 
   const loadProfiles = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await personalProfileService.getProfiles();
+      const data = await personalProfileService.getProfiles(true);
       setProfiles(data);
-      
-      // Set the default profile as selected
-      const defaultProfile = data.find(p => p.is_default);
-      if (defaultProfile) {
-        setSelectedProfile(defaultProfile);
-        setFormData({
-          name: defaultProfile.name,
-          role: defaultProfile.role || '',
-          custom_fields: defaultProfile.custom_fields || []
-        });
-      }
-    } catch (err: any) {
+    } catch (err) {
       setError('Failed to load profiles');
-      console.error('Error loading profiles:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddProfile = async () => {
+  const handleCreate = async () => {
+    if (!formData.name || !formData.relationship) {
+      setError('Name and relationship are required');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
     try {
-      const newProfile = await personalProfileService.createProfile({
-        name: 'New Profile',
-        role: '',
-        custom_fields: [],
-        is_default: profiles.length === 0
-      });
-      
-      setProfiles([...profiles, newProfile]);
-      setSelectedProfile(newProfile);
-      setFormData({
-        name: '',
-        role: '',
-        custom_fields: []
-      });
-      setEditMode(true);
-    } catch (err: any) {
+      await personalProfileService.createProfile(formData as PersonalProfileCreate);
+      await loadProfiles();
+      setCreatingNew(false);
+      resetForm();
+    } catch (err) {
       setError('Failed to create profile');
-      console.error('Error creating profile:', err);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSaveProfile = async () => {
-    if (!selectedProfile) return;
-    
+  const handleUpdate = async () => {
+    if (!editingProfile) return;
+
+    setLoading(true);
+    setError(null);
     try {
-      const updatedProfile = await personalProfileService.updateProfile(
-        selectedProfile.id,
-        formData
-      );
-      
-      setProfiles(profiles.map(p => 
-        p.id === selectedProfile.id ? updatedProfile : p
-      ));
-      setSelectedProfile(updatedProfile);
-      setEditMode(false);
-    } catch (err: any) {
-      setError('Failed to save profile');
-      console.error('Error saving profile:', err);
+      const update: PersonalProfileUpdate = {
+        ...formData
+      };
+      await personalProfileService.updateProfile(editingProfile.id, update);
+      await loadProfiles();
+      setEditingProfile(null);
+      resetForm();
+    } catch (err) {
+      setError('Failed to update profile');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteProfile = async (profileId: string) => {
+  const handleDelete = async (profileId: string) => {
+    if (!confirm('Are you sure you want to delete this profile?')) return;
+
+    setLoading(true);
+    setError(null);
     try {
       await personalProfileService.deleteProfile(profileId);
-      
-      const updatedProfiles = profiles.filter(p => p.id !== profileId);
-      setProfiles(updatedProfiles);
-      
-      if (selectedProfile?.id === profileId) {
-        setSelectedProfile(updatedProfiles[0] || null);
-        if (updatedProfiles[0]) {
-          setFormData({
-            name: updatedProfiles[0].name,
-            role: updatedProfiles[0].role || '',
-            custom_fields: updatedProfiles[0].custom_fields || []
-          });
-        }
-      }
-    } catch (err: any) {
+      await loadProfiles();
+    } catch (err) {
       setError('Failed to delete profile');
-      console.error('Error deleting profile:', err);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSetDefault = async (profileId: string) => {
-    try {
-      const updatedProfile = await personalProfileService.updateProfile(
-        profileId,
-        { is_default: true }
-      );
-      
-      // Update all profiles to reflect new default
-      const updatedProfiles = profiles.map(p => ({
-        ...p,
-        is_default: p.id === profileId
-      }));
-      
-      setProfiles(updatedProfiles);
-    } catch (err: any) {
-      setError('Failed to set default profile');
-      console.error('Error setting default:', err);
-    }
-  };
-
-  const handleAddCustomField = () => {
+  const resetForm = () => {
     setFormData({
-      ...formData,
-      custom_fields: [...formData.custom_fields, { key: '', value: '' }]
+      name: '',
+      preferred_name: '',
+      relationship: 'colleague',
+      organization: '',
+      role: '',
+      birthday: '',
+      first_met: '',
+      preferred_contact: '',
+      timezone: '',
+      current_focus: '',
+      notes: '',
+      visibility: 'private'
     });
   };
 
-  const handleCustomFieldChange = (index: number, field: 'key' | 'value', value: string) => {
-    const updatedFields = [...formData.custom_fields];
-    updatedFields[index][field] = value;
-    setFormData({ ...formData, custom_fields: updatedFields });
+  const startEdit = (profile: PersonalProfile) => {
+    setEditingProfile(profile);
+    setFormData({
+      name: profile.name,
+      preferred_name: profile.preferred_name || '',
+      relationship: profile.relationship,
+      organization: profile.organization || '',
+      role: profile.role || '',
+      birthday: profile.birthday || '',
+      first_met: profile.first_met || '',
+      preferred_contact: profile.preferred_contact || '',
+      timezone: profile.timezone || '',
+      current_focus: profile.current_focus || '',
+      notes: profile.notes || '',
+      visibility: profile.visibility
+    });
+    setCreatingNew(false);
   };
 
-  const handleRemoveCustomField = (index: number) => {
-    const updatedFields = formData.custom_fields.filter((_, i) => i !== index);
-    setFormData({ ...formData, custom_fields: updatedFields });
+  const cancelEdit = () => {
+    setEditingProfile(null);
+    setCreatingNew(false);
+    resetForm();
+  };
+
+  const renderForm = () => (
+    <Box sx={{ mt: 2, p: 2, backgroundColor: '#121922', borderRadius: 2, border: '1px solid #1a2b47' }}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Name *"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Preferred Name"
+            value={formData.preferred_name}
+            onChange={(e) => setFormData({ ...formData, preferred_name: e.target.value })}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Relationship *</InputLabel>
+            <Select
+              value={formData.relationship}
+              label="Relationship *"
+              onChange={(e) => setFormData({ ...formData, relationship: e.target.value as any })}
+            >
+              <MenuItem value="colleague">Colleague</MenuItem>
+              <MenuItem value="family">Family</MenuItem>
+              <MenuItem value="friend">Friend</MenuItem>
+              <MenuItem value="client">Client</MenuItem>
+              <MenuItem value="acquaintance">Acquaintance</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Visibility</InputLabel>
+            <Select
+              value={formData.visibility}
+              label="Visibility"
+              onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
+            >
+              <MenuItem value="private">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Icon name="lock" size={16} />
+                  <span>Private</span>
+                </Box>
+              </MenuItem>
+              <MenuItem value="shared">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Icon name="users" size={16} />
+                  <span>Shared</span>
+                </Box>
+              </MenuItem>
+              <MenuItem value="global">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Icon name="global" size={16} />
+                  <span>Global</span>
+                </Box>
+              </MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Organization"
+            value={formData.organization}
+            onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Role/Title"
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Birthday"
+            type="date"
+            value={formData.birthday}
+            onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+            InputLabelProps={{ shrink: true }}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="First Met"
+            type="date"
+            value={formData.first_met}
+            onChange={(e) => setFormData({ ...formData, first_met: e.target.value })}
+            InputLabelProps={{ shrink: true }}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Preferred Contact</InputLabel>
+            <Select
+              value={formData.preferred_contact || ''}
+              label="Preferred Contact"
+              onChange={(e) => setFormData({ ...formData, preferred_contact: e.target.value })}
+            >
+              <MenuItem value="">None</MenuItem>
+              <MenuItem value="email">Email</MenuItem>
+              <MenuItem value="phone">Phone</MenuItem>
+              <MenuItem value="teams">Teams</MenuItem>
+              <MenuItem value="slack">Slack</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Timezone"
+            value={formData.timezone}
+            onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+            placeholder="e.g., GMT+1, EST"
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Current Focus"
+            value={formData.current_focus}
+            onChange={(e) => setFormData({ ...formData, current_focus: e.target.value })}
+            placeholder="What are they currently working on?"
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12}>
+          <Typography variant="body2" sx={{ mb: 1 }}>Additional Notes (Markdown supported)</Typography>
+          <TextareaAutosize
+            minRows={4}
+            style={{
+              width: '100%',
+              backgroundColor: '#0d1929',
+              color: '#fff',
+              border: '1px solid #152238',
+              borderRadius: 4,
+              padding: 8,
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              resize: 'vertical'
+            }}
+            placeholder="Any additional information about this person..."
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          />
+        </Grid>
+      </Grid>
+      
+      <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+        <Button
+          variant="outlined"
+          onClick={cancelEdit}
+          sx={{ 
+            color: '#fff',
+            borderColor: '#FCC000',
+            '&:hover': {
+              borderColor: '#FCC000',
+              backgroundColor: 'rgba(212, 175, 55, 0.1)'
+            }
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={editingProfile ? handleUpdate : handleCreate}
+          disabled={loading || !formData.name || !formData.relationship}
+          sx={{
+            backgroundColor: '#FCC000',
+            color: '#000',
+            '&:hover': {
+              backgroundColor: '#b8941c'
+            },
+            '&:disabled': {
+              backgroundColor: 'rgba(212, 175, 55, 0.3)',
+              color: 'rgba(0, 0, 0, 0.5)'
+            }
+          }}
+        >
+          {editingProfile ? 'Update' : 'Create'}
+        </Button>
+      </Box>
+    </Box>
+  );
+
+  const renderProfile = (profile: PersonalProfile) => {
+    const visibilityDisplay = personalProfileService.getVisibilityDisplay(profile.visibility);
+    
+    return (
+      <Card key={profile.id} sx={{ mb: 2, backgroundColor: '#121922', border: '1px solid #1a2b47' }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" sx={{ mb: 1, color: '#fff' }}>
+                {profile.name}
+                {profile.preferred_name && profile.preferred_name !== profile.name && (
+                  <Typography component="span" variant="body2" sx={{ ml: 1, color: '#888' }}>
+                    ({profile.preferred_name})
+                  </Typography>
+                )}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                <Chip 
+                  label={profile.relationship} 
+                  size="small" 
+                  sx={{ 
+                    backgroundColor: '#1a2b47',
+                    border: '2px solid #FFC300',
+                    color: '#FFC300'
+                  }}
+                />
+                <Chip 
+                  label={visibilityDisplay.label} 
+                  icon={<Icon name={visibilityDisplay.iconName} size={14} />}
+                  size="small" 
+                  sx={{ backgroundColor: visibilityDisplay.color + '22', color: visibilityDisplay.color }}
+                />
+                {profile.organization && (
+                  <Chip 
+                    label={profile.organization} 
+                    size="small" 
+                    sx={{ 
+                      backgroundColor: '#1a2b47',
+                      border: '2px solid #FFC300',
+                      color: '#FFC300'
+                    }}
+                  />
+                )}
+                {profile.role && (
+                  <Chip 
+                    label={profile.role} 
+                    size="small" 
+                    sx={{ 
+                      backgroundColor: '#1a2b47',
+                      border: '2px solid #FFC300',
+                      color: '#FFC300'
+                    }}
+                  />
+                )}
+              </Box>
+              
+              {profile.current_focus && (
+                <Typography variant="body2" sx={{ mb: 1, color: '#FCC000' }}>
+                  Currently: {profile.current_focus}
+                </Typography>
+              )}
+              
+              {profile.notes && (
+                <Typography variant="body2" sx={{ color: '#aaa', whiteSpace: 'pre-wrap' }}>
+                  {profile.notes.length > 200 ? profile.notes.substring(0, 200) + '...' : profile.notes}
+                </Typography>
+              )}
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <IconButton
+                size="small"
+                onClick={() => startEdit(profile)}
+                sx={{ color: '#FCC000' }}
+              >
+                <Icon name="userEdit" size={18} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => handleDelete(profile.id)}
+                sx={{ color: '#ff4444' }}
+              >
+                <Icon name="trash" size={18} />
+              </IconButton>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
-    <Dialog
-      open={isOpen}
+    <Modal
+      open={open}
       onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: {
-          backgroundColor: '#0a0f1b',
-          color: '#ffffff',
-          minHeight: '600px'
-        }
-      }}
+      aria-labelledby="personal-profiles-modal"
     >
-      <DialogTitle sx={{ 
-        borderBottom: '1px solid #1e293b',
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '90%',
+        maxWidth: 800,
+        maxHeight: '90vh',
+        bgcolor: '#080d13',
+        border: '2px solid #1a2b47',
+        borderRadius: 2,
+        boxShadow: 24,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
+        flexDirection: 'column',
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <PersonIcon sx={{ color: '#d4af37' }} />
-          <Typography variant="h6" sx={{ color: '#FFFFFF' }}>Personal Profiles</Typography>
-        </Box>
-        <Icon 
-          name="close" 
-          size={24} 
-          onClick={onClose}
-          tooltip="Close"
-          style={{ color: '#FFC000' }}
-        />
-      </DialogTitle>
-      
-      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', minHeight: '500px' }}>
-        {/* Instructions Banner */}
         <Box sx={{ 
-          p: 2, 
-          backgroundColor: '#0a0f1b',
-          borderBottom: '1px solid #2d3748',
-          textAlign: 'center'
+          p: 3, 
+          borderBottom: '1px solid #1a2b47',
+          backgroundColor: '#121922'
         }}>
-          <Typography variant="body2" sx={{ color: 'rgb(59, 130, 246)', lineHeight: 1.6 }}>
-            Create profiles for yourself and people you work with. The AI Assistant will use this information
-            to better understand context when you mention these people or discuss related topics.
-            Your profiles help the AI provide more personalized and relevant assistance.
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="h5" sx={{ color: '#FCC000', fontWeight: 'bold' }}>
+                Contacts
+              </Typography>
+              {!creatingNew && !editingProfile && (
+                <IconButton
+                  size="small"
+                  onClick={() => setCreatingNew(true)}
+                  sx={{ color: '#FCC000', '&:hover': { backgroundColor: 'rgba(252, 192, 0, 0.1)' } }}
+                  title="Add New Contact"
+                >
+                  <Icon name="add" size={20} />
+                </IconButton>
+              )}
+            </Box>
+            <IconButton
+              aria-label="close"
+              onClick={onClose}
+              sx={{ color: '#FCC000' }}
+            >
+              <Icon name="close" size={24} />
+            </IconButton>
+          </Box>
+          <Typography variant="body2" sx={{ color: '#3E5B8F', fontSize: '13px' }}>
+            This is your network of colleagues and contacts the assistant will reference when working within projects. 
+            You choose how they interact within your projects, team and global users of the tool.
           </Typography>
         </Box>
         
-        {error && (
-          <Alert severity="error" onClose={() => setError(null)} sx={{ m: 2 }}>
-            {error}
-          </Alert>
-        )}
-        
-        <Box sx={{ flex: 1, display: 'flex' }}>
-          {/* Left Panel - Profile List */}
-          <Box sx={{ 
-            width: '250px', 
-            borderRight: '1px solid #1e293b',
-            backgroundColor: '#0f1823'
-          }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid #1e293b' }}>
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={<Icon name="add" size={20} />}
-              onClick={handleAddProfile}
-              disabled={loading}
-              sx={{
-                backgroundColor: '#d4af37',
-                color: '#000000',
-                '&:hover': {
-                  backgroundColor: '#b8941f',
-                  color: '#000000'
-                }
-              }}
-            >
-              Add Profile
-            </Button>
-          </Box>
+        <Box sx={{ p: 3, overflowY: 'auto', flex: 1, backgroundColor: '#080d13' }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
           
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress sx={{ color: '#d4af37' }} />
-            </Box>
-          ) : (
-            <List sx={{ p: 0 }}>
-              {profiles.map(profile => (
-                <ListItem
-                  key={profile.id}
-                  button
-                  selected={selectedProfile?.id === profile.id}
-                  onClick={() => {
-                    setSelectedProfile(profile);
-                    setFormData({
-                      name: profile.name,
-                      role: profile.role || '',
-                      custom_fields: profile.custom_fields || []
-                    });
-                    setEditMode(false);
-                  }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: '#1e293b',
-                      borderLeft: '3px solid #d4af37'
-                    }
-                  }}
-                >
-                  <ListItemText 
-                    primary={profile.name}
-                    primaryTypographyProps={{ sx: { color: '#FFFFFF' } }}
-                    secondary={profile.is_default && (
-                      <Chip 
-                        label="Default" 
-                        size="small" 
-                        sx={{ 
-                          backgroundColor: '#d4af37',
-                          color: '#000000',
-                          height: '16px',
-                          fontSize: '0.7rem'
-                        }}
-                      />
-                    )}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Box>
-
-        {/* Right Panel - Profile Details */}
-        <Box sx={{ flex: 1, p: 3 }}>
-          {selectedProfile ? (
+          {(creatingNew || editingProfile) && renderForm()}
+          
+          {!creatingNew && !editingProfile && (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" sx={{ color: '#FFFFFF' }}>
-                  {editMode ? 'Edit Profile' : 'Profile Details'}
+              <Divider sx={{ mb: 0.25, mt: 1 }} />
+              <Typography variant="h6" sx={{ mt: 0.25, mb: 0.5, color: '#FCC000' }}>Your Contacts</Typography>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : profiles.length === 0 ? (
+                <Typography variant="body2" sx={{ textAlign: 'center', color: '#666', p: 4 }}>
+                  No contacts yet. Add people you interact with to have the AI remember context about them.
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  {!editMode ? (
-                    <>
-                      <Button
-                        size="small"
-                        startIcon={<Icon name="userEdit" size={16} />}
-                        onClick={() => setEditMode(true)}
-                        sx={{ color: '#FFC000' }}
-                      >
-                        Edit
-                      </Button>
-                      {!selectedProfile.is_default && (
-                        <Button
-                          size="small"
-                          onClick={() => handleSetDefault(selectedProfile.id)}
-                          sx={{ color: '#FFC000' }}
-                        >
-                          Set as Default
-                        </Button>
-                      )}
-                      <Icon
-                        name="userDelete"
-                        size={20}
-                        onClick={() => handleDeleteProfile(selectedProfile.id)}
-                        tooltip="Delete Profile"
-                        style={{ color: '#FFC000', marginLeft: '8px' }}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="small"
-                        startIcon={<Icon name="save" size={16} />}
-                        onClick={handleSaveProfile}
-                        sx={{ 
-                          backgroundColor: '#4ade80',
-                          color: '#000000',
-                          '&:hover': {
-                            backgroundColor: '#22c55e',
-                            color: '#000000'
-                          }
-                        }}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => setEditMode(false)}
-                        sx={{ color: '#FFC000' }}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  )}
-                </Box>
-              </Box>
-
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box>
-                  <Typography variant="body2" sx={{ color: '#FFC000', mb: 1 }}>Name</Typography>
-                  <TextField
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    disabled={!editMode}
-                    fullWidth
-                    variant="outlined"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: editMode ? '#1e293b' : 'transparent',
-                        color: '#FFC000',
-                        '& fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                        '&.Mui-disabled fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: '#FFC000',
-                      },
-                      '& .MuiInputBase-input.Mui-disabled': {
-                        color: '#FFC000',
-                        WebkitTextFillColor: '#FFC000',
-                      }
-                    }}
-                  />
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ color: '#FFC000', mb: 1 }}>Role</Typography>
-                  <TextField
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    disabled={!editMode}
-                    fullWidth
-                    variant="outlined"
-                    placeholder="e.g., CEO, Developer, Client, Family Member"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: editMode ? '#1e293b' : 'transparent',
-                        color: '#FFC000',
-                        '& fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                        '&.Mui-disabled fieldset': {
-                          borderColor: '#FFC000 !important',
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: '#FFC000',
-                        '&::placeholder': {
-                          color: '#FFC000',
-                          opacity: 0.6,
-                        },
-                      },
-                      '& .MuiInputBase-input.Mui-disabled': {
-                        color: '#FFC000',
-                        WebkitTextFillColor: '#FFC000',
-                      }
-                    }}
-                  />
-                </Box>
-                <Box>
-                  {editMode && (
-                    <Button
-                      startIcon={<Icon name="add" size={16} />}
-                      onClick={handleAddCustomField}
-                      sx={{ color: '#FFC000' }}
-                    >
-                      Add Field
-                      <HelpIcon tooltip="Add custom fields like department, skills, or preferences" />
-                    </Button>
-                  )}
-                  
-                  {formData.custom_fields.map((field, index) => (
-                    <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, mt: 2 }}>
-                      <TextField
-                        label="Field Name"
-                        value={field.key}
-                        onChange={(e) => handleCustomFieldChange(index, 'key', e.target.value)}
-                        disabled={!editMode}
-                        sx={{
-                          flex: 1,
-                          '& .MuiInputLabel-root': {
-                            color: '#FFC000',
-                          },
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: editMode ? '#1e293b' : 'transparent',
-                            color: '#FFC000',
-                            '& fieldset': {
-                              borderColor: '#FFC000',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#FFD700',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#FFD700',
-                            },
-                          },
-                          '& .MuiInputBase-input': {
-                            color: '#FFC000',
-                          },
-                          '& .MuiInputBase-input.Mui-disabled': {
-                            color: '#FFC000',
-                            WebkitTextFillColor: '#FFC000',
-                          }
-                        }}
-                      />
-                      <TextField
-                        label="Value"
-                        value={field.value}
-                        onChange={(e) => handleCustomFieldChange(index, 'value', e.target.value)}
-                        disabled={!editMode}
-                        sx={{
-                          flex: 2,
-                          '& .MuiInputLabel-root': {
-                            color: '#FFC000',
-                          },
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: editMode ? '#1e293b' : 'transparent',
-                            color: '#FFC000',
-                            '& fieldset': {
-                              borderColor: '#FFC000',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#FFD700',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#FFD700',
-                            },
-                          },
-                          '& .MuiInputBase-input': {
-                            color: '#FFC000',
-                          },
-                          '& .MuiInputBase-input.Mui-disabled': {
-                            color: '#FFC000',
-                            WebkitTextFillColor: '#FFC000',
-                          }
-                        }}
-                      />
-                      {editMode && (
-                        <Icon
-                          name="delete"
-                          size={20}
-                          onClick={() => handleRemoveCustomField(index)}
-                          tooltip="Remove field"
-                          style={{ color: '#FFC000', cursor: 'pointer' }}
-                        />
-                      )}
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
+              ) : (
+                profiles.map(renderProfile)
+              )}
             </>
-          ) : (
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              height: '100%',
-              color: '#FFC000'
-            }}>
-              <PersonIcon sx={{ fontSize: 64, mb: 2, color: '#FFC000' }} />
-              <Typography variant="h6" sx={{ color: '#FFC000' }}>No Profile Selected</Typography>
-              <Typography variant="body2" sx={{ color: '#FFC000' }}>Create a profile to get started</Typography>
-            </Box>
           )}
         </Box>
-        </Box>
-      </DialogContent>
-    </Dialog>
+      </Box>
+    </Modal>
   );
 };
 

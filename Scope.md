@@ -61,6 +61,27 @@ In password-protected self-aware mode, the assistant gains write capabilities:
 - **Audit Trail**: All modifications backed up and logged
 - **Visual Indicators**: Bright red badge shows when write mode is active
 
+### 8. Personal Context Memory
+The assistant maintains structured profiles about people you interact with, providing contextually aware assistance based on relationships, roles, and personal notes. This human-centric knowledge base enhances the AI's ability to provide personalized communication suggestions and relationship insights.
+
+Key features:
+- **Rich Profiles**: Track names, roles, organizations, birthdays, communication preferences
+- **Flexible Notes**: Markdown-supported notes for capturing any additional context
+- **Visibility Control**: Private (just you), Shared (team), or Global (everyone) settings
+- **Automatic Context**: Profiles automatically enhance chat conversations
+- **Relationship Types**: Colleagues, family, friends, clients with appropriate context
+
+### 9. User Authentication & Access Control
+A secure, role-based authentication system that maintains privacy while enabling controlled collaboration.
+
+Key features:
+- **First-Time Setup**: Wizard creates initial admin account with recovery PIN
+- **Two-Tier Access**: Admin (full features) and User (focused experience) roles
+- **Session Management**: 48-hour sessions with remember-me functionality
+- **Project Sharing**: Users can invite others to collaborate on projects
+- **Visibility Control**: Private items become global when projects are shared
+- **Development Mode**: Environment-based bypasses for development flexibility
+
 ## Success Criteria
 
 ### User Experience Success

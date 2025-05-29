@@ -1,5 +1,5 @@
 import api from './api';
-import personalProfileService from './personalProfileService';
+import { personalProfileService } from './personalProfileService';
 
 export interface ChatMessage {
   id: string;
@@ -102,6 +102,13 @@ class ChatService {
       if (!response.data.messages || !Array.isArray(response.data.messages)) {
         response.data.messages = [];
       }
+      
+      // Transform is_user to role for each message
+      response.data.messages = response.data.messages.map((msg: any) => ({
+        ...msg,
+        role: msg.is_user ? 'user' : 'assistant'
+      }));
+      
       return response.data;
     } catch (error) {
       console.error("Error fetching chat:", error);
@@ -152,7 +159,12 @@ class ChatService {
    * Get messages for a chat
    */
   async getChatMessages(chatId: string): Promise<ChatMessage[]> {
-    return api.get<ChatMessage[]>(`/chats/${chatId}/messages/`);
+    const response = await api.get(`/chats/${chatId}/messages/`);
+    // Transform is_user to role for each message
+    return response.data.map((msg: any) => ({
+      ...msg,
+      role: msg.is_user ? 'user' : 'assistant'
+    }));
   }
 
   /**

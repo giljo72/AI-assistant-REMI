@@ -1,5 +1,16 @@
 # AI Assistant Development Guide
 
+## SESSION MEMORY
+### 2025-05-29 00:18 - Claude Code Memory Management
+- Discussed how to preserve context across WSL/system reboots
+- Created sessions/ directory for tracking work sessions
+- Learning about Claude Code's built-in memory features:
+  - # shortcut for quick memory additions
+  - /memory command for editing memory files
+  - Memory imports using @path/to/file syntax
+  - Project memory (./CLAUDE.md) vs User memory (~/.claude/CLAUDE.md)
+- Created sessions/current-session.md for tracking current work
+
 ## CRITICAL ENVIRONMENT INFORMATION
 **IMPORTANT**: Development is done in WSL (Ubuntu), but the application runs on Windows 11. Docker Desktop runs in WSL2 mode for our NVIDIA NIM container. When providing commands or paths, be mindful of this hybrid environment.
 
@@ -104,6 +115,12 @@ npm run dev
 - Prefer modular over monolithic structures
 - Follow existing patterns in the codebase
 - Ensure security best practices
+
+### UI/UX Style Guidelines
+- **Modal/Popup Design**: Follow the standard template in `/frontend/src/styles/modal-template.md`
+- **Color Scheme**: Dark navy backgrounds (#080d13, #121922) with gold accents (#d4af37)
+- **Icons**: Prefer SVG icons with hover effects over text buttons
+- **Reference Implementation**: PersonalProfilesModal.tsx is the gold standard for modal design
 
 ### File Management
 - ALWAYS prefer editing existing files over creating new ones

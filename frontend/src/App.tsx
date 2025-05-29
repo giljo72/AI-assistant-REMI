@@ -182,7 +182,7 @@ function AppContent() {
           id: msg.id || String(Date.now() + Math.random()),
           content: msg.content || '',
           sender: msg.role === 'user' ? 'user' : 'assistant',
-          timestamp: new Date().toLocaleString() // Safer date handling
+          timestamp: msg.created_at ? new Date(msg.created_at).toLocaleString() : new Date().toLocaleString()
         }));
         
         setChatMessages(uiMessages);

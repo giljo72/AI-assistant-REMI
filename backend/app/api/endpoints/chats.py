@@ -329,7 +329,21 @@ You can analyze code, suggest improvements, debug issues, and help with developm
             for prompt in active_prompts:
                 system_content += f"\n- {prompt.content}"
         
-        # Add personal profile context if provided in request
+        # Add personal profile context
+        # Check if personal profiles are enabled (default to True for now)
+        include_personal_profiles = getattr(request, 'include_personal_profiles', True)
+        if include_personal_profiles:
+            from ...services.personal_profile_service import personal_profile_service
+            profiles_context = personal_profile_service.get_profiles_context(
+                db=db,
+                user_id="default_user",  # Using default user for now
+                project_id=project_id,
+                include_global=True
+            )
+            if profiles_context:
+                system_content += f"\n\n{profiles_context}"
+        
+        # Add personal profile context if provided in request (legacy support)
         if hasattr(request, 'personal_context') and request.personal_context:
             system_content += f"\n{request.personal_context}"
         
@@ -735,6 +749,19 @@ You can help improve your own code, debug issues, and suggest enhancements."""
             # Add custom context if provided
             if request.context_mode == "custom" and request.custom_context:
                 system_content += f"\n\nCustom Context Instructions:\n{request.custom_context}"
+            
+            # Add personal profile context
+            include_personal_profiles = getattr(request, 'include_personal_profiles', True)
+            if include_personal_profiles:
+                from ...services.personal_profile_service import personal_profile_service
+                profiles_context = personal_profile_service.get_profiles_context(
+                    db=db,
+                    user_id="default_user",  # Using default user for now
+                    project_id=project_id_for_context,
+                    include_global=True
+                )
+                if profiles_context:
+                    system_content += f"\n\n{profiles_context}"
             
             messages.append({"role": "system", "content": system_content})
             

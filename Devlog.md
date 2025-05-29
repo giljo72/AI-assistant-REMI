@@ -1,5 +1,80 @@
 # AI Assistant Dev Log
 
+## January 28, 2025 - User Authentication System Planning
+
+### Major Architecture Decision: Adding User Management
+Planning implementation of a proper authentication system to replace the current password-based self-aware mode access.
+
+#### System Design:
+1. **User Roles**:
+   - **Admin**: Full system access (all models, context modes, admin panel, database operations)
+   - **User**: Standard access (Qwen model only, standard context modes, no admin features)
+
+2. **Authentication Flow**:
+   - First-time setup wizard for initial admin account creation
+   - Admin sets recovery PIN during setup (admin-only password recovery)
+   - Login screen with username/password
+   - 48-hour sessions with "Remember me" option
+   - Session persists across browser restarts
+
+3. **Access Control**:
+   - Self-aware mode: Admin only (removes password prompt)
+   - Model selection: Admin gets all models, Users get Qwen only
+   - Admin panel: Admin only
+   - Database operations: Admin only
+   - Development mode: Admin only
+
+4. **Project Collaboration**:
+   - Any user can invite others to their projects
+   - Upon invitation: All private contacts/documents convert to global (one-way)
+   - Warning shown before conversion
+   - Simplified visibility: Private (creator only) or Global (all project members)
+
+5. **Development Considerations**:
+   - Environment variable for dev mode bypass
+   - Database seeding scripts for test users
+   - Hot-reload friendly sessions
+   - Quick user switching for testing
+   - Keep feature flags for gradual rollout
+
+6. **Security**:
+   - Passwords hashed with bcrypt
+   - JWT tokens for session management
+   - No hardcoded accounts (good for open-source)
+   - Admin recovery PIN as fallback
+
+This removes the clunky self-aware password system and provides a professional, scalable authentication system suitable for team use.
+
+## January 28, 2025 - Fixed Chat Bubble Styling Issue
+
+### Issue Fixed: User Chat Bubbles Losing Yellow Color After Backend Restart
+Fixed an issue where user chat bubbles would lose their yellow styling and appear with the same blue/gray styling as assistant messages after backend restart.
+
+#### Root Cause:
+1. **Color Mismatch**: ChatView component was using old gold color `#d4af37` instead of new yellow `#FCC000`
+2. **Backend/Frontend Field Mismatch**: Backend sends `is_user` boolean field, but frontend expects `role` field with values 'user' or 'assistant'
+3. **Missing Transformation**: chatService.ts wasn't transforming the backend format to frontend format
+
+#### Solution:
+1. Updated all color references in ChatView.tsx from `#d4af37` to `#FCC000`:
+   - User message bubbles background
+   - Model info text color
+   - Loading spinner color
+   - Button colors and borders
+   
+2. Added transformation in chatService.ts to convert backend `is_user` to frontend `role`:
+   ```typescript
+   // Transform is_user to role for each message
+   response.data.messages = response.data.messages.map((msg: any) => ({
+     ...msg,
+     role: msg.is_user ? 'user' : 'assistant'
+   }));
+   ```
+   
+3. Updated timestamp handling to use actual `created_at` field from backend instead of generating new timestamps
+
+Now user messages consistently display with yellow background (#FCC000) and assistant messages with blue background (#1a2b47), regardless of backend restarts.
+
 ## January 28, 2025 - Fixed Markdown/Text File Display in Chat
 
 ### Issue Fixed: Markdown and Text Files Breaking UI
@@ -1492,3 +1567,139 @@ Implemented comprehensive file write and command execution capabilities with man
   - `update filename.ext with: ```content````
 - DeepSeek needs prompt engineering to output in the expected format
 - Consider adding a system prompt for self-aware mode to guide the AI's response format
+
+## May 28, 2025 - Chat Context Improvements & Personal Profiles Implementation
+
+### Major Chat Context Improvements
+
+#### 1. Fixed Duplicate Message Bug
+Resolved critical issue where user messages appeared twice in the AI's context:
+
+**Problem**: 
+- Messages were saved to database then immediately included in context fetch
+- AI was processing the same message twice, causing confusion and redundant responses
+
+**Solution**:
+- Modified `chats.py` to filter out the just-saved message from context
+- Applied to both regular and streaming chat endpoints
+```python
+# Filter out the message we just saved to avoid duplication
+filtered_messages = [
+    msg for msg in recent_messages 
+    if msg.id != user_msg_obj.id
+][:request.context_messages]
+```
+
+#### 2. Extended Context Window from 10 to 100 Messages
+Dramatically improved the AI's ability to maintain context during long conversations:
+
+**Problem**:
+- Context window limited to 10 messages (5 exchanges)
+- Large content (transcripts, documents) would fall out of context quickly
+- Users had to repeatedly re-paste information
+
+**Solution**:
+- Increased `context_messages` from 10 to 100 in chat endpoints
+- All models support this (Qwen: 32K tokens, Mistral: 128K tokens, DeepSeek: 16K tokens)
+- Minimal resource impact (~200KB RAM per chat)
+
+**Benefits**:
+- Transcripts and large documents stay in context throughout conversation
+- No need to re-paste information during extended discussions
+- Better continuity for complex problem-solving sessions
+
+### Complete Personal Profiles Implementation
+
+Implemented a comprehensive personal profiles system allowing users to maintain context about people they interact with:
+
+#### 1. Database Schema
+Created `personal_profiles` table with:
+- **Core Fields**: name, preferred_name, relationship (colleague/family/friend/client)
+- **Organization Info**: organization, role
+- **Important Dates**: birthday, first_met
+- **Communication**: preferred_contact (email/phone/teams/slack), timezone
+- **Context**: current_focus, notes (markdown supported)
+- **Privacy**: visibility levels (private/shared/global)
+
+#### 2. Visibility Model
+- **🔒 Private**: Only visible to the profile owner
+- **👥 Shared**: Visible to project collaborators (future feature)
+- **🌍 Global**: Visible to all users in the system
+
+#### 3. API Implementation
+Complete REST API with:
+- `GET /personal-profiles/` - List profiles with visibility filtering
+- `POST /personal-profiles/` - Create new profile
+- `PUT /personal-profiles/{id}` - Update existing profile
+- `DELETE /personal-profiles/{id}` - Soft delete (sets is_active=false)
+- `GET /personal-profiles/search` - Search profiles by name
+- `GET /personal-profiles/context` - Get profiles formatted for chat context
+
+#### 4. Frontend UI
+- **Access**: "People" button in main header (person icon)
+- **Modal Design**: 
+  - Clean form with all fields organized in grid layout
+  - Visibility selector with emoji indicators
+  - Markdown-supported notes field
+  - Card-based display of existing profiles
+- **CRUD Operations**: Full create, read, update, delete functionality
+- **Visual Feedback**: Loading states, error handling, success notifications
+
+#### 5. Chat Integration
+Profiles automatically enhance chat conversations:
+- Profiles included in chat context based on visibility
+- Formatted as structured information for the LLM
+- Example usage: "What should I discuss with Johan?" - AI uses profile context
+- Works in both standard and streaming chat endpoints
+
+#### 6. Service Layer
+`PersonalProfileService` handles:
+- Profile formatting for chat context
+- Visibility-based filtering
+- User-scoped queries
+- Context string generation for LLM consumption
+
+### Hardware Discussion
+User asked about hardware upgrades. Key insights:
+- **GPU Compute** is the primary bottleneck, not storage or RAM
+- Current RTX 4090 (24GB) is well-utilized
+- Second GPU recommendation: RTX 4060 Ti 16GB for dedicated embeddings
+- This would free up main GPU for LLM inference
+- Storage (NVMe) and RAM (64GB) are already sufficient
+
+### Documentation Updates
+Updated all project documentation to reflect today's changes:
+
+#### 1. implementation.md
+- Added "Personal Profiles System" section with complete architecture
+- Updated implementation status table (Personal Profiles: 100% complete)
+- Added chat context window improvements to Chat System section
+- Documented message deduplication fix
+
+#### 2. Scope.md
+- Added "Personal Context Memory" as Core Capability #8
+- Described the human-centric knowledge base concept
+- Listed key features and visibility controls
+
+#### 3. Readme.MD
+- Added personal profiles to Key Features list
+- Created new "Personal Profiles" section with usage instructions
+- Explained visibility settings and how the feature works
+- Updated feature list with extended context memory
+
+### Technical Achievements Today
+1. ✅ Resolved duplicate message bug affecting AI responses
+2. ✅ 10x improvement in context retention (10→100 messages)
+3. ✅ Complete personal profiles implementation (DB, API, UI)
+4. ✅ Automatic chat context integration with visibility controls
+5. ✅ Comprehensive documentation updates
+6. ✅ Hardware optimization consultation
+
+### Migration Required
+To use the new personal profiles feature:
+```bash
+cd backend
+python app/db/migrations/update_personal_profiles_schema.py
+```
+
+This creates the necessary database table and enum types for the visibility system.

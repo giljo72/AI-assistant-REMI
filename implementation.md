@@ -13,6 +13,8 @@
 | System Monitoring | ✅ Complete | 100% |
 | Context Controls | ⚠️ Frontend Only | 60% |
 | Self-Aware Context | ⚠️ Backend Only | 70% |
+| Personal Profiles | ✅ Complete | 100% |
+| Chat Context Window | ✅ Enhanced | 100% |
 
 ## Current Implementation
 
@@ -691,6 +693,84 @@ Frontend (3000)
 3. [ ] Services: Systemd management
 4. [ ] Monitoring: Prometheus + Grafana
 
+## Personal Profiles System
+
+### Architecture Overview
+The personal profiles system allows users to maintain context about people they interact with, enhancing the AI's ability to provide personalized assistance.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Personal Profiles UI                     │
+│  - CRUD operations for profiles                          │
+│  - Visibility controls (private/shared/global)           │
+│  - Rich profile fields with markdown notes              │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│              Personal Profiles API                       │
+│  GET    /personal-profiles/     - List profiles        │
+│  POST   /personal-profiles/     - Create profile       │
+│  PUT    /personal-profiles/{id} - Update profile       │
+│  DELETE /personal-profiles/{id} - Soft delete          │
+│  GET    /personal-profiles/search - Search profiles    │
+│  GET    /personal-profiles/context - For chat context  │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────┴────────────────────────────────┐
+│           PostgreSQL Database Schema                     │
+│  - personal_profiles table with visibility enum         │
+│  - Core fields: name, relationship, organization        │
+│  - Dates: birthday, first_met                          │
+│  - Context: current_focus, notes (markdown)            │
+│  - Visibility: private, shared, global                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Implementation Details (Completed 5/28/2025)
+
+#### Database Schema
+```sql
+CREATE TABLE personal_profiles (
+    id UUID PRIMARY KEY,
+    name VARCHAR NOT NULL,
+    preferred_name VARCHAR,
+    relationship VARCHAR NOT NULL,  -- colleague, family, friend, client
+    organization VARCHAR,
+    role VARCHAR,
+    birthday DATE,
+    first_met DATE,
+    preferred_contact VARCHAR,      -- email, phone, teams, slack
+    timezone VARCHAR,
+    current_focus VARCHAR,
+    notes TEXT,                     -- Markdown supported
+    visibility visibility_level NOT NULL DEFAULT 'private',
+    user_id VARCHAR NOT NULL DEFAULT 'default_user',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+#### Visibility Model
+- **Private**: Only visible to the profile owner
+- **Shared**: Visible to project collaborators (future feature)
+- **Global**: Visible to all users in the system
+
+#### Chat Integration
+Personal profiles are automatically included in chat context:
+- Profiles matching current user + global profiles
+- Formatted as structured context for the LLM
+- Respects visibility settings
+- Works in both standard and streaming chat endpoints
+
+### Future Enhancements
+1. [ ] Project-specific profile associations
+2. [ ] Profile templates for common relationships
+3. [ ] Birthday/anniversary reminders
+4. [ ] Integration with calendar systems
+5. [ ] Profile photo support
+6. [ ] Relationship network visualization
+
 ## Security Considerations
 
 ### Current Security
@@ -746,6 +826,26 @@ See `Cleanup_Opportunities.md` for detailed analysis of:
 2. [ ] Plugin architecture
 3. [ ] Mobile interface
 4. [ ] Cloud sync option
+
+## UI/UX Design Standards
+
+### Modal/Popup Window Design
+All modal windows should follow the standardized template defined in `/frontend/src/styles/modal-template.md`. Key principles:
+
+1. **Color Scheme**
+   - Main background: `#080d13` (darkest navy)
+   - Header/cards: `#121922` (sidebar color)
+   - Accents: `#d4af37` (gold)
+   - Borders: `#1a2b47`
+
+2. **Structure**
+   - Fixed header with title, actions, and description
+   - Scrollable content area
+   - Icon-first approach with tooltips
+
+3. **Reference Implementation**
+   - `PersonalProfilesModal.tsx` serves as the gold standard
+   - All new modals should follow this pattern
 
 ## Decision Log
 

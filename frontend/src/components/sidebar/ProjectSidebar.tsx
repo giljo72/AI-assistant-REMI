@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import AddProjectModal from '../modals/AddProjectModal';
 import AdminSettingsPanel from '../modals/AdminSettingsPanel';
 import ElegantSystemModelsPanel from '../modals/ElegantSystemModelsPanel';
-import PersonalProfilesModal from '../modals/PersonalProfilesModal';
 import UniversalSearchModal from '../layout/UniversalSearchModal';
 import { useProjects } from '../../context/ProjectContext';
 import { useNavigation } from '../../hooks/useNavigation';
@@ -14,7 +13,6 @@ const ProjectSidebar: React.FC = () => {
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   const [isSystemPanelOpen, setIsSystemPanelOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const [isProfilesModalOpen, setIsProfilesModalOpen] = useState(false);
   
   // Use the shared project context
   const { projects, loading, error, addProject } = useProjects();
@@ -67,13 +65,6 @@ const ProjectSidebar: React.FC = () => {
               title="Universal Search"
             >
               <Icon name="search" size={20} style={{ color: '#d4af37' }} />
-            </button>
-            <button 
-              className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
-              title="Personal Profiles"
-              onClick={() => setIsProfilesModalOpen(true)}
-            >
-              <Icon name="user" size={20} style={{ color: '#d4af37' }} />
             </button>
           </div>
           <div className="flex items-center space-x-1">
@@ -182,11 +173,6 @@ const ProjectSidebar: React.FC = () => {
         onClose={() => setIsSearchModalOpen(false)}
       />
       
-      {/* Personal Profiles Modal */}
-      <PersonalProfilesModal
-        isOpen={isProfilesModalOpen}
-        onClose={() => setIsProfilesModalOpen(false)}
-      />
     </div>
   );
 };

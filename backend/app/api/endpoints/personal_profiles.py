@@ -1,55 +1,83 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from app.db.database import get_db
-from app.db.models.personal_profile import PersonalProfile
+from app.db.repositories.personal_profile_repository import personal_profile_repository
 from app.schemas.personal_profile import (
+    PersonalProfile,
     PersonalProfileCreate,
     PersonalProfileUpdate,
-    PersonalProfileResponse
+    VisibilityLevel
 )
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[PersonalProfileResponse])
+@router.get("/", response_model=List[PersonalProfile])
 def get_personal_profiles(
-    user_id: str,
-    include_shared: bool = False,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID (defaulting to 'default_user' for now)"),
+    include_global: bool = Query(False, description="Include globally visible profiles"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100)
 ):
     """Get all personal profiles for a user."""
-    query = db.query(PersonalProfile).filter(
-        PersonalProfile.is_active == True
+    profiles = personal_profile_repository.get_by_user(
+        db=db,
+        user_id=user_id,
+        skip=skip,
+        limit=limit,
+        include_global=include_global
     )
-    
-    if include_shared:
-        # Include profiles shared with team
-        query = query.filter(
-            (PersonalProfile.user_id == user_id) | 
-            (PersonalProfile.shared_with_team == True)
-        )
-    else:
-        # Only user's own profiles
-        query = query.filter(PersonalProfile.user_id == user_id)
-    
-    profiles = query.all()
     return profiles
 
 
-@router.get("/{profile_id}", response_model=PersonalProfileResponse)
+@router.get("/search", response_model=List[PersonalProfile])
+def search_profiles(
+    query: str = Query(..., description="Search query"),
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID"),
+    include_shared: bool = Query(True, description="Include shared profiles"),
+    include_global: bool = Query(True, description="Include global profiles")
+):
+    """Search personal profiles by name, organization, role, or notes."""
+    profiles = personal_profile_repository.search_profiles(
+        db=db,
+        query=query,
+        user_id=user_id,
+        include_shared=include_shared,
+        include_global=include_global
+    )
+    return profiles
+
+
+@router.get("/context", response_model=List[PersonalProfile])
+def get_profiles_for_context(
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID"),
+    project_id: Optional[str] = Query(None, description="Project ID"),
+    include_global: bool = Query(True, description="Include global profiles")
+):
+    """Get profiles that should be included in chat context."""
+    profiles = personal_profile_repository.get_profiles_for_context(
+        db=db,
+        user_id=user_id,
+        project_id=project_id,
+        include_global=include_global
+    )
+    return profiles
+
+
+@router.get("/{profile_id}", response_model=PersonalProfile)
 def get_personal_profile(
     profile_id: UUID,
-    user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID")
 ):
     """Get a specific personal profile."""
-    profile = db.query(PersonalProfile).filter(
-        PersonalProfile.id == profile_id,
-        PersonalProfile.is_active == True
-    ).first()
+    profile = personal_profile_repository.get(db, id=profile_id)
     
     if not profile:
         raise HTTPException(
@@ -58,7 +86,7 @@ def get_personal_profile(
         )
     
     # Check access permissions
-    if profile.user_id != user_id and not profile.shared_with_team:
+    if profile.user_id != user_id and profile.visibility == VisibilityLevel.PRIVATE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied to this profile"
@@ -67,71 +95,49 @@ def get_personal_profile(
     return profile
 
 
-@router.post("/", response_model=PersonalProfileResponse)
+@router.post("/", response_model=PersonalProfile)
 def create_personal_profile(
     profile: PersonalProfileCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID")
 ):
     """Create a new personal profile."""
-    # If this is the first profile for the user, make it default
-    existing_profiles = db.query(PersonalProfile).filter(
-        PersonalProfile.user_id == profile.user_id,
-        PersonalProfile.is_active == True
-    ).count()
-    
-    if existing_profiles == 0:
-        profile.is_default = True
-    elif profile.is_default:
-        # If setting as default, unset other defaults
-        db.query(PersonalProfile).filter(
-            PersonalProfile.user_id == profile.user_id,
-            PersonalProfile.is_active == True
-        ).update({"is_default": False})
-    
-    db_profile = PersonalProfile(**profile.dict())
-    db.add(db_profile)
-    db.commit()
-    db.refresh(db_profile)
-    
+    db_profile = personal_profile_repository.create_with_user(
+        db=db,
+        obj_in=profile,
+        user_id=user_id
+    )
     return db_profile
 
 
-@router.put("/{profile_id}", response_model=PersonalProfileResponse)
+@router.put("/{profile_id}", response_model=PersonalProfile)
 def update_personal_profile(
     profile_id: UUID,
     profile_update: PersonalProfileUpdate,
-    user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID")
 ):
     """Update a personal profile."""
-    db_profile = db.query(PersonalProfile).filter(
-        PersonalProfile.id == profile_id,
-        PersonalProfile.user_id == user_id,
-        PersonalProfile.is_active == True
-    ).first()
+    db_profile = personal_profile_repository.get(db, id=profile_id)
     
     if not db_profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Personal profile not found or access denied"
+            detail="Personal profile not found"
         )
     
-    # Handle default setting
-    if profile_update.is_default is True:
-        # Unset other defaults
-        db.query(PersonalProfile).filter(
-            PersonalProfile.user_id == user_id,
-            PersonalProfile.id != profile_id,
-            PersonalProfile.is_active == True
-        ).update({"is_default": False})
+    # Check ownership
+    if db_profile.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own profiles"
+        )
     
-    # Update fields
-    update_data = profile_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_profile, field, value)
-    
-    db.commit()
-    db.refresh(db_profile)
+    db_profile = personal_profile_repository.update(
+        db=db,
+        db_obj=db_profile,
+        obj_in=profile_update
+    )
     
     return db_profile
 
@@ -139,64 +145,59 @@ def update_personal_profile(
 @router.delete("/{profile_id}")
 def delete_personal_profile(
     profile_id: UUID,
-    user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID")
 ):
     """Delete a personal profile (soft delete)."""
-    db_profile = db.query(PersonalProfile).filter(
-        PersonalProfile.id == profile_id,
-        PersonalProfile.user_id == user_id,
-        PersonalProfile.is_active == True
-    ).first()
+    db_profile = personal_profile_repository.get(db, id=profile_id)
     
     if not db_profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Personal profile not found or access denied"
+            detail="Personal profile not found"
         )
     
-    # Soft delete
-    db_profile.is_active = False
+    # Check ownership
+    if db_profile.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own profiles"
+        )
     
-    # If this was the default, make another profile default
-    if db_profile.is_default:
-        other_profile = db.query(PersonalProfile).filter(
-            PersonalProfile.user_id == user_id,
-            PersonalProfile.id != profile_id,
-            PersonalProfile.is_active == True
-        ).first()
-        
-        if other_profile:
-            other_profile.is_default = True
-    
-    db.commit()
+    # Soft delete by setting is_active to False
+    update_data = PersonalProfileUpdate(is_active=False)
+    personal_profile_repository.update(db=db, db_obj=db_profile, obj_in=update_data)
     
     return {"message": "Personal profile deleted successfully"}
 
 
-@router.get("/default/{user_id}", response_model=PersonalProfileResponse)
-def get_default_profile(
-    user_id: str,
-    db: Session = Depends(get_db)
+@router.get("/formatted/{profile_id}")
+def get_formatted_profile(
+    profile_id: UUID,
+    db: Session = Depends(get_db),
+    user_id: str = Query("default_user", description="User ID")
 ):
-    """Get the default personal profile for a user."""
-    profile = db.query(PersonalProfile).filter(
-        PersonalProfile.user_id == user_id,
-        PersonalProfile.is_default == True,
-        PersonalProfile.is_active == True
-    ).first()
-    
-    if not profile:
-        # Return the first profile if no default is set
-        profile = db.query(PersonalProfile).filter(
-            PersonalProfile.user_id == user_id,
-            PersonalProfile.is_active == True
-        ).first()
+    """Get a profile formatted for LLM context."""
+    profile = personal_profile_repository.get(db, id=profile_id)
     
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No personal profiles found for this user"
+            detail="Personal profile not found"
         )
     
-    return profile
+    # Check access permissions
+    if profile.user_id != user_id and profile.visibility == VisibilityLevel.PRIVATE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this profile"
+        )
+    
+    # Convert to schema and format
+    profile_schema = PersonalProfile.from_orm(profile)
+    
+    return {
+        "profile_id": str(profile.id),
+        "name": profile.name,
+        "formatted_context": profile_schema.format_for_context()
+    }

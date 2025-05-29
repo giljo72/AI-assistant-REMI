@@ -302,7 +302,7 @@ const ChatView: React.FC<ChatViewProps> = ({
               >
                 {message.sender === 'user' ? 'You' : 'Assistant'}
                 {message.sender === 'assistant' && message.modelInfo && (
-                  <span style={{ color: '#d4af37', fontWeight: 'bold' }}> ({message.modelInfo.name})</span>
+                  <span style={{ color: '#FCC000', fontWeight: 'bold' }}> ({message.modelInfo.name})</span>
                 )}
                 {' • '}{message.timestamp}
               </Typography>
@@ -322,7 +322,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                     width: 'fit-content',
                     minWidth: '200px',
                     maxWidth: '100%', // Allow full width expansion
-                    backgroundColor: message.sender === 'user' ? '#d4af37' : '#1a2b47',
+                    backgroundColor: message.sender === 'user' ? '#FCC000' : '#1a2b47',
                     color: message.sender === 'user' ? '#000000' : '#ffffff',
                     borderRadius: message.sender === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0',
                     wordBreak: 'break-word',
@@ -439,7 +439,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 marginBottom: '16px'
               }}
             >
-              <CircularProgress size={20} sx={{ color: '#d4af37', marginRight: '12px' }} />
+              <CircularProgress size={20} sx={{ color: '#FCC000', marginRight: '12px' }} />
               <Typography 
                 variant="body2" 
                 sx={{ 
@@ -504,10 +504,10 @@ const ChatView: React.FC<ChatViewProps> = ({
                   borderColor: '#152238',
                 },
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#d4af37',
+                  borderColor: '#FCC000',
                 },
                 '& .MuiSelect-icon': {
-                  color: '#d4af37',
+                  color: '#FCC000',
                 }
               }}
             >
@@ -604,11 +604,11 @@ const ChatView: React.FC<ChatViewProps> = ({
                 color="primary" 
                 sx={{ 
                   ml: 1,
-                  backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                  backgroundColor: 'rgba(252, 192, 0, 0.1)',
                   '&:hover': {
-                    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+                    backgroundColor: 'rgba(252, 192, 0, 0.2)',
                   },
-                  color: '#d4af37',
+                  color: '#FCC000',
                   width: {
                     xs: '36px',
                     sm: '40px'
@@ -655,9 +655,9 @@ const ChatView: React.FC<ChatViewProps> = ({
                 color="primary"
                 sx={{ 
                   ml: 1,
-                  backgroundColor: 'rgba(212, 175, 55, 0.8)',
+                  backgroundColor: 'rgba(252, 192, 0, 0.8)',
                   '&:hover': {
-                    backgroundColor: '#d4af37',
+                    backgroundColor: '#FCC000',
                   },
                   color: '#000000',
                   width: {

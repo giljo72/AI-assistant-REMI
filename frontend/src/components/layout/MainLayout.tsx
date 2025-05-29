@@ -12,6 +12,7 @@ import { usePromptPanels } from '../../context/PromptPanelsContext';
 import { Icon } from '../common/Icon';
 import { setContextMode } from '../../store/projectSettingsSlice';
 import { ResourceMonitor } from '../common/ResourceMonitor';
+import PersonalProfilesModal from '../modals/PersonalProfilesModal';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -32,6 +33,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   
   // Get navigation state using our custom hook
   const { activeView } = useNavigation();
+  
+  // Contacts modal state
+  const [isContactsOpen, setIsContactsOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-navy text-white overflow-hidden">
@@ -73,8 +77,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {/* Resource Monitor - replaces AI Assistant text */}
           <ResourceMonitor />
           
-          {/* View indicator showing current view */}
-          <div className="flex items-center">
+          {/* Right side controls */}
+          <div className="flex items-center gap-4">
+            {/* Contacts Button */}
+            <button
+              onClick={() => setIsContactsOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gold/20 hover:bg-gold/30 text-gold rounded transition-colors"
+              title="Manage Contacts"
+            >
+              <Icon name="users" size={16} />
+              <span className="text-sm">Contacts</span>
+            </button>
+            
+            {/* View indicator showing current view */}
             <span className="text-sm text-gold">
               View: <span className="font-bold">{activeView.charAt(0).toUpperCase() + activeView.slice(1)}</span>
             </span>
@@ -102,6 +117,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           useAllDocs: globalDataEnabled,
           useAllChats: false,
         }}
+      />
+      
+      {/* Contacts Modal */}
+      <PersonalProfilesModal
+        open={isContactsOpen}
+        onClose={() => setIsContactsOpen(false)}
       />
     </div>
   );

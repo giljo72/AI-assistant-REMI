@@ -5,6 +5,7 @@ import { systemPromptService } from './systemPromptService';
 import fileService from './fileService';
 import { chatService } from './chatService';
 import systemService from './systemService';
+import { personalProfileService } from './personalProfileService';
 
 export {
   api,
@@ -14,6 +15,7 @@ export {
   fileService,
   chatService,
   systemService,
+  personalProfileService,
 };
 
 export type { Project, CreateProjectRequest, UpdateProjectRequest } from './projectService';
@@ -43,3 +45,8 @@ export type {
   ServiceControlRequest,
   SystemOperationResponse
 } from './systemService';
+export type { 
+  PersonalProfile, 
+  PersonalProfileCreate, 
+  PersonalProfileUpdate 
+} from './personalProfileService';
