@@ -64,8 +64,8 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
       
       const mockResults = {
         app_version: '1.0.0',
-        latest_version: '1.1.0',
-        update_available: true,
+        latest_version: '1.0.0',
+        update_available: false,
         model_updates: [
           {
             name: 'qwen2.5:32b-instruct-q4_K_M',
@@ -574,48 +574,13 @@ const AdminSettingsPanel: React.FC<AdminSettingsPanelProps> = ({ isOpen, onClose
                       <div className="p-3 bg-navy-lighter rounded-md">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-white">Application Version</h4>
-                          {updateCheckState.results.update_available ? (
-                            <span className="badge badge-yellow">
-                              Update Available
-                            </span>
-                          ) : (
-                            <span className="badge badge-green">
-                              Up to Date
-                            </span>
-                          )}
+                          <span className="badge badge-green">
+                            Current
+                          </span>
                         </div>
                         <p className="text-sm text-gray-300">
-                          Current: v{updateCheckState.results.app_version} → Latest: v{updateCheckState.results.latest_version}
+                          Version: {updateCheckState.results.app_version}
                         </p>
-                        {updateCheckState.results.update_available && (
-                          <>
-                            <button
-                              onClick={() => toggleInstructions('app')}
-                              className="badge badge-blue badge-hover mt-2"
-                            >
-                              Update Instructions
-                            </button>
-                            {updateCheckState.showInstructions.app && (
-                              <div className="mt-2 p-3 bg-navy rounded-md border border-gray-600">
-                                <p className="text-xs text-gray-300 mb-2">
-                                  <strong className="text-yellow-400">Location:</strong> Project root (F:\assistant)
-                                </p>
-                                <p className="text-xs text-gray-300 mb-2">
-                                  <strong className="text-yellow-400">Environment:</strong> Regular CMD/PowerShell (NOT in venv)
-                                </p>
-                                <p className="text-xs text-gray-300 mb-2">
-                                  <strong className="text-yellow-400">Admin Mode:</strong> Not required
-                                </p>
-                                <pre className="text-xs bg-black/50 p-2 rounded mt-2 text-white">
-{`cd F:\\assistant
-git pull origin main
-# or
-git fetch && git merge origin/main`}
-                                </pre>
-                              </div>
-                            )}
-                          </>
-                        )}
                       </div>
                       
                       {/* Model Updates */}
@@ -749,10 +714,18 @@ pip install --upgrade ${updateCheckState.results.service_updates.map((u: any) =>
                       {/* Recommendations */}
                       {updateCheckState.results.recommendations.length > 0 && (
                         <div className="p-3 bg-navy-lighter rounded-md">
-                          <h4 className="font-medium text-white mb-2 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                            New Model Recommendations
-                          </h4>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-white flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                              New Model Recommendations
+                            </h4>
+                            <button
+                              onClick={() => toggleInstructions('recommendations')}
+                              className="badge badge-blue badge-hover"
+                            >
+                              Install Instructions
+                            </button>
+                          </div>
                           <div className="space-y-2">
                             {updateCheckState.results.recommendations.map((rec: any, idx: number) => (
                               <div key={idx} className="p-2 bg-navy rounded text-sm">
@@ -765,6 +738,32 @@ pip install --upgrade ${updateCheckState.results.service_updates.map((u: any) =>
                               </div>
                             ))}
                           </div>
+                          {updateCheckState.showInstructions.recommendations && (
+                            <div className="mt-3 p-3 bg-navy rounded-md border border-gray-600">
+                              <p className="text-xs text-gray-300 mb-2">
+                                <strong className="text-yellow-400">Location:</strong> Anywhere
+                              </p>
+                              <p className="text-xs text-gray-300 mb-2">
+                                <strong className="text-yellow-400">Environment:</strong> Regular CMD/PowerShell (NOT in venv)
+                              </p>
+                              <p className="text-xs text-gray-300 mb-2">
+                                <strong className="text-yellow-400">Admin Mode:</strong> Not required
+                              </p>
+                              <p className="text-xs text-gray-300 mb-2">
+                                <strong className="text-yellow-400">Install Commands:</strong>
+                              </p>
+                              {updateCheckState.results.recommendations.map((rec: any, idx: number) => (
+                                <pre key={idx} className="text-xs bg-black/50 p-2 rounded mt-2 text-white">
+{`# Install ${rec.model}
+ollama pull ${rec.model}
+
+# After installation, you can:
+# 1. Load it in the Models tab
+# 2. Select it in your chat interface`}
+                                </pre>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                       

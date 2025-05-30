@@ -1,5 +1,11 @@
 # User-Specific Development Preferences
 
+## SESSION MEMORY FILES
+- **IMPORTANT**: Session files in sessions/ directory contain valuable work history
+- These memory_*.md files document important development sessions with the user
+- NEVER delete session memory files during cleanup operations
+- Always preserve: sessions/memory_*.md files
+
 ## CRITICAL REMINDERS
 - **WSL/Windows Hybrid**: Development in WSL, app runs in Windows 11, Docker in WSL2 mode
 - **Skill Level**: User is a novice developer - provide clear, step-by-step guidance

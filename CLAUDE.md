@@ -11,6 +11,12 @@
   - Project memory (./CLAUDE.md) vs User memory (~/.claude/CLAUDE.md)
 - Created sessions/current-session.md for tracking current work
 
+### Session Files - IMPORTANT
+- The sessions/ directory contains important memory files from past Claude/User work sessions
+- DO NOT DELETE session memory files (memory_*.md) without user permission
+- These files preserve context from important development sessions
+- Example files: memory_20250529_002422.md, memory_20250529_013128.md
+
 ## CRITICAL ENVIRONMENT INFORMATION
 **IMPORTANT**: Development is done in WSL (Ubuntu), but the application runs on Windows 11. Docker Desktop runs in WSL2 mode for our NVIDIA NIM container. When providing commands or paths, be mindful of this hybrid environment.
 

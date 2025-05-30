@@ -1,10 +1,12 @@
-# AI Assistant
+# Scout - AI Assistant
 
-A fully private, local AI assistant with multi-model support, document understanding, and project-based knowledge management. All processing happens on your hardware - your data never leaves your system.
+**Scout** is a fully private, local AI assistant with multi-model support, document understanding, and project-based knowledge management. All processing happens on your hardware - your data never leaves your system.
+
+Scout helps you explore and navigate your knowledge, acting as your intelligent guide through documents, code, and conversations.
 
 ## What It Does
 
-The AI Assistant provides ChatGPT-like capabilities on your local machine with:
+Scout provides ChatGPT-like capabilities on your local machine with:
 - **Multiple AI Models**: Switch between fast responses, deep reasoning, or code generation
 - **Document Understanding**: Upload PDFs, Word docs, and spreadsheets for AI-powered search
 - **Project Organization**: Keep different projects' knowledge separate and organized

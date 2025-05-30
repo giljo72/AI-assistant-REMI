@@ -107,7 +107,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 className="flex flex-col items-center gap-1 hover:bg-navy-lighter px-3 py-1.5 rounded transition-colors"
               >
                 <div 
-                  className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-navy-dark font-semibold text-lg"
+                  className="w-10 h-10 rounded-full bg-gold flex items-center justify-center font-semibold text-lg"
+                  style={{ color: '#080d13' }}
                   title={user?.email}
                 >
                   {user?.username?.charAt(0).toUpperCase() || 'U'}

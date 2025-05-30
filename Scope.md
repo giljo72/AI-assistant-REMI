@@ -1,8 +1,10 @@
-# AI Assistant: Project Vision & Scope
+# Scout: Project Vision & Scope
 
 ## Vision Statement
 
-The AI Assistant creates a fully private, locally-hosted knowledge management system that gives users complete control over their data while providing enterprise-grade AI capabilities. We believe powerful AI assistance should not require surrendering data ownership or privacy.
+Scout creates a fully private, locally-hosted knowledge management system that gives users complete control over their data while providing enterprise-grade AI capabilities. We believe powerful AI assistance should not require surrendering data ownership or privacy.
+
+**Why Scout?** The name reflects our core mission - to help users explore, discover, and navigate through their knowledge landscape. Like a trusted scout, this AI assistant guides you through complex information terrain while keeping your data secure and private.
 
 ## Core Philosophy
 
