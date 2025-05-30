@@ -15,7 +15,7 @@ class AIAssistantStopper:
     def __init__(self):
         self.services_to_stop = {
             "Frontend (npm/vite)": {
-                "ports": [5173],
+                "ports": [3000],
                 "process_names": ["node", "npm", "vite"]
             },
             "Backend (uvicorn)": {

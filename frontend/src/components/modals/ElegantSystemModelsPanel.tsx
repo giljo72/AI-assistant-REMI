@@ -180,7 +180,7 @@ const ElegantSystemModelsPanel: React.FC<ElegantSystemModelsPanelProps> = ({ isO
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 w-full max-w-6xl h-5/6 rounded-lg flex flex-col border border-gold/20">
+      <div className="bg-gray-900 w-full max-w-6xl h-5/6 rounded-2xl flex flex-col border-2 border-yellow-500">
         {/* Header */}
         <div className="bg-gray-800 p-4 rounded-t-lg border-b border-gold/30">
           <div className="flex justify-between items-center">

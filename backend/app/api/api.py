@@ -1,9 +1,12 @@
 from fastapi import APIRouter
 
-from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, test_endpoints, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware, self_aware_auth, action_approval, self_aware_ops
+from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware, self_aware_auth, action_approval, self_aware_ops, auth
 from .endpoints.fix_files import router as fix_files_router
 
 api_router = APIRouter()
+
+# Authentication endpoints (no prefix to keep /api/auth/login)
+api_router.include_router(auth.router, tags=["authentication"])
 
 # Include all API endpoint routers
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
@@ -14,8 +17,7 @@ api_router.include_router(chats.router, prefix="/chats", tags=["chats"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 
-# Add test endpoints for debugging
-api_router.include_router(test_endpoints.router, prefix="/test", tags=["test"])
+# Test endpoints removed - were not used in production
 
 # Add health endpoints (these should always work)
 api_router.include_router(health.router, prefix="/health", tags=["health"])
@@ -56,6 +58,4 @@ api_router.include_router(action_approval.router, prefix="/approvals", tags=["ap
 # Add self-aware operations endpoints
 api_router.include_router(self_aware_ops.router, prefix="/self-aware-ops", tags=["self_aware_ops"])
 
-# Add test endpoint for debugging
-from .endpoints import test_file_chat
-api_router.include_router(test_file_chat.router, prefix="/test", tags=["test"])
+# Test file chat endpoint removed - was not used in production

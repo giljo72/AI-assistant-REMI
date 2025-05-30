@@ -81,9 +81,10 @@ const UserPromptModal: React.FC<UserPromptModalProps> = ({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: '8px',
+          borderRadius: '16px',
           backgroundColor: '#121922', // Navy-light from tailwind
-          color: '#ffffff'
+          color: '#ffffff',
+          border: '2px solid #FFC000', // 2px yellow border
         }
       }}
     >

@@ -16,15 +16,15 @@ import {
   IconButton
 } from '@mui/material';
 import { promptColors } from '../common/promptStyles';
+import { Icon } from '../common/Icon';
 
 interface SystemPromptModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (name: string, content: string, description?: string, category?: string) => Promise<void>;
+  onSave: (name: string, content: string, description?: string) => Promise<void>;
   initialName?: string;
   initialContent?: string;
   initialDescription?: string;
-  initialCategory?: string;
   editMode?: boolean;
   isDefault?: boolean;
   onDelete?: () => Promise<void>;
@@ -38,7 +38,6 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
   initialName = '',
   initialContent = '',
   initialDescription = '',
-  initialCategory = 'general',
   editMode = false,
   isDefault = false,
   onDelete,
@@ -47,18 +46,17 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
   const [name, setName] = useState(initialName);
   const [content, setContent] = useState(initialContent);
   const [description, setDescription] = useState(initialDescription);
-  const [category, setCategory] = useState(initialCategory);
   const [errors, setErrors] = useState<{ name?: string; content?: string }>({});
+  const [showPromptHelp, setShowPromptHelp] = useState(false);
 
   useEffect(() => {
     if (open) {
       setName(initialName);
       setContent(initialContent);
       setDescription(initialDescription);
-      setCategory(initialCategory || 'general');
       setErrors({});
     }
-  }, [open, initialName, initialContent, initialDescription, initialCategory]);
+  }, [open, initialName, initialContent, initialDescription]);
 
   const validate = () => {
     const newErrors: { name?: string; content?: string } = {};
@@ -77,7 +75,7 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
 
   const handleSave = async () => {
     if (validate()) {
-      await onSave(name.trim(), content.trim(), description.trim() || undefined, category);
+      await onSave(name.trim(), content.trim(), description.trim() || undefined);
     }
   };
 
@@ -87,261 +85,238 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
     }
   };
 
+  const handleCancel = () => {
+    // Only show confirmation if there are changes and we're not currently saving
+    if (!isSaving && (name !== initialName || content !== initialContent || description !== initialDescription)) {
+      if (window.confirm('Are you sure you want to discard your changes?')) {
+        onClose();
+      }
+    } else if (!isSaving) {
+      onClose();
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleCancel}
       maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
-          backgroundColor: '#1a2b47',
+          borderRadius: '16px',
+          backgroundColor: '#121922', // Navy-light from tailwind
           color: '#ffffff',
-          '& .Mui-disabled': {
-            '& input, & textarea, & .MuiSelect-select': {
-              color: 'rgba(255, 255, 255, 0.7) !important',
-              WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
-            },
-          },
+          border: '2px solid #FFC000', // 2px yellow border
         },
       }}
     >
       <DialogTitle sx={{ 
-        backgroundColor: '#152238', 
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        fontSize: '1.25rem',
-        color: promptColors.gold
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderBottom: '1px solid #FFC000', // Gold border to match design
+        backgroundColor: '#1e2735', // Navy-lighter from tailwind
+        padding: '16px 24px'
       }}>
-        {editMode ? 'Edit System Prompt' : 'Add System Prompt'}
+        <Typography variant="h6" component="div" sx={{ color: '#FFC000', fontWeight: 'bold' }}>
+          {editMode ? 'Modify System Prompt' : 'Add System Prompt'}
+        </Typography>
+        <IconButton 
+          edge="end" 
+          color="inherit" 
+          onClick={handleCancel} 
+          aria-label="close"
+          disabled={isSaving}
+          sx={{ color: '#ffffff' }}
+        >
+          <Icon name="close" size={24} />
+        </IconButton>
       </DialogTitle>
       
-      <DialogContent sx={{ mt: 2, pt: 3 }}>
-        <TextField
-          fullWidth
-          label="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          error={!!errors.name}
-          helperText={errors.name}
-          disabled={isDefault}
-          sx={{
-            mb: 2,
-            '& .MuiInputBase-root': {
-              color: '#ffffff',
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: 'rgba(255, 255, 255, 0.7)',
-                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                '& input': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                },
-                '& textarea': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                },
-              },
-            },
-            '& .MuiInputLabel-root': {
-              color: promptColors.gold,
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: promptColors.gold,
-              },
-            },
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: '#ffffff',
-              },
-              '&:hover fieldset': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-disabled': {
-                '& fieldset': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                },
-                '& input, & textarea': {
-                  color: 'rgba(255, 255, 255, 0.7) !important',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
-                },
-              },
-            },
-          }}
-        />
-
-        <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel sx={{ 
-            color: promptColors.gold,
-            fontSize: '0.875rem',
-            '&.Mui-focused': {
-              color: promptColors.gold,
-            },
-          }}>
-            Category
-          </InputLabel>
-          <Select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            label="Category"
-            disabled={isDefault}
-            sx={{
-              color: '#ffffff',
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: 'rgba(255, 255, 255, 0.7)',
-                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                '& .MuiSelect-select': {
-                  color: 'rgba(255, 255, 255, 0.7) !important',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
-                },
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                },
-              },
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#ffffff',
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: promptColors.gold,
-              },
-              '& .MuiSvgIcon-root': {
-                color: '#ffffff',
-              },
-              '&.Mui-disabled .MuiSvgIcon-root': {
-                color: 'rgba(255, 255, 255, 0.7)',
-              },
+      <DialogContent sx={{ 
+        padding: '24px',
+        backgroundColor: '#121922' // Navy-light from tailwind
+      }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography 
+            variant="subtitle1" 
+            sx={{ 
+              mb: 1, 
+              color: '#FFC000', // Gold from tailwind
+              fontWeight: 500
             }}
           >
-            <MenuItem value="general">General</MenuItem>
-            <MenuItem value="coding">Coding</MenuItem>
-            <MenuItem value="creative">Creative</MenuItem>
-            <MenuItem value="technical">Technical</MenuItem>
-            <MenuItem value="business">Business</MenuItem>
-          </Select>
-        </FormControl>
-
-        <TextField
-          fullWidth
-          label="Description (optional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isDefault}
-          sx={{
-            mb: 2,
-            '& .MuiInputBase-root': {
-              color: '#ffffff',
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: 'rgba(255, 255, 255, 0.7)',
-                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+            Prompt Name
+          </Typography>
+          <TextField
+            fullWidth
+            placeholder="Enter prompt name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (e.target.value.trim()) {
+                setErrors(prev => ({ ...prev, name: undefined }));
+              }
+            }}
+            error={!!errors.name}
+            helperText={errors.name}
+            disabled={isDefault}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#080d13', // Navy default
+                '& fieldset': {
+                  borderColor: 'rgba(255, 192, 0, 0.3)', // Transparent gold
+                },
+                '&:hover fieldset': {
+                  borderColor: '#FFC000',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#FFC000',
+                },
                 '& input': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                  color: '#ffffff',
+                },
+                '&.Mui-disabled': {
+                  '& input': {
+                    color: '#706E6E',
+                    WebkitTextFillColor: '#706E6E',
+                  },
+                },
+              },
+              '& .MuiFormHelperText-root': {
+                color: 'error.main',
+              },
+            }}
+          />
+        </Box>
+
+        <Box sx={{ mb: 3 }}>
+          <Typography 
+            variant="subtitle1" 
+            sx={{ 
+              mb: 1, 
+              color: '#FFC000', // Gold from tailwind
+              fontWeight: 500
+            }}
+          >
+            Description (optional)
+          </Typography>
+          <TextField
+            fullWidth
+            placeholder="Enter description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={isDefault}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#080d13', // Navy default
+                '& fieldset': {
+                  borderColor: 'rgba(255, 192, 0, 0.3)', // Transparent gold
+                },
+                '&:hover fieldset': {
+                  borderColor: '#FFC000',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#FFC000',
+                },
+                '& input': {
+                  color: '#ffffff',
+                },
+                '&.Mui-disabled': {
+                  '& input': {
+                    color: '#706E6E',
+                    WebkitTextFillColor: '#706E6E',
+                  },
+                },
+              },
+            }}
+          />
+        </Box>
+
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography 
+              variant="subtitle1" 
+              sx={{ 
+                color: '#FFC000', // Gold from tailwind
+                fontWeight: 500
+              }}
+            >
+              Prompt Content
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => setShowPromptHelp(!showPromptHelp)}
+              sx={{ color: '#FFC000', textTransform: 'none', fontSize: '0.875rem' }}
+            >
+              {showPromptHelp ? 'Hide Help' : 'What are System Prompts?'}
+            </Button>
+          </Box>
+          
+          {showPromptHelp && (
+            <Box sx={{ 
+              mb: 2, 
+              p: 2, 
+              backgroundColor: '#080d13', // Navy default
+              borderRadius: 1,
+              border: '1px solid rgba(255, 192, 0, 0.3)' // Transparent gold
+            }}>
+              <Typography variant="body2" sx={{ color: '#ffffff', mb: 1 }}>
+                <strong>System Prompts</strong> define the AI's core behavior and personality:
+              </Typography>
+              <Box component="ul" sx={{ color: '#d0d0d0', fontSize: '0.875rem', pl: 2, mb: 0 }}>
+                <li>Set the AI's role and expertise level</li>
+                <li>Define response style and tone</li>
+                <li>Establish behavioral guidelines</li>
+                <li>Configure output formatting preferences</li>
+              </Box>
+              <Typography variant="body2" sx={{ color: '#ffffff', mt: 1 }}>
+                <strong>System vs User Prompts:</strong> System prompts establish the AI's fundamental behavior, while User prompts add personal preferences on top.
+              </Typography>
+            </Box>
+          )}
+          
+          <TextField
+            fullWidth
+            multiline
+            rows={10}
+            placeholder="Enter your system prompt here..."
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              if (e.target.value.trim()) {
+                setErrors(prev => ({ ...prev, content: undefined }));
+              }
+            }}
+            error={!!errors.content}
+            helperText={errors.content}
+            disabled={isDefault}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#080d13', // Navy default
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.23)',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#d4af37',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#d4af37',
                 },
                 '& textarea': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
+                  color: '#ffffff',
+                },
+                '&.Mui-disabled': {
+                  '& textarea': {
+                    color: '#706E6E',
+                    WebkitTextFillColor: '#706E6E',
+                  },
                 },
               },
-            },
-            '& .MuiInputLabel-root': {
-              color: promptColors.gold,
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: promptColors.gold,
-              },
-            },
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: '#ffffff',
-              },
-              '&:hover fieldset': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-disabled': {
-                '& fieldset': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                },
-                '& input, & textarea': {
-                  color: 'rgba(255, 255, 255, 0.7) !important',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
-                },
-              },
-            },
-          }}
-        />
-
-        <TextField
-          fullWidth
-          label="System Prompt Content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          error={!!errors.content}
-          helperText={errors.content || 'Define how the AI assistant should behave'}
-          multiline
-          rows={10}
-          disabled={isDefault}
-          sx={{
-            '& .MuiInputBase-root': {
-              color: '#ffffff',
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: 'rgba(255, 255, 255, 0.7)',
-                WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                '& input': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                },
-                '& textarea': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7)',
-                },
-              },
-            },
-            '& .MuiInputLabel-root': {
-              color: promptColors.gold,
-              fontSize: '0.875rem',
-              '&.Mui-disabled': {
-                color: promptColors.gold,
-              },
-            },
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: '#ffffff',
-              },
-              '&:hover fieldset': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: promptColors.gold,
-              },
-              '&.Mui-disabled': {
-                '& fieldset': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                },
-                '& input, & textarea': {
-                  color: 'rgba(255, 255, 255, 0.7) !important',
-                  WebkitTextFillColor: 'rgba(255, 255, 255, 0.7) !important',
-                },
-              },
-            },
-            '& .MuiFormHelperText-root': {
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&.Mui-disabled': {
-                color: 'rgba(255, 255, 255, 0.7)',
-              },
-            },
-          }}
-        />
+            }}
+          />
+        </Box>
 
         {isDefault && (
           <Box sx={{ mt: 2, p: 2, backgroundColor: 'rgba(212, 175, 55, 0.1)', borderRadius: 1 }}>
@@ -353,52 +328,76 @@ const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ 
-        backgroundColor: '#152238', 
+        padding: '16px 24px',
         borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-        padding: 2
+        backgroundColor: '#152238', // Darker navy for footer
+        display: 'flex',
+        justifyContent: 'space-between'
       }}>
-        {editMode && !isDefault && onDelete && (
-          <Button
-            onClick={handleDelete}
-            sx={{ 
-              color: promptColors.danger,
-              mr: 'auto'
-            }}
-          >
-            Delete
-          </Button>
-        )}
-        
-        <Button 
-          onClick={onClose}
-          sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-        >
-          Cancel
-        </Button>
-        
-        {!isDefault && (
-          <Button
-            onClick={handleSave}
-            variant="contained"
+        <Box>
+          {editMode && !isDefault && onDelete && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<Icon name="trash" size={16} />}
+              onClick={handleDelete}
+              disabled={isSaving}
+              sx={{
+                borderColor: 'rgba(244, 67, 54, 0.5)',
+                color: '#ff6b6b',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                  borderColor: '#f44336',
+                }
+              }}
+            >
+              Delete Prompt
+            </Button>
+          )}
+        </Box>
+        <Box>
+          <Button 
+            onClick={handleCancel}
             disabled={isSaving}
-            sx={{
-              backgroundColor: promptColors.gold,
-              color: '#000000',
+            sx={{ 
+              color: '#ffffff',
+              marginRight: 2,
+              backgroundColor: 'transparent',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               '&:hover': {
-                backgroundColor: promptColors.goldHover,
-              },
-              '&:disabled': {
-                backgroundColor: 'rgba(212, 175, 55, 0.3)',
-              },
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+              }
             }}
           >
-            {isSaving ? (
-              <CircularProgress size={20} sx={{ color: '#000000' }} />
-            ) : (
-              editMode ? 'Save' : 'Add'
-            )}
+            Cancel
           </Button>
-        )}
+          {!isDefault && (
+            <Button 
+              onClick={handleSave}
+              variant="contained"
+              disabled={isSaving}
+              startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : null}
+              sx={{ 
+                backgroundColor: '#FFC000', // Gold from tailwind
+                color: '#080d13', // Navy text on gold
+                fontWeight: 'medium',
+                '&:hover': {
+                  backgroundColor: '#e6ac00', // Darker gold on hover
+                },
+                '&:disabled': {
+                  backgroundColor: 'rgba(255, 192, 0, 0.5)',
+                }
+              }}
+            >
+              {isSaving 
+                ? (editMode ? 'Updating...' : 'Adding...') 
+                : (editMode ? 'Update' : 'Add')
+              }
+            </Button>
+          )}
+        </Box>
       </DialogActions>
     </Dialog>
   );

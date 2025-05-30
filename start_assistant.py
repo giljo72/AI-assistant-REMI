@@ -39,7 +39,7 @@ class AIAssistantLauncher:
             "Frontend": {
                 "check": self.check_frontend,
                 "start": self.start_frontend,
-                "port": 5173
+                "port": 3000
             }
         }
         
@@ -189,7 +189,7 @@ class AIAssistantLauncher:
             
     def check_frontend(self):
         """Check if frontend is running"""
-        return self.check_port(5173)
+        return self.check_port(3000)
         
     def start_frontend(self):
         """Start React frontend"""
@@ -372,7 +372,7 @@ class AIAssistantLauncher:
         """Open the application in browser"""
         self.log("\nOpening application in browser...")
         time.sleep(2)
-        webbrowser.open("http://localhost:5173")
+        webbrowser.open("http://localhost:3000")
         
     def run(self):
         """Main launch sequence"""
@@ -404,7 +404,7 @@ class AIAssistantLauncher:
         
         self.log("\n" + "=" * 60)
         self.log("AI Assistant is ready!")
-        self.log(f"Frontend: http://localhost:5173")
+        self.log(f"Frontend: http://localhost:3000")
         self.log(f"Backend API: http://localhost:8000/docs")
         self.log(f"Logs saved to: {self.log_file}")
         self.log("=" * 60)

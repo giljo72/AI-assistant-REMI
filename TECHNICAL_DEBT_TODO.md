@@ -314,3 +314,28 @@
 - [ ] Automated deployment pipeline
 
 This TODO list should be reviewed weekly and updated as items are completed or priorities change.
+
+## Deprecated Files Tracking (Added 2025-01-29)
+
+### Files Marked for Future Deletion
+These files have been reviewed and marked with DEPRECATION NOTICE in their docstrings:
+
+1. **backend/app/api/endpoints/enhanced_chat.py**
+   - Status: DEPRECATED - replaced by simple_file_access.py
+   - Usage: Only referenced by restart_with_self_aware.py test script
+   - Action: Safe to delete when confirmed no longer needed
+
+2. **backend/app/api/endpoints/enhanced_self_aware.py**
+   - Status: DEPRECATED - functionality in disabled code block
+   - Usage: Imported by chats.py line 450 inside "if False" block
+   - Action: Safe to delete after removing the disabled code block
+
+3. **backend/restart_with_self_aware.py**
+   - Status: Test script, not part of application
+   - Usage: None - standalone test file
+   - Action: Can be deleted immediately
+
+4. **backend/4.30.0**
+   - Status: Pip installation log file, not code
+   - Usage: None
+   - Action: Can be deleted immediately

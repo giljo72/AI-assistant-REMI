@@ -1,5 +1,23 @@
 # AI Assistant Dev Log
 
+## January 29, 2025 - Fixed Models Tab in Admin Panel
+
+### Issue Fixed: Models Content Not Loading in Admin Settings
+Fixed issue where the Models tab in the Admin Settings panel was not displaying model information.
+
+#### Root Cause:
+- API response structure mismatch between backend and frontend
+- Backend returns `{ models: {...}, system: {...} }` format
+- Frontend expected old structure with `data.ollama.models` array
+
+#### Solution:
+Updated `ModelsContent.tsx` to correctly parse the new API response structure:
+- Changed from looking for `data.ollama.models` to `data.models`
+- Convert models object to array format for display
+- Extract model info from the correct fields in the response
+
+The Models tab now properly displays all available models with their status, memory usage, and control buttons.
+
 ## January 28, 2025 - User Authentication System Planning
 
 ### Major Architecture Decision: Adding User Management
@@ -1703,3 +1721,24 @@ python app/db/migrations/update_personal_profiles_schema.py
 ```
 
 This creates the necessary database table and enum types for the visibility system.
+
+## 2025-05-29 - UI Styling Updates & Claude Code Memory Management
+
+### Claude Code Memory Management
+Learned about Claude Code's built-in memory features for preserving context across WSL/system reboots:
+- **Project Memory** (`./CLAUDE.md`): Team-shared instructions checked into codebase
+- **User Memory** (`~/.claude/CLAUDE.md`): Personal preferences across all projects  
+- **Memory Imports**: Can use `@path/to/file` syntax for recursive memory loading
+- **Quick Commands**:
+  - `#` shortcut for quick memory additions during sessions
+  - `/memory` command for editing memory files directly
+- Created `sessions/` directory with timestamped memory files for session tracking
+- Added SESSION MEMORY section to CLAUDE.md to track important discussions
+
+### UI Styling Enhancements
+Applied consistent visual styling to modals:
+- **Admin Settings Panel**: Added `rounded-2xl` corners and `border-2 border-yellow-500` frame
+- **Universal Search Modal**: Same rounded corners and 2px yellow border treatment  
+- **System Models Panel** (ElegantSystemModelsPanel): Matching style for visual consistency
+
+These changes create a cohesive visual theme across all modal windows with rounded corners and distinctive yellow borders.

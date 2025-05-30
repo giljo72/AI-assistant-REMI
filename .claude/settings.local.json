@@ -42,7 +42,8 @@
       "Bash(npm install:*)",
       "Bash(touch:*)",
       "Bash(chmod:*)",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(pip install:*)"
     ],
     "deny": []
   },

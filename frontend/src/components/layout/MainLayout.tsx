@@ -1,5 +1,5 @@
 // File: frontend/src/components/layout/MainLayout.tsx
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import ProjectSidebar from '../sidebar/ProjectSidebar';
 import UserPromptsPanel from '../chat/UserPromptsPanel';
@@ -9,10 +9,10 @@ import { RootState } from '../../store';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useContextControls } from '../../context/ContextControlsContext';
 import { usePromptPanels } from '../../context/PromptPanelsContext';
+import { useAuth } from '../../context/AuthContext';
 import { Icon } from '../common/Icon';
 import { setContextMode } from '../../store/projectSettingsSlice';
 import { ResourceMonitor } from '../common/ResourceMonitor';
-import PersonalProfilesModal from '../modals/PersonalProfilesModal';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -34,8 +34,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Get navigation state using our custom hook
   const { activeView } = useNavigation();
   
-  // Contacts modal state
-  const [isContactsOpen, setIsContactsOpen] = useState(false);
+  // Get auth context
+  const { user, logout } = useAuth();
+  
+  // Dropdown state
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    if (isUserDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserDropdownOpen]);
 
   return (
     <div className="flex h-screen bg-navy text-white overflow-hidden">
@@ -79,20 +100,76 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           
           {/* Right side controls */}
           <div className="flex items-center gap-4">
-            {/* Contacts Button */}
-            <button
-              onClick={() => setIsContactsOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gold/20 hover:bg-gold/30 text-gold rounded transition-colors"
-              title="Manage Contacts"
-            >
-              <Icon name="users" size={16} />
-              <span className="text-sm">Contacts</span>
-            </button>
+            {/* User dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                className="flex flex-col items-center gap-1 hover:bg-navy-lighter px-3 py-1.5 rounded transition-colors"
+              >
+                <div 
+                  className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-navy-dark font-semibold text-lg"
+                  title={user?.email}
+                >
+                  {user?.username?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="text-xs text-whiteGray">
+                  {user?.username}
+                </span>
+              </button>
+              
+              {/* Dropdown menu */}
+              {isUserDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-navy-light border border-gold rounded-lg shadow-xl z-50">
+                  <div className="p-3 border-b border-navy">
+                    <p className="text-sm font-medium text-white">{user?.username}</p>
+                    <p className="text-xs text-gray-400">{user?.email}</p>
+                    <p className="text-xs text-gold mt-1">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
+                  </div>
+                  
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        // TODO: Navigate to user profile
+                        alert('User Profile - Coming Soon');
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-white hover:bg-navy hover:text-gold transition-colors flex items-center gap-2"
+                    >
+                      <Icon name="user" size={16} />
+                      My Profile
+                    </button>
+                    
+                    {user?.role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setIsUserDropdownOpen(false);
+                          // TODO: Navigate to user management
+                          alert('User Management - Coming Soon');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-white hover:bg-navy hover:text-gold transition-colors flex items-center gap-2"
+                      >
+                        <Icon name="users" size={16} />
+                        Manage Users
+                      </button>
+                    )}
+                    
+                    <div className="border-t border-navy my-1"></div>
+                    
+                    <button
+                      onClick={() => {
+                        setIsUserDropdownOpen(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-red hover:bg-navy transition-colors flex items-center gap-2"
+                    >
+                      <Icon name="lock" size={16} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
-            {/* View indicator showing current view */}
-            <span className="text-sm text-gold">
-              View: <span className="font-bold">{activeView.charAt(0).toUpperCase() + activeView.slice(1)}</span>
-            </span>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 min-h-0">
@@ -119,11 +196,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }}
       />
       
-      {/* Contacts Modal */}
-      <PersonalProfilesModal
-        open={isContactsOpen}
-        onClose={() => setIsContactsOpen(false)}
-      />
     </div>
   );
 };

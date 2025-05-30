@@ -21,7 +21,6 @@ export const colors = {
   fadedBrightBlue: '#8F97B7',
   brightBlue: '#32CEFF',
   darkBrightBlue: '#2b38dd',
-  darkBrightBlue: '#2b38dd',
   
   // Greens
   green: '#67BD6D',

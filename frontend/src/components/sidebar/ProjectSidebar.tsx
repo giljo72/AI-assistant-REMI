@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AddProjectModal from '../modals/AddProjectModal';
 import AdminSettingsPanel from '../modals/AdminSettingsPanel';
-import ElegantSystemModelsPanel from '../modals/ElegantSystemModelsPanel';
 import UniversalSearchModal from '../layout/UniversalSearchModal';
+import PersonalProfilesModal from '../modals/PersonalProfilesModal';
 import { useProjects } from '../../context/ProjectContext';
 import { useNavigation } from '../../hooks/useNavigation';
 import { Icon } from '../common/Icon';
@@ -11,8 +11,8 @@ const ProjectSidebar: React.FC = () => {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
-  const [isSystemPanelOpen, setIsSystemPanelOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isContactsOpen, setIsContactsOpen] = useState(false);
   
   // Use the shared project context
   const { projects, loading, error, addProject } = useProjects();
@@ -50,37 +50,35 @@ const ProjectSidebar: React.FC = () => {
           <h2 className="text-xl font-bold text-gold">AI Assistant</h2>
         </div>
         
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center space-x-1">
+        <div className="mb-4 flex justify-center">
+          <div className="flex items-center space-x-2">
             <button 
-              className={`p-2 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
+              className={`p-3 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
               onClick={() => navigation.openMainFileManager()}
               title="File Manager"
             >
-              <Icon name="file" size={20} style={{ color: '#d4af37' }} />
+              <Icon name="file" size={30} style={{ color: '#d4af37' }} />
             </button>
             <button 
-              className={`p-2 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
+              className={`p-3 ${isSearchModalOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
               onClick={() => setIsSearchModalOpen(true)}
               title="Universal Search"
             >
-              <Icon name="search" size={20} style={{ color: '#d4af37' }} />
+              <Icon name="search" size={30} style={{ color: '#d4af37' }} />
             </button>
-          </div>
-          <div className="flex items-center space-x-1">
             <button 
-              className={`p-2 ${isSystemPanelOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
-              onClick={() => setIsSystemPanelOpen(true)}
-              title="System & Models"
+              className={`p-3 ${isContactsOpen ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
+              onClick={() => setIsContactsOpen(true)}
+              title="Contacts"
             >
-              <Icon name="question" size={20} style={{ color: '#d4af37' }} />
+              <Icon name="users" size={30} style={{ color: '#d4af37' }} />
             </button>
             <button 
-              className="p-2 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
-              title="Admin Settings"
+              className="p-3 hover:bg-navy-lighter rounded-full flex items-center justify-center" 
+              title="System Administration"
               onClick={() => setIsSettingsPanelOpen(true)}
             >
-              <Icon name="settings" size={20} style={{ color: '#d4af37' }} />
+              <Icon name="settings" size={30} style={{ color: '#d4af37' }} />
             </button>
           </div>
         </div>
@@ -161,16 +159,17 @@ const ProjectSidebar: React.FC = () => {
         onClose={() => setIsSettingsPanelOpen(false)}
       />
       
-      {/* System & Models Panel */}
-      <ElegantSystemModelsPanel 
-        isOpen={isSystemPanelOpen} 
-        onClose={() => setIsSystemPanelOpen(false)} 
-      />
       
       {/* Universal Search Modal */}
       <UniversalSearchModal
         isOpen={isSearchModalOpen}
         onClose={() => setIsSearchModalOpen(false)}
+      />
+      
+      {/* Contacts Modal */}
+      <PersonalProfilesModal
+        open={isContactsOpen}
+        onClose={() => setIsContactsOpen(false)}
       />
       
     </div>

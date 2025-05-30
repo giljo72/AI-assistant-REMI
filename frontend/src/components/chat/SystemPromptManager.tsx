@@ -66,8 +66,7 @@ const SystemPromptManager: React.FC = () => {
   const handleSavePrompt = async (
     name: string,
     content: string,
-    description?: string,
-    category?: string
+    description?: string
   ) => {
     setSavingPrompt(true);
     try {
@@ -75,12 +74,12 @@ const SystemPromptManager: React.FC = () => {
         await dispatch(
           updateSystemPrompt({
             id: editingPrompt.id,
-            data: { name, content, description, category },
+            data: { name, content, description },
           })
         ).unwrap();
       } else {
         await dispatch(
-          createSystemPrompt({ name, content, description, category })
+          createSystemPrompt({ name, content, description })
         ).unwrap();
       }
       handleCloseModal();
@@ -242,7 +241,6 @@ const SystemPromptManager: React.FC = () => {
         initialName={editingPrompt?.name || ''}
         initialContent={editingPrompt?.content || ''}
         initialDescription={editingPrompt?.description || ''}
-        initialCategory={editingPrompt?.category || 'general'}
         editMode={!!editingPrompt}
         isDefault={editingPrompt?.is_default || false}
         onDelete={editingPrompt && !editingPrompt.is_default ? handleDeletePrompt : undefined}

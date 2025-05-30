@@ -1,5 +1,11 @@
 """
 Simplified self-aware file reading for chat context
+
+DEPRECATION NOTICE (2025-01-29):
+This file is currently DISABLED in chats.py (inside "if False" block)
+Functionality replaced by simple_file_access.py
+Only imported by chats.py line 450 in disabled code path
+Status: DEPRECATED - Safe to delete after removing disabled code block
 """
 import re
 import logging

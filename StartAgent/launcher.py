@@ -492,7 +492,7 @@ class AIAssistantLauncher:
         # Open browser
         self.log("Opening browser...", "info")
         import webbrowser
-        webbrowser.open("http://localhost:5173")
+        webbrowser.open("http://localhost:3000")
         
         self.log("AI Assistant started successfully!", "success")
         self.subtitle_label.config(text="AI Assistant is running!")

@@ -157,7 +157,7 @@ const UniversalSearchModal: React.FC<UniversalSearchModalProps> = ({ isOpen, onC
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-navy w-full max-w-4xl h-5/6 rounded-lg flex flex-col">
+      <div className="bg-navy w-full max-w-4xl h-5/6 rounded-2xl flex flex-col border-2 border-yellow-500">
         {/* Header */}
         <div className="bg-navy-light p-4 rounded-t-lg border-b border-gold">
           <div className="flex justify-between items-center">

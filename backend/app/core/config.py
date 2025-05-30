@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # Self-aware mode
     SELF_AWARE_PASSWORD: str = "dev-mode-2024"
     
+    # Authentication settings
+    SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    DEV_MODE: bool = True
+    DEV_BYPASS_AUTH: bool = False  # Set to True to bypass auth in dev
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -1,5 +1,11 @@
 """
 Enhanced chat endpoint with improved self-aware mode file handling
+
+DEPRECATION NOTICE (2025-01-29):
+This file is currently UNUSED and replaced by simple_file_access.py
+Only referenced by restart_with_self_aware.py (test script)
+Considered for deletion but kept as reference implementation
+Status: DEPRECATED - Safe to delete when confirmed no longer needed
 """
 from typing import Any, Dict, List
 from fastapi import HTTPException
