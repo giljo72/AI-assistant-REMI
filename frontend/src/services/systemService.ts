@@ -57,13 +57,13 @@ class SystemService {
     // Check cache first
     const now = Date.now();
     if (this.activeModelCache && (now - this.activeModelCache.timestamp) < this.CACHE_DURATION) {
-      return this.activeModelCache.model || 'qwen2.5:32b-instruct-q4_K_M';
+      return this.activeModelCache.model || '';
     }
 
     try {
       // Try the fast endpoint first
       const response = await api.get('/system/active-model-quick');
-      const activeModel = response.data.active_model || 'qwen2.5:32b-instruct-q4_K_M';
+      const activeModel = response.data.active_model || '';
       
       // Update cache
       this.activeModelCache = { model: activeModel, timestamp: now };
@@ -71,8 +71,8 @@ class SystemService {
       return activeModel;
     } catch (error) {
       console.error('Error fetching active model:', error);
-      // Fall back to default
-      return 'qwen2.5:32b-instruct-q4_K_M';
+      // Return empty string instead of hardcoded default to avoid MUI errors
+      return '';
     }
   }
 
@@ -144,6 +144,25 @@ class SystemService {
   }
 
   /**
+   * Set the active model for the system
+   */
+  async setActiveModel(modelName: string, modelType: string = 'ollama'): Promise<LoadModelResponse> {
+    try {
+      // Load the model which will also set it as active
+      const result = await this.loadModel(modelName, modelType);
+      
+      // Clear cache to ensure fresh data
+      this.activeModelCache = null;
+      this.availableModelsCache = null;
+      
+      return result;
+    } catch (error) {
+      console.error('Error setting active model:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Restart a model (unload and reload)
    */
   async restartModel(modelName: string): Promise<LoadModelResponse> {
@@ -187,13 +206,17 @@ class SystemService {
       const response = await api.get<AvailableModel[]>('/system/models/available');
       console.log('✅ Available models received:', response.data);
       
-      // Update cache
-      this.availableModelsCache = { models: response.data, timestamp: now };
+      // Ensure we return an array even if the response is unexpected
+      const models = Array.isArray(response.data) ? response.data : [];
       
-      return response.data;
+      // Update cache
+      this.availableModelsCache = { models, timestamp: now };
+      
+      return models;
     } catch (error) {
       console.error('❌ Error fetching available models:', error);
-      throw error;
+      // Return empty array instead of throwing to avoid breaking the UI
+      return [];
     }
   }
 

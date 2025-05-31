@@ -16,6 +16,8 @@ from ...schemas.chat import Chat, ChatCreate, ChatUpdate, ChatMessage, ChatMessa
 from ...services.nim_service import get_nim_service
 from ...services.llm_service import get_llm_service
 from ...services.model_orchestrator import orchestrator, ModelStatus
+from ..deps import get_current_user, get_optional_current_user
+from ...db.models import User, UserRole
 
 router = APIRouter()
 
@@ -207,7 +209,8 @@ async def generate_chat_response_endpoint(
     chat_id: str,
     request: ChatGenerateRequest,
     background_tasks: BackgroundTasks,
-    authorization: Optional[str] = Header(None)
+    authorization: Optional[str] = Header(None),
+    current_user: User = Depends(get_current_user)
 ) -> Any:
     """
     Generate AI response for a chat message using NVIDIA NIM.
@@ -218,16 +221,23 @@ async def generate_chat_response_endpoint(
         raise HTTPException(status_code=404, detail="Chat not found")
     
     try:
-        # Save user message first
+        # Get recent messages for context if requested (BEFORE saving new message)
+        messages = []
+        
+        # Fetch context messages BEFORE saving the new user message to avoid duplication
+        context_messages_list = []
+        if request.include_context:
+            context_messages_list = chat_repository.get_chat_messages(
+                db, chat_id=chat_id, skip=0, limit=10  # Get exactly what we need
+            )
+        
+        # NOW save the user message
         user_message = ChatMessageCreate(
             chat_id=chat_id,
             content=request.message,
             is_user=True
         )
         user_msg_obj = chat_repository.create_message(db, obj_in=user_message)
-        
-        # Get recent messages for context if requested
-        messages = []
         
         # Use specified model or get from system state (moved up to get model info early)
         model_name = request.model_name
@@ -236,8 +246,9 @@ async def generate_chat_response_endpoint(
         # If no model specified, check system for active model
         if not model_name or not model_type:
             from ...api.endpoints.system import service_states
-            model_name = model_name or service_states.get('active_model', 'meta/llama-3.1-8b-instruct')
-            model_type = model_type or service_states.get('active_model_type', 'nvidia-nim')
+            # Use Qwen as default model instead of NIM
+            model_name = model_name or service_states.get('active_model', 'qwen2.5:32b-instruct-q4_K_M')
+            model_type = model_type or service_states.get('active_model_type', 'ollama')
         
         # Get list of available models for model awareness
         from ...api.endpoints.system import get_ai_models
@@ -353,20 +364,12 @@ You can analyze code, suggest improvements, debug issues, and help with developm
         }
         messages.append(system_message)
         
-        if request.include_context:
-            recent_messages = chat_repository.get_chat_messages(
-                db, chat_id=chat_id, skip=0, limit=11  # Get 11 to account for filtering
-            )
-            # Filter out the message we just saved to avoid duplication
-            filtered_messages = [
-                msg for msg in recent_messages 
-                if msg.id != user_msg_obj.id
-            ][:10]  # Take only 10 after filtering
-            
+        if request.include_context and context_messages_list:
             # Convert to format expected by NIM (OpenAI-compatible)
+            # No need to filter - we fetched messages before saving the new one
             context_messages = [
                 {"role": "user" if msg.is_user else "assistant", "content": msg.content}
-                for msg in reversed(filtered_messages)  # Reverse to get chronological order
+                for msg in reversed(context_messages_list)  # Reverse to get chronological order
             ]
             messages.extend(context_messages)
         
@@ -428,66 +431,37 @@ You can analyze code, suggest improvements, debug issues, and help with developm
             except Exception as e:
                 logger.error(f"Failed to add document context: {e}", exc_info=True)
         
-        # SIMPLIFIED FILE ACCESS - works in any context for easier debugging
-        # TODO: Add authentication later if needed
-        try:
-            from .simple_file_access import inject_file_content_if_requested
-            file_content = inject_file_content_if_requested(request.message)
-            if file_content:
-                messages.append({
-                    "role": "system",
-                    "content": file_content
-                })
-                logger.info(f"Injected file content: {len(file_content)} chars")
-        except Exception as e:
-            logger.error(f"File injection failed: {e}")
-        
-        # Process file operations in self-aware mode with enhanced handling
-        # TEMPORARILY DISABLED - using simple file access above
-        if False and is_self_aware and request.context_mode == "self-aware":
+        # Process file operations in self-aware mode - ADMIN ONLY
+        if request.context_mode == "self-aware":
+            # Check if user is admin
+            if current_user.role != UserRole.ADMIN:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Self-aware mode requires admin privileges"
+                )
+            
+            logger.info(f"Self-aware mode activated by admin user: {current_user.username}")
+            
             try:
-                # Use simplified self-aware file reading
-                from .enhanced_self_aware import build_self_aware_context
+                # Use the proper self-aware service
+                from ...services.self_aware_service import SelfAwareService
+                self_aware_service = SelfAwareService()
                 
-                file_context = build_self_aware_context(request.message)
+                # Process file reading requests
+                file_context = self_aware_service.process_file_reading(request.message)
                 
                 if file_context:
-                    file_message = {
+                    messages.append({
                         "role": "system", 
                         "content": file_context
-                    }
-                    messages.append(file_message)
-                    logger.info("Added self-aware file reading context")
-                    logger.debug(f"File context length: {len(file_context)} chars")
+                    })
+                    logger.info(f"Added self-aware file context: {len(file_context)} chars")
+                    
+                # Note: File writing will be handled after response generation
+                # via the action approval system
+                
             except Exception as e:
-                logger.error(f"Failed to build self-aware context: {e}", exc_info=True)
-                # Try direct fallback
-                try:
-                    from ...services.file_reader_service import get_file_reader
-                    file_reader = get_file_reader()
-                    
-                    # Simple pattern matching
-                    import re
-                    # Look specifically for .py files since those seem problematic
-                    py_pattern = r'(\b\w+\.py\b)'
-                    py_files = re.findall(py_pattern, request.message, re.IGNORECASE)
-                    
-                    file_context = ""
-                    for py_file in py_files:
-                        result = file_reader.read_file(py_file)
-                        if result["success"]:
-                            file_context = f"\n=== FILE: {py_file} ===\n```python\n{result['content']}\n```\n"
-                            messages.append({
-                                "role": "system",
-                                "content": f"SELF-AWARE MODE - File Contents:\n{file_context}"
-                            })
-                            logger.info(f"Added Python file via direct fallback: {py_file}")
-                            break
-                except Exception as e2:
-                    logger.error(f"Fallback also failed: {e2}")
-        elif is_self_aware and request.context_mode != "self-aware":
-            # Log security warning - self-aware should only work with proper context mode
-            logger.warning("Self-aware mode attempted without proper context mode setting")
+                logger.error(f"Failed to process self-aware context: {e}", exc_info=True)
         
         # Add current user message
         messages.append({"role": "user", "content": request.message})
@@ -532,71 +506,72 @@ You can analyze code, suggest improvements, debug issues, and help with developm
             ai_response += chunk
         logger.info(f"Generated response: {ai_response[:100]}...")
         
-        # Check for self-aware mode actions
+        # Check for self-aware mode actions (admin only)
         pending_actions = []
-        if request.context_mode == "self-aware" and authorization:
-            # Check if user has valid self-aware session
-            if authorization.startswith('Bearer '):
-                session_token = authorization.replace('Bearer ', '')
+        if request.context_mode == "self-aware" and current_user.role == UserRole.ADMIN:
+            # Admin users can perform self-aware actions
+            session_token = f"admin_{current_user.id}"  # Use admin user ID as session token
+            
+            try:
+                from .self_aware_integration import response_parser
+                from .action_approval import approval_queue
                 
-                try:
-                    from .self_aware_integration import response_parser
-                    from .action_approval import approval_queue
+                # Parse response for actions
+                actions = response_parser.parse_response(ai_response, session_token)
+                
+                # Submit actions for approval
+                for action in actions:
+                    if action['type'] == 'file_write':
+                        action_id = await approval_queue.request_approval(
+                            action_type='file_write',
+                            details={
+                                'filepath': action['filepath'],
+                                'content_preview': action['content'][:500] + '...' if len(action['content']) > 500 else action['content'],
+                                'content_length': len(action['content']),
+                                'reason': action['reason']
+                            },
+                            session_token=session_token
+                        )
+                        pending_actions.append({'id': action_id, 'type': 'file_write'})
                     
-                    # Parse response for actions
-                    actions = response_parser.parse_response(ai_response, session_token)
+                    elif action['type'] == 'command':
+                        action_id = await approval_queue.request_approval(
+                            action_type='command',
+                            details={
+                                'command': action['command_str'],
+                                'command_list': action['command'],
+                                'working_directory': 'F:\\assistant',
+                                'reason': action['reason']
+                            },
+                            session_token=session_token
+                        )
+                        pending_actions.append({'id': action_id, 'type': 'command'})
+                
+                # Inject approval status into response
+                if pending_actions:
+                    ai_response = response_parser.inject_approval_status(ai_response, actions)
                     
-                    # Submit actions for approval
-                    for action in actions:
-                        if action['type'] == 'file_write':
-                            action_id = await approval_queue.request_approval(
-                                action_type='file_write',
-                                details={
-                                    'filepath': action['filepath'],
-                                    'content_preview': action['content'][:500] + '...' if len(action['content']) > 500 else action['content'],
-                                    'content_length': len(action['content']),
-                                    'reason': action['reason']
-                                },
-                                session_token=session_token
-                            )
-                            pending_actions.append({'id': action_id, 'type': 'file_write'})
-                        
-                        elif action['type'] == 'command':
-                            action_id = await approval_queue.request_approval(
-                                action_type='command',
-                                details={
-                                    'command': action['command_str'],
-                                    'command_list': action['command'],
-                                    'working_directory': 'F:\\assistant',
-                                    'reason': action['reason']
-                                },
-                                session_token=session_token
-                            )
-                            pending_actions.append({'id': action_id, 'type': 'command'})
-                    
-                    # Inject approval status into response
-                    if pending_actions:
-                        ai_response = response_parser.inject_approval_status(ai_response, actions)
-                        
-                except Exception as e:
-                    logger.error(f"Failed to process self-aware actions: {e}")
+            except Exception as e:
+                logger.error(f"Failed to process self-aware actions: {e}")
         
-        # Save assistant message
+        # Get model info for response and storage
+        # Match the expected frontend structure
+        model_info = {
+            "model_name": model_name,
+            "device": "gpu" if model_type == "nvidia-nim" or health == "healthy" else "cpu",
+            "is_initialized": health == "healthy",
+            "nemo_available": model_type == "nvidia-nim",
+            "model_type": model_type
+        }
+        
+        # Save assistant message with model info
         assistant_message = ChatMessageCreate(
             chat_id=chat_id,
             content=ai_response,
-            is_user=False
+            is_user=False,
+            model_info=model_info
         )
         assistant_msg_obj = chat_repository.create_message(db, obj_in=assistant_message)
-        
-        # Get model info for response
-        model_info = {
-            "model": model_name,
-            "type": model_type,
-            "health": health,
-            "temperature": request.temperature,
-            "max_length": request.max_length
-        }
         
         return ChatGenerateResponse(
             response=ai_response,
@@ -676,7 +651,8 @@ async def generate_chat_response_stream(
     chat_id: str,
     request: ChatGenerateRequest,
     background_tasks: BackgroundTasks,
-    authorization: Optional[str] = Header(None)
+    authorization: Optional[str] = Header(None),
+    current_user: User = Depends(get_current_user)
 ) -> StreamingResponse:
     """
     Generate AI response for a chat message with streaming.
@@ -690,7 +666,14 @@ async def generate_chat_response_stream(
     # Capture project_id before entering the async generator (to avoid SQLAlchemy session issues)
     project_id_for_context = chat.project_id
     
-    # Save user message first
+    # Fetch context messages BEFORE saving the new user message to avoid duplication
+    context_messages_list = []
+    if request.include_context:
+        context_messages_list = chat_repository.get_chat_messages(
+            db, chat_id=chat_id, skip=0, limit=request.context_messages  # Get exactly what we need
+        )
+    
+    # NOW save the user message
     user_message = ChatMessageCreate(
         chat_id=chat_id,
         content=request.message,
@@ -766,17 +749,9 @@ You can help improve your own code, debug issues, and suggest enhancements."""
             messages.append({"role": "system", "content": system_content})
             
             # Add context messages if requested
-            if request.include_context:
-                recent_messages = chat_repository.get_chat_messages(
-                    db, chat_id=chat_id, skip=0, limit=request.context_messages + 1  # Get extra to account for filtering
-                )
-                # Filter out the message we just saved to avoid duplication
-                filtered_messages = [
-                    msg for msg in recent_messages 
-                    if msg.id != user_msg_obj.id
-                ][:request.context_messages]  # Take only requested amount after filtering
-                
-                for msg in reversed(filtered_messages):
+            if request.include_context and context_messages_list:
+                # No need to filter - we fetched messages before saving the new one
+                for msg in reversed(context_messages_list):
                     role = "user" if msg.is_user else "assistant"
                     messages.append({"role": role, "content": msg.content})
             
@@ -833,18 +808,34 @@ You can help improve your own code, debug issues, and suggest enhancements."""
                     logger.error(f"Failed to retrieve document context: {str(e)}")
                     # Continue without document context rather than failing the request
             
-            # SIMPLIFIED FILE ACCESS - inject file content if requested
-            try:
-                from .simple_file_access import inject_file_content_if_requested
-                file_content = inject_file_content_if_requested(request.message)
-                if file_content:
-                    messages.append({
-                        "role": "system",
-                        "content": file_content
-                    })
-                    logger.info(f"[STREAMING] Injected file content: {len(file_content)} chars")
-            except Exception as e:
-                logger.error(f"[STREAMING] File injection failed: {e}")
+            # Process file operations in self-aware mode - ADMIN ONLY
+            if request.context_mode == "self-aware":
+                # Check if user is admin
+                if current_user.role != UserRole.ADMIN:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail="Self-aware mode requires admin privileges"
+                    )
+                
+                logger.info(f"[STREAMING] Self-aware mode activated by admin user: {current_user.username}")
+                
+                try:
+                    # Use the proper self-aware service
+                    from ...services.self_aware_service import SelfAwareService
+                    self_aware_service = SelfAwareService()
+                    
+                    # Process file reading requests
+                    file_context = self_aware_service.process_file_reading(request.message)
+                    
+                    if file_context:
+                        messages.append({
+                            "role": "system", 
+                            "content": file_context
+                        })
+                        logger.info(f"[STREAMING] Added self-aware file context: {len(file_context)} chars")
+                        
+                except Exception as e:
+                    logger.error(f"[STREAMING] Failed to process self-aware context: {e}", exc_info=True)
             
             # Add current user message
             messages.append({"role": "user", "content": request.message})
@@ -863,6 +854,15 @@ You can help improve your own code, debug issues, and suggest enhancements."""
             
             # Start streaming response
             llm_service = get_llm_service()
+            
+            # Check service health for the model type
+            health = await llm_service.health_check(model_type)
+            if not health and model_type == "nvidia-nim":
+                logger.error(f"Model service unhealthy for {model_type}")
+                raise HTTPException(
+                    status_code=503, 
+                    detail=f"{model_type} service is not available. Please check if the service is running."
+                )
             
             # Send initial SSE event
             yield f"data: {json.dumps({'type': 'start', 'model': model_name})}\n\n"
@@ -883,11 +883,22 @@ You can help improve your own code, debug issues, and suggest enhancements."""
                 # Send chunk as SSE event
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             
-            # Save the complete assistant message
+            # Get model info for storage
+            # Match the expected frontend structure
+            model_info = {
+                "model_name": model_name,
+                "device": "gpu" if model_type == "nvidia-nim" or health == "healthy" else "cpu",
+                "is_initialized": health == "healthy",
+                "nemo_available": model_type == "nvidia-nim",
+                "model_type": model_type
+            }
+            
+            # Save the complete assistant message with model info
             assistant_message = ChatMessageCreate(
                 chat_id=chat_id,
                 content=full_response,
-                is_user=False
+                is_user=False,
+                model_info=model_info
             )
             assistant_msg_obj = chat_repository.create_message(db, obj_in=assistant_message)
             

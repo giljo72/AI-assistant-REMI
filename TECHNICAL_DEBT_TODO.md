@@ -339,3 +339,90 @@ These files have been reviewed and marked with DEPRECATION NOTICE in their docst
    - Status: Pip installation log file, not code
    - Usage: None
    - Action: Can be deleted immediately
+
+## Band-Aid Solutions Audit (Added 2025-01-29)
+
+### Critical Band-Aids Found During Code Review
+These are temporary workarounds that should be properly fixed:
+
+### 🔴 HIGH PRIORITY - Core Functionality Issues
+
+1. **✅ COMPLETED (Jan 30, 2025) - File Access System Bypass**
+   - **Location**: `backend/app/api/endpoints/chats.py` lines 430-464
+   - **Issue**: Using "simplified" file access instead of proper enhanced system
+   - **Band-aid**: Disabled enhanced_self_aware code with `if False` block
+   - **Impact**: Security and feature limitations
+   - **Fix Applied**: Implemented clean admin-only self-aware mode
+     - Replaced simple_file_access with proper SelfAwareService
+     - Added admin role checks to chat endpoints
+     - Updated frontend to check user role instead of password
+     - Deprecated old authentication endpoints
+   - **Result**: Self-aware mode now properly secured with RBAC
+
+2. **Duplicate Message in Chat Context**
+   - **Location**: `backend/app/api/endpoints/chats.py` (multiple locations)
+   - **Issue**: Message is saved to DB then immediately fetched back, causing duplication
+   - **Band-aid**: Filter out the just-saved message from context
+   - **Impact**: Extra processing and confusing code flow
+   - **Proper Fix**: Restructure the flow to build context BEFORE saving the new message, or exclude current message from context query
+   - **Code Example**: 
+     ```python
+     # Current band-aid:
+     filtered_messages = [msg for msg in recent_messages if msg.id != user_msg_obj.id]
+     ```
+
+### 🟡 MEDIUM PRIORITY - Performance & UX Issues
+
+3. **Resource Monitoring Log Spam**
+   - **Location**: `backend/app/core/logging_filter.py`, `backend/app/main.py`
+   - **Issue**: High-frequency polling (every 2-10 seconds) creates console log spam
+   - **Band-aid**: Filter out resource endpoint logs instead of fixing polling
+   - **Impact**: Hides logs that might be useful, doesn't solve root cause
+   - **Proper Fix**: 
+     - Implement configurable polling intervals
+     - Use WebSocket for real-time updates instead of polling
+     - Add client-side caching to reduce requests
+   - **Filtered Endpoints**:
+     - `/api/models/status/quick`
+     - `/api/system/resources`
+     - `/api/models/memory`
+     - `/api/system/gpu-stats`
+
+### 🟢 LOW PRIORITY - Optimization Opportunities
+
+4. **Model Status Check Performance**
+   - **Location**: `backend/app/api/endpoints/system_fast.py`
+   - **Issue**: Model status checks are slow (takes ~10 seconds)
+   - **Band-aid**: 5-second cache to avoid repeated slow checks
+   - **Impact**: Stale data for up to 5 seconds
+   - **Proper Fix**: Optimize the underlying model status check in ModelOrchestrator
+   - **Notes**: Cache is reasonable but underlying slowness should be addressed
+
+5. **Context Mode Settings Not Used**
+   - **Location**: Frontend context controls → Backend chat generation
+   - **Issue**: Frontend shows context controls but backend ignores most settings
+   - **Band-aid**: Settings are stored but not applied during chat generation
+   - **Impact**: User confusion - controls don't do what they appear to do
+   - **Proper Fix**: Implement context filtering based on user settings
+
+### Patterns to Address
+
+1. **Try/Except with Silent Failures**
+   - Multiple places catch exceptions but only log them, continuing with degraded functionality
+   - Should either handle properly or fail loudly
+
+2. **TODO Comments Without Tickets**
+   - Several "TODO: Add authentication later" type comments
+   - Should be tracked properly in this file
+
+3. **Simplified vs Proper Implementations**
+   - Pattern of creating "simple_" versions instead of fixing the original
+   - Creates confusion about which version to use
+
+### Recommended Fix Order
+
+1. **First**: Duplicate message handling (safest, clear fix)
+2. **Second**: File access system (security implications)
+3. **Third**: Resource monitoring (UX improvement)
+4. **Fourth**: Model status optimization
+5. **Last**: Context controls implementation (largest change)

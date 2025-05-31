@@ -5,16 +5,21 @@ from sqlalchemy.orm import Session
 import os
 import sys
 import json
+import asyncio
 from typing import Optional, List, Dict, Any
+from contextlib import asynccontextmanager
 
 from app.api.api import api_router
 from app.db.database import Base, engine, get_db
 from app.document_processing.status_tracker import status_tracker
 from app.core.logging_filter import ResourceEndpointFilter
+from app.services.model_orchestrator import orchestrator
+from app.core.config import get_settings
 import logging
 
 # Set up logging filter to suppress resource polling
 logging.getLogger("uvicorn.access").addFilter(ResourceEndpointFilter())
+logger = logging.getLogger(__name__)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -23,10 +28,57 @@ Base.metadata.create_all(bind=engine)
 # Chat endpoints use nemo_docker_client.py for communication
 print("Using NeMo Docker container for AI inference")
 
+# Get settings
+settings = get_settings()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handle application startup and shutdown events.
+    Load default model on startup and keep it in VRAM.
+    """
+    # Startup
+    logger.info("Starting up AI Assistant...")
+    
+    # Load default model on startup
+    try:
+        default_model = settings.DEFAULT_LLM_MODEL
+        logger.info(f"Loading default model on startup: {default_model}")
+        
+        # Use the orchestrator to load the model
+        success = await orchestrator.load_model(default_model)
+        
+        if success:
+            logger.info(f"✅ Successfully loaded {default_model} into VRAM")
+            # Mark it as recently used to prevent unloading
+            orchestrator.mark_model_used(default_model)
+        else:
+            logger.warning(f"⚠️ Failed to load default model {default_model}")
+            
+    except Exception as e:
+        logger.error(f"Error during startup model loading: {e}")
+    
+    # Also ensure embeddings model is loaded
+    try:
+        embeddings_model = "nvidia/nv-embedqa-e5-v5"
+        if embeddings_model in orchestrator.models:
+            logger.info(f"Loading embeddings model: {embeddings_model}")
+            await orchestrator.load_model(embeddings_model)
+            orchestrator.mark_model_used(embeddings_model)
+    except Exception as e:
+        logger.error(f"Error loading embeddings model: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down AI Assistant...")
+    # Models stay in VRAM even after shutdown unless explicitly unloaded
+
 app = FastAPI(
     title="AI Assistant API",
     description="FastAPI backend for AI Assistant with project-centered containment",
     version="0.1.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware to allow frontend to connect

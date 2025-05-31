@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { selfAwareService } from '../../services/selfAwareService';
+import { useAuth } from '../../context/AuthContext';
 
 type Mode = 'standard' | 'project-focus' | 'deep-research' | 'quick-response' | 'self-aware' | 'create';
 
@@ -35,24 +35,24 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
   onApplySettings,
   initialSettings,
 }) => {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<ContextSettings>(initialSettings || defaultSettings);
   const [isCustomMode, setIsCustomMode] = useState(settings.mode === 'create');
   const [showContextHelp, setShowContextHelp] = useState(false);
   const [newContextName, setNewContextName] = useState('');
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [showAdminError, setShowAdminError] = useState(false);
   const [previousMode, setPreviousMode] = useState<Mode>(settings.mode);
 
   // Handle mode change
   const handleModeChange = (mode: Mode) => {
     if (mode === 'self-aware') {
-      // Store current mode before showing password modal
-      setPreviousMode(settings.mode);
-      // Show password modal for self-aware mode
-      setShowPasswordModal(true);
-      // Don't update settings yet - wait for authentication
-      return;
+      // Check if user is admin
+      if (!user || user.role !== 'admin') {
+        // Show admin error instead of allowing selection
+        setShowAdminError(true);
+        // Don't update settings
+        return;
+      }
     }
     
     // Update previous mode for other changes
@@ -133,34 +133,6 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
     setIsCustomMode(true);
   };
 
-  // Handle password submission for self-aware mode
-  const handlePasswordSubmit = async () => {
-    try {
-      const response = await selfAwareService.authenticate(password);
-      
-      if (response.success) {
-        // Apply self-aware settings
-        const selfAwareSettings: ContextSettings = {
-          mode: 'self-aware',
-          contextDepth: 90,
-          useProjectDocs: false,
-          useProjectChats: false,
-          useAllDocs: false,
-          useAllChats: false,
-        };
-        setSettings(selfAwareSettings);
-        // Apply the settings immediately to update the badge
-        onApplySettings(selfAwareSettings);
-        setShowPasswordModal(false);
-        setPassword('');
-        setPasswordError('');
-      } else {
-        setPasswordError('Invalid password');
-      }
-    } catch (error) {
-      setPasswordError('Invalid password');
-    }
-  };
 
   // Apply settings and close
   const handleApply = () => {
@@ -172,45 +144,28 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
 
   return (
     <>
-      {/* Password Modal for Self-Aware Mode */}
-      {showPasswordModal && (
+      {/* Admin Error Modal for Self-Aware Mode */}
+      {showAdminError && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
           <div className="bg-navy-light rounded-lg p-6 max-w-sm w-full relative z-[110]">
-            <h3 className="text-xl font-bold text-red-500 mb-4">🔒 Self-Aware Mode Authentication</h3>
+            <h3 className="text-xl font-bold text-red-500 mb-4">🔒 Admin Access Required</h3>
             <p className="text-gray-300 mb-4 text-sm">
               Self-aware mode grants read and write access to the AI assistant's source code.
-              This requires authentication.
+              This feature is only available to admin users.
             </p>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-              placeholder="Enter password"
-              className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-red-500 text-white mb-2"
-              autoFocus
-            />
-            {passwordError && (
-              <p className="text-red-400 text-sm mb-3">{passwordError}</p>
-            )}
-            <div className="flex justify-end space-x-3">
+            <p className="text-gray-400 mb-4 text-sm">
+              Current user: <span className="text-white">{user?.username || 'Not logged in'}</span>
+              <br />
+              Role: <span className="text-white">{user?.role || 'N/A'}</span>
+            </p>
+            <div className="flex justify-end">
               <button
                 onClick={() => {
-                  setShowPasswordModal(false);
-                  setPassword('');
-                  setPasswordError('');
-                  // Reset the select to previous value since user cancelled
-                  // Don't change settings - keep the current mode
+                  setShowAdminError(false);
                 }}
-                className="px-3 py-1 bg-navy hover:bg-navy-lighter rounded text-white"
+                className="px-4 py-2 bg-gold text-navy font-medium rounded hover:bg-gold/90"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handlePasswordSubmit}
-                className="px-4 py-2 bg-red-600 text-white font-medium rounded hover:bg-red-700"
-              >
-                Authenticate
+                OK
               </button>
             </div>
           </div>
@@ -237,7 +192,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
             Mode:
           </label>
           <select
-            value={showPasswordModal ? previousMode : settings.mode}
+            value={settings.mode}
             onChange={(e) => handleModeChange(e.target.value as Mode)}
             className="w-full bg-navy p-2 rounded focus:outline-none focus:ring-1 focus:ring-gold text-white"
           >
@@ -245,7 +200,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
             <option value="project-focus">Project Focus</option>
             <option value="deep-research">Deep Research</option>
             <option value="quick-response">Quick Response</option>
-            <option value="self-aware">Self-Aware (Code Analysis)</option>
+            <option value="self-aware">Self-Aware (Admin Only)</option>
             <option value="create">+ Create New Context</option>
           </select>
         </div>
@@ -418,7 +373,7 @@ const ContextControlsPanel: React.FC<ContextControlsPanelProps> = ({
             {settings.mode === 'project-focus' && 'Strictly uses project-specific documents and chats. Best for staying focused on project scope.'}
             {settings.mode === 'deep-research' && 'Comprehensive analysis using all available knowledge. Best for complex research tasks.'}
             {settings.mode === 'quick-response' && 'Faster responses with minimal context. Best for simple questions and quick tasks.'}
-            {settings.mode === 'self-aware' && 'AI can read and analyze its own source code at F:\\assistant. Perfect for debugging, code improvements, and understanding the system architecture. No project documents are used in this mode.'}
+            {settings.mode === 'self-aware' && 'AI can read and analyze its own source code at F:\\assistant. Perfect for debugging, code improvements, and understanding the system architecture. This mode requires admin privileges and does not use project documents.'}
             {settings.mode === 'create' && 'Create a new custom context with your own settings. Define context name, depth, sources, and specific instructions for the AI.'}
           </p>
         </div>

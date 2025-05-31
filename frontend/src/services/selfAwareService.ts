@@ -77,7 +77,7 @@ class SelfAwareService {
   }
 
   // Connect to WebSocket for real-time approval notifications
-  private connectWebSocket() {
+  connectWebSocket() {
     if (this.ws) return;
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -110,10 +110,7 @@ class SelfAwareService {
       console.log('Disconnected from approval WebSocket');
       this.ws = null;
       
-      // Attempt to reconnect if still authenticated
-      if (this.isAuthenticated()) {
-        setTimeout(() => this.connectWebSocket(), 5000);
-      }
+      // Don't auto-reconnect - let the component manage connection lifecycle
     };
   }
 

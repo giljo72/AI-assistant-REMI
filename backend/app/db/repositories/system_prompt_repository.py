@@ -107,7 +107,7 @@ When writing code:
 Format code with proper syntax highlighting. Default to modern, idiomatic approaches unless legacy support is specified.""",
                 "description": "Specialized assistant for programming and software development",
                 "category": "coding",
-                "is_default": True,
+                "is_default": False,  # Changed to False to make it editable
                 "is_active": False
             }
         ]

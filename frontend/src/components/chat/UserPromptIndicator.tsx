@@ -30,14 +30,14 @@ const UserPromptIndicator: React.FC<UserPromptIndicatorProps> = ({
         display: 'flex',
         alignItems: 'center',
         padding: '8px 16px',
-        backgroundColor: 'rgba(156, 163, 175, 0.1)', // Light gray background
+        backgroundColor: 'rgba(252, 192, 0, 0.1)', // Light gold background
         borderRadius: '8px',
         marginBottom: '16px',
-        border: '1px solid rgba(156, 163, 175, 0.3)'
+        border: '1px solid rgba(252, 192, 0, 0.3)'
       }}
     >
       <Box sx={{ flexGrow: 1 }}>
-        <Typography variant="body2" sx={{ color: '#9ca3af', fontWeight: 'bold', fontSize: '0.75rem' }}>
+        <Typography variant="body2" sx={{ color: '#FCC000', fontWeight: 'bold', fontSize: '0.75rem' }}>
           Active User Prompt:
         </Typography>
         
@@ -45,8 +45,8 @@ const UserPromptIndicator: React.FC<UserPromptIndicatorProps> = ({
           <Chip
             label={activePrompt.name}
             sx={{
-              backgroundColor: 'rgba(156, 163, 175, 0.5)',
-              color: '#1a1a1a',
+              backgroundColor: 'rgba(252, 192, 0, 0.8)',
+              color: '#000000',
               fontWeight: 'bold',
               marginTop: '4px',
               maxWidth: '250px',
@@ -67,9 +67,9 @@ const UserPromptIndicator: React.FC<UserPromptIndicatorProps> = ({
           size="small" 
           onClick={onDeactivate}
           sx={{ 
-            color: '#9ca3af',
+            color: '#FCC000',
             '&:hover': {
-              backgroundColor: 'rgba(156, 163, 175, 0.2)'
+              backgroundColor: 'rgba(252, 192, 0, 0.2)'
             }
           }}
         >

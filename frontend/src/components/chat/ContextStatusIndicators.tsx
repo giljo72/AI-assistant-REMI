@@ -60,31 +60,31 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
       {/* Context Mode Indicator - Yellow Box for standard, Bright Red for self-aware */}
       <button
         onClick={onOpenContextControls}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 cursor-pointer transform hover:scale-105 ${
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs mr-1 transition-all duration-200 cursor-pointer transform hover:scale-105 ${
           contextMode === 'self-aware'
             ? 'bg-red-600/30 text-red-400 border border-red-500 hover:bg-red-600/40 hover:shadow-lg hover:shadow-red-500/30 animate-pulse'
             : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 hover:shadow-lg hover:shadow-yellow-500/20'
         }`}
         title={contextMode === 'self-aware' ? '⚠️ SELF-AWARE MODE - Read/Write Access to F:\\ Drive' : 'Click to change context mode'}
       >
-        <span className={`w-2 h-2 rounded-full mr-2 ${
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
           contextMode === 'self-aware' ? 'bg-red-500 animate-pulse' : 'bg-yellow-400 animate-pulse'
         }`}></span>
-        {contextMode === 'self-aware' ? '🔴 SELF-AWARE' : `Context: ${getContextModeDisplay(contextMode)}`}
+        {contextMode === 'self-aware' ? 'SELF-AWARE' : `Context: ${getContextModeDisplay(contextMode)}`}
       </button>
 
       {/* System Prompt Indicator - Orange */}
       <button
         ref={systemPromptButtonRef}
         onClick={() => setSystemPromptMenuOpen(!systemPromptMenuOpen)}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs mr-1 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isSystemPromptEnabled
             ? 'bg-orange-900/30 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 hover:shadow-lg hover:shadow-orange-500/20'
             : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
         title="Click to select system prompt"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isSystemPromptEnabled ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 transition-colors ${isSystemPromptEnabled ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
         System Prompt {isSystemPromptEnabled ? 'Enabled' : 'Disabled'}
       </button>
       
@@ -99,7 +99,7 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
       <button
         ref={userPromptButtonRef}
         onClick={() => setUserPromptMenuOpen(!userPromptMenuOpen)}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs mr-1 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           activeUserPromptName
             ? isUserPromptEnabled
               ? 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-600/50 hover:shadow-lg hover:shadow-gray-600/20'
@@ -108,7 +108,7 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
         }`}
         title="Click to select user prompt"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 transition-colors ${
           activeUserPromptName 
             ? (isUserPromptEnabled ? 'bg-gray-400' : 'bg-gray-500')
             : 'bg-gray-500'
@@ -129,42 +129,42 @@ const ContextStatusIndicators: React.FC<ContextStatusIndicatorsProps> = ({
       {/* Project Prompt Indicator */}
       <button
         onClick={onToggleProjectPrompt}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs mr-1 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isProjectPromptEnabled
             ? 'bg-green-900/30 text-green-400 border border-green-500/30 hover:bg-green-500/30 hover:shadow-lg hover:shadow-green-500/20'
             : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
         title="Toggle project-specific prompt"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isProjectPromptEnabled ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 transition-colors ${isProjectPromptEnabled ? 'bg-green-400' : 'bg-gray-500'}`}></span>
         Project Prompt {isProjectPromptEnabled ? 'Enabled' : 'Disabled'}
       </button>
 
       {/* Global Data Indicator */}
       <button
         onClick={onToggleGlobalData}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs mr-1 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isGlobalDataEnabled
             ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20'
             : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
         title="Toggle global knowledge base access"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isGlobalDataEnabled ? 'bg-blue-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 transition-colors ${isGlobalDataEnabled ? 'bg-blue-400' : 'bg-gray-500'}`}></span>
         Global Data {isGlobalDataEnabled ? 'Enabled' : 'Disabled'}
       </button>
 
       {/* Project Documents Indicator */}
       <button
         onClick={onToggleProjectDocuments}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm mr-2 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
+        className={`inline-flex items-center px-2 py-0.5 rounded text-xs mr-1 transition-all duration-200 transform hover:scale-105 cursor-pointer ${
           isProjectDocumentsEnabled
             ? 'bg-purple-900/30 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 hover:shadow-lg hover:shadow-purple-500/20'
             : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
         }`}
         title="Toggle project document access"
       >
-        <span className={`w-2 h-2 rounded-full mr-2 transition-colors ${isProjectDocumentsEnabled ? 'bg-purple-400' : 'bg-gray-500'}`}></span>
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 transition-colors ${isProjectDocumentsEnabled ? 'bg-purple-400' : 'bg-gray-500'}`}></span>
         Project Documents {isProjectDocumentsEnabled ? 'Enabled' : 'Disabled'}
       </button>
     </div>

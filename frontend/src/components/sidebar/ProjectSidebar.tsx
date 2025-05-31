@@ -46,32 +46,16 @@ const ProjectSidebar: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-navy-light text-white">
       <div className="p-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            {/* Logo design with compass-like accent */}
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gold/20 rounded-full blur-sm"></div>
-              <div className="relative w-10 h-10 bg-navy rounded-full border-2 border-gold flex items-center justify-center">
-                <span className="text-gold font-bold text-xl">S</span>
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold" style={{ 
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              background: 'linear-gradient(135deg, #d4af37 0%, #f4e4a1 50%, #d4af37 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(212, 175, 55, 0.3)',
-              letterSpacing: '0.15em'
-            }}>
-              <span style={{ letterSpacing: '0.15em' }}>S</span>
-              <span style={{ letterSpacing: '-0.08em' }}>C</span>
-              <span style={{ letterSpacing: '-0.08em' }}>O</span>
-              <span style={{ letterSpacing: '0.15em' }}>UT</span>
-            </h2>
-          </div>
+        <div className="flex items-center justify-center mb-3">
+          <img 
+            src="/icons/SCOUT.png?v=1" 
+            alt="Scout" 
+            className="h-8 w-auto"
+            style={{ marginTop: '5px' }}
+          />
         </div>
         
-        <div className="mb-4 flex justify-center">
+        <div className="mb-4 flex justify-center" style={{ marginTop: '-10px' }}>
           <div className="flex items-center space-x-2">
             <button 
               className={`p-3 ${navigation.activeView === 'mainFiles' ? 'bg-navy text-gold' : 'hover:bg-navy-lighter'} rounded-full flex items-center justify-center`}
@@ -152,10 +136,10 @@ const ProjectSidebar: React.FC = () => {
                   <div 
                     key={project.id} 
                     onClick={() => navigation.navigateToProject(project.id)}
-                    className={`p-3 rounded cursor-pointer ${
+                    className={`p-3 cursor-pointer text-white ${
                       navigation.activeProjectId === project.id && navigation.activeView !== 'mainFiles' 
-                        ? 'bg-navy text-gold font-bold' 
-                        : 'hover:bg-navy-lighter'
+                        ? 'font-bold' 
+                        : 'hover:opacity-80'
                     }`}
                   >
                     {project.name}

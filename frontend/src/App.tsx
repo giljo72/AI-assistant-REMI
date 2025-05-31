@@ -31,8 +31,11 @@ interface UIMessage {
   sender: 'user' | 'assistant';
   timestamp: string;
   modelInfo?: {
-    name: string;
-    type: string;
+    model_name: string;
+    device: string;
+    is_initialized: boolean;
+    nemo_available: boolean;
+    model_type: string;
   };
 }
 
@@ -91,7 +94,7 @@ function AppContent() {
     const loadActiveChat = async () => {
       if (activeChatId && navigation.activeProjectId) {
         try {
-          const chats = await chatService.getProjectChats(navigation.activeProjectId);
+          const chats = await chatService.getChats(navigation.activeProjectId);
           const chat = chats.find(c => c.id === activeChatId);
           setActiveChat(chat || null);
         } catch (error) {
@@ -119,7 +122,7 @@ function AppContent() {
             content: msg.content,
             sender: msg.is_user ? 'user' : 'assistant',
             timestamp: new Date(msg.created_at).toLocaleTimeString(),
-            modelInfo: msg.model_info
+            modelInfo: msg.model_info || undefined  // Handle missing model_info
           }));
           
           setChatMessages(uiMessages);
@@ -168,7 +171,7 @@ function AppContent() {
   }, [chatMessages]);
   
   // Handler for sending messages
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, model?: any) => {
     if (!activeChatId || !navigation.activeProjectId) return;
     
     // Add user message to UI immediately
@@ -183,14 +186,10 @@ function AppContent() {
     setIsLoading(true);
     try {
       // Use chat settings for message configuration
-      const response = await chatService.sendChatMessage(
-        activeChatId,
-        content,
-        contextMode,
-        navigation.activeProjectId,
-        chatSettings?.systemPromptId,
-        chatSettings?.userPromptIds || []
-      );
+      const response = await chatService.sendMessage(activeChatId, content, {
+        include_context: true,
+        context_mode: contextMode
+      });
       
       // Update with actual response
       setChatMessages(prev => [
@@ -203,7 +202,7 @@ function AppContent() {
         },
         {
           id: response.assistant_message_id,
-          content: response.content,
+          content: response.response,
           sender: 'assistant',
           timestamp: new Date().toLocaleTimeString(),
           modelInfo: response.model_info
@@ -234,13 +233,31 @@ function AppContent() {
 
     switch (navigation.activeView) {
       case 'project':
-        return <ProjectManagerView />;
+        return navigation.activeProjectId ? (
+          <ProjectManagerView 
+            projectId={navigation.activeProjectId}
+            onOpenChat={(chatId) => navigation.navigateToChat(chatId, navigation.activeProjectId)}
+            onOpenFiles={() => navigation.navigateToView('projectFiles')}
+            onProjectDeleted={() => navigation.navigateToView('chat')}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center bg-navy">
+            <p className="text-gray-400">Select a project to view details</p>
+          </div>
+        );
       case 'chat':
         return activeChat ? (
           <ChatView
+            projectName={projects.find(p => p.id === navigation.activeProjectId)?.name || 'Unknown Project'}
+            chatName={activeChat.name}
+            chatId={activeChat.id}
             messages={chatMessages}
             onSendMessage={handleSendMessage}
-            isLoading={isLoading}
+            isProcessing={isLoading}
+            onEnableMic={() => {
+              // TODO: Implement whisper integration
+              console.log('Voice input requested - Whisper integration coming soon!');
+            }}
             messagesEndRef={messagesEndRef}
           />
         ) : (

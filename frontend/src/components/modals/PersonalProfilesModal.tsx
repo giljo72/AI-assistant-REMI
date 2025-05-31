@@ -55,10 +55,6 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
     organization: '',
     role: '',
     birthday: '',
-    first_met: '',
-    preferred_contact: '',
-    timezone: '',
-    current_focus: '',
     notes: '',
     visibility: 'private'
   });
@@ -149,10 +145,6 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
       organization: '',
       role: '',
       birthday: '',
-      first_met: '',
-      preferred_contact: '',
-      timezone: '',
-      current_focus: '',
       notes: '',
       visibility: 'private'
     });
@@ -167,10 +159,6 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
       organization: profile.organization || '',
       role: profile.role || '',
       birthday: profile.birthday || '',
-      first_met: profile.first_met || '',
-      preferred_contact: profile.preferred_contact || '',
-      timezone: profile.timezone || '',
-      current_focus: profile.current_focus || '',
       notes: profile.notes || '',
       visibility: profile.visibility
     });
@@ -184,34 +172,69 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
   };
 
   const renderForm = () => (
-    <Box sx={{ mt: 2, p: 2, backgroundColor: '#121922', borderRadius: 2, border: '1px solid #1a2b47' }}>
+    <Box sx={{ mt: 2, p: 3, backgroundColor: '#121922', borderRadius: 2, border: '1px solid #1a2b47' }}>
       <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={3}>
           <TextField
             fullWidth
-            label="Name *"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            label="First Name *"
+            value={formData.name.split(' ')[0] || ''}
+            onChange={(e) => {
+              const lastName = formData.name.split(' ').slice(1).join(' ');
+              setFormData({ ...formData, name: `${e.target.value} ${lastName}`.trim() });
+            }}
             sx={{ mb: 2, ...fieldStyles }}
           />
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            label="Last Name"
+            value={formData.name.split(' ').slice(1).join(' ') || ''}
+            onChange={(e) => {
+              const firstName = formData.name.split(' ')[0] || '';
+              setFormData({ ...formData, name: `${firstName} ${e.target.value}`.trim() });
+            }}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
           <TextField
             fullWidth
             label="Preferred Name"
             value={formData.preferred_name}
             onChange={(e) => setFormData({ ...formData, preferred_name: e.target.value })}
+            placeholder="How they prefer to be called"
             sx={{ mb: 2, ...fieldStyles }}
           />
         </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth sx={{ mb: 2 }}>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth sx={{ mb: 2, ...fieldStyles }}>
             <InputLabel>Relationship *</InputLabel>
             <Select
               value={formData.relationship}
               label="Relationship *"
               onChange={(e) => setFormData({ ...formData, relationship: e.target.value as any })}
+              sx={{
+                '& .MuiSelect-select': { 
+                  color: '#fff',
+                  minWidth: '110px'
+                },
+                '& .MuiPaper-root': { backgroundColor: '#315074' }
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    backgroundColor: '#315074',
+                    '& .MuiMenuItem-root': {
+                      color: '#fff',
+                      '&:hover': {
+                        backgroundColor: '#182739'
+                      }
+                    }
+                  }
+                }
+              }}
             >
               <MenuItem value="colleague">Colleague</MenuItem>
               <MenuItem value="family">Family</MenuItem>
@@ -223,13 +246,62 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
           </FormControl>
         </Grid>
         
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth sx={{ mb: 2 }}>
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            label="Role/Title"
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            label="Organization"
+            value={formData.organization}
+            onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            label="Birthday"
+            type="date"
+            value={formData.birthday}
+            onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+            InputLabelProps={{ shrink: true }}
+            sx={{ mb: 2, ...fieldStyles }}
+          />
+        </Grid>
+        
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth sx={{ mb: 2, ...fieldStyles }}>
             <InputLabel>Visibility</InputLabel>
             <Select
               value={formData.visibility}
               label="Visibility"
               onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
+              sx={{
+                '& .MuiSelect-select': { color: '#fff' },
+                '& .MuiPaper-root': { backgroundColor: '#315074' }
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    backgroundColor: '#315074',
+                    '& .MuiMenuItem-root': {
+                      color: '#fff',
+                      '&:hover': {
+                        backgroundColor: '#182739'
+                      }
+                    }
+                  }
+                }
+              }}
             >
               <MenuItem value="private">
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -252,112 +324,30 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
             </Select>
           </FormControl>
         </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Organization"
-            value={formData.organization}
-            onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-            sx={{ mb: 2, ...fieldStyles }}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Role/Title"
-            value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-            sx={{ mb: 2, ...fieldStyles }}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Birthday"
-            type="date"
-            value={formData.birthday}
-            onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-            sx={{ mb: 2, ...fieldStyles }}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="First Met"
-            type="date"
-            value={formData.first_met}
-            onChange={(e) => setFormData({ ...formData, first_met: e.target.value })}
-            InputLabelProps={{ shrink: true }}
-            sx={{ mb: 2, ...fieldStyles }}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Preferred Contact</InputLabel>
-            <Select
-              value={formData.preferred_contact || ''}
-              label="Preferred Contact"
-              onChange={(e) => setFormData({ ...formData, preferred_contact: e.target.value })}
-            >
-              <MenuItem value="">None</MenuItem>
-              <MenuItem value="email">Email</MenuItem>
-              <MenuItem value="phone">Phone</MenuItem>
-              <MenuItem value="teams">Teams</MenuItem>
-              <MenuItem value="slack">Slack</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Timezone"
-            value={formData.timezone}
-            onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-            placeholder="e.g., GMT+1, EST"
-            sx={{ mb: 2, ...fieldStyles }}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Current Focus"
-            value={formData.current_focus}
-            onChange={(e) => setFormData({ ...formData, current_focus: e.target.value })}
-            placeholder="What are they currently working on?"
-            sx={{ mb: 2, ...fieldStyles }}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Typography variant="body2" sx={{ mb: 1 }}>Additional Notes (Markdown supported)</Typography>
-          <TextareaAutosize
-            minRows={4}
-            style={{
-              width: '100%',
-              backgroundColor: '#0d1929',
-              color: '#fff',
-              border: '1px solid #152238',
-              borderRadius: 4,
-              padding: 8,
-              fontSize: '14px',
-              fontFamily: 'monospace',
-              resize: 'vertical'
-            }}
-            placeholder="Any additional information about this person..."
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          />
-        </Grid>
       </Grid>
+      
+      <Typography variant="body2" sx={{ mt: 2, mb: 1, color: '#FCC000' }}>
+        Additional Notes (Markdown supported)
+      </Typography>
+      <TextareaAutosize
+        minRows={6}
+        style={{
+          width: '100%',
+          backgroundColor: '#315074',
+          color: '#fff',
+          border: '1px solid #FCC000',
+          borderRadius: 4,
+          padding: 12,
+          fontSize: '14px',
+          fontFamily: 'monospace',
+          resize: 'none',
+          overflow: 'auto',
+          boxSizing: 'border-box'
+        }}
+        placeholder="Any additional information about this person..."
+        value={formData.notes}
+        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+      />
       
       <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button
@@ -500,7 +490,7 @@ const PersonalProfilesModal: React.FC<PersonalProfilesModalProps> = ({ open, onC
         left: '50%',
         transform: 'translate(-50%, -50%)',
         width: '90%',
-        maxWidth: 800,
+        maxWidth: 1000,
         maxHeight: '90vh',
         bgcolor: '#080d13',
         border: '2px solid #1a2b47',

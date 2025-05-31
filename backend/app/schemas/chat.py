@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 import uuid
 
@@ -8,6 +8,7 @@ class ChatMessageBase(BaseModel):
     """Base chat message schema with common attributes."""
     content: str
     is_user: bool = True
+    model_info: Optional[Dict[str, Any]] = None
 
 
 class ChatMessageCreate(ChatMessageBase):

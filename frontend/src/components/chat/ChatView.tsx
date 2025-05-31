@@ -26,6 +26,7 @@ import SendIcon from '@mui/icons-material/Send';
 import StopIcon from '@mui/icons-material/Stop';
 import { useContextControls } from '../../context/ContextControlsContext';
 import { usePromptPanels } from '../../context/PromptPanelsContext';
+import { useNavigation } from '../../hooks/useNavigation';
 import {
   setCurrentChat,
   toggleSystemPrompt as toggleChatSystemPrompt,
@@ -37,6 +38,7 @@ import {
 } from '../../store/chatSettingsSlice';
 import ActionApprovalModal from '../modals/ActionApprovalModal';
 import { selfAwareService, ActionRequest } from '../../services/selfAwareService';
+import { useAuth } from '../../context/AuthContext';
 
 interface ChatViewProps {
   projectName: string;  
@@ -82,6 +84,8 @@ const ChatView: React.FC<ChatViewProps> = ({
   const dispatch = useDispatch();
   const { openContextControls } = useContextControls();
   const { openUserPromptPanel, openSystemPromptPanel } = usePromptPanels();
+  const { user } = useAuth();
+  const { navigateToView } = useNavigation();
   
   // Get chat-specific settings
   const chatSettings = useSelector((state: RootState) => selectCurrentChatSettings(state));
@@ -103,22 +107,23 @@ const ChatView: React.FC<ChatViewProps> = ({
 
   // Listen for action approval requests in self-aware mode
   useEffect(() => {
-    // Check if we're in self-aware mode and authenticated
-    if (chatSettings?.contextMode === 'self-aware' && selfAwareService.isAuthenticated()) {
+    // Check if we're in self-aware mode and user is admin
+    if (chatSettings?.contextMode === 'self-aware' && user?.role === 'admin') {
+      // Connect WebSocket for action approvals
+      selfAwareService.connectWebSocket();
+      
       // Subscribe to action requests
       const unsubscribe = selfAwareService.onActionRequest((action) => {
         setPendingAction(action);
         setShowApprovalModal(true);
       });
 
-      // Connect WebSocket if not already connected
-      if (selfAwareService.isAuthenticated()) {
-        // The service will handle the connection
-      }
-
-      return unsubscribe;
+      return () => {
+        unsubscribe();
+        // Note: We don't disconnect WebSocket here as it might be used by other components
+      };
     }
-  }, [chatSettings?.contextMode]);
+  }, [chatSettings?.contextMode, user]);
 
   // Fetch active model from backend on mount
   useEffect(() => {
@@ -126,10 +131,11 @@ const ChatView: React.FC<ChatViewProps> = ({
       try {
         // First, get active model quickly
         const activeModel = await systemService.getActiveModelQuick();
-        setSelectedModel(activeModel);
         
         // Then fetch full model list in background
         const models = await systemService.getAvailableModels();
+        console.log('✅ Available models received:', models);
+        
         // Filter out embeddings models and keep only chat models
         const chatModels = models.filter((m: any) => 
           !m.name.includes('embedqa') && 
@@ -141,25 +147,31 @@ const ChatView: React.FC<ChatViewProps> = ({
         );
         setAvailableModels(chatModels);
         
-        // Only update selected model if we didn't already get it
-        if (!activeModel) {
-          // Find and set the active model
-          const activeModel = models.find((m: any) => 
-            m.status === 'loaded' && 
-            !m.name.includes('embedqa') &&
-            m.last_used !== 'Embeddings'
-          );
-          if (activeModel) {
-            setSelectedModel(activeModel.name);
-          } else if (chatModels.length > 0) {
-            // If no active model, set the first available chat model
-            // Prefer Qwen if available
-            const defaultModel = chatModels.find((m: any) => m.name.includes('qwen2.5:32b')) || chatModels[0];
-            setSelectedModel(defaultModel.name);
-          }
+        // Validate that the active model exists in the available models list
+        const modelExists = chatModels.some((m: any) => m.name === activeModel);
+        
+        if (modelExists) {
+          // Use the active model if it exists in the list
+          setSelectedModel(activeModel);
+        } else if (chatModels.length > 0) {
+          // If active model doesn't exist, find a suitable default
+          console.warn(`Active model "${activeModel}" not found in available models, selecting default`);
+          
+          // Prefer Qwen if available, otherwise use first available model
+          const defaultModel = chatModels.find((m: any) => m.name.includes('qwen2.5:32b')) || 
+                              chatModels.find((m: any) => m.name.includes('qwen')) || 
+                              chatModels[0];
+          setSelectedModel(defaultModel.name);
+        } else {
+          // No models available - set empty string to avoid MUI error
+          console.warn('No chat models available');
+          setSelectedModel('');
         }
       } catch (error) {
         console.error('Failed to fetch models:', error);
+        // Set empty string to avoid MUI error
+        setSelectedModel('');
+        setAvailableModels([]);
       }
     };
     fetchModels();
@@ -240,19 +252,38 @@ const ChatView: React.FC<ChatViewProps> = ({
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              fontSize: { 
-                xs: '1rem',     // Smaller on mobile
-                sm: '1.125rem',  // Default size on tablets
-                md: '1.25rem'    // Larger on desktop
-              },
-              fontWeight: 'bold'
-            }}
-          >
-            {projectName} / {chatName}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton
+              onClick={() => navigateToView('project')}
+              sx={{
+                color: '#FCC000',
+                backgroundColor: 'transparent',
+                border: '1px solid #FCC000',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                '&:hover': {
+                  backgroundColor: '#FCC000',
+                  color: '#000000'
+                }
+              }}
+              size="small"
+            >
+              <Icon name="Home" size={16} />
+            </IconButton>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontSize: { 
+                  xs: '1rem',     // Smaller on mobile
+                  sm: '1.125rem',  // Default size on tablets
+                  md: '1.25rem'    // Larger on desktop
+                },
+                fontWeight: 'bold'
+              }}
+            >
+              {projectName} / {chatName}
+            </Typography>
+          </Box>
         </Box>
       </Paper>
       
@@ -301,8 +332,8 @@ const ChatView: React.FC<ChatViewProps> = ({
                 }}
               >
                 {message.sender === 'user' ? 'You' : 'Assistant'}
-                {message.sender === 'assistant' && message.modelInfo && (
-                  <span style={{ color: '#FCC000', fontWeight: 'bold' }}> ({message.modelInfo.name})</span>
+                {message.sender === 'assistant' && message.modelInfo && message.modelInfo.model_name && (
+                  <span style={{ color: '#FCC000', fontWeight: 'bold' }}> ({message.modelInfo.model_name})</span>
                 )}
                 {' • '}{message.timestamp}
               </Typography>
@@ -471,89 +502,6 @@ const ChatView: React.FC<ChatViewProps> = ({
           sm: '16px'
         }
       }}>
-        {/* Model Selector */}
-        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="caption" sx={{ color: '#999' }}>Model:</Typography>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <Select
-              value={selectedModel}
-              onChange={async (e) => {
-                const newModel = e.target.value;
-                setSelectedModel(newModel);
-                // Sync with backend
-                try {
-                  // TODO: Implement model switching
-                  // Determine model type based on model name
-                  // let modelType = 'ollama'; // Default to ollama
-                  // if (newModel === 'llama3.1:70b-instruct-q4_K_M' || 
-                  //     newModel === 'meta/llama-3.1-70b-instruct' ||
-                  //     newModel.includes('meta/')) {
-                  //   modelType = 'nvidia-nim';
-                  // }
-                  // await systemService.switchModel(newModel, modelType);
-                } catch (error) {
-                  console.error('Failed to switch model:', error);
-                }
-              }}
-              sx={{
-                backgroundColor: '#1a2b47',
-                color: '#fff',
-                fontSize: '0.875rem',
-                height: '32px',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#152238',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#FCC000',
-                },
-                '& .MuiSelect-icon': {
-                  color: '#FCC000',
-                }
-              }}
-            >
-              {availableModels.map((model) => {
-                // Format model display name
-                let displayName = model.name;
-                if (model.name.includes('qwen2.5:32b')) {
-                  displayName = 'Qwen 2.5 32B (Default)';
-                } else if (model.name.includes('llama3.1:70b') || model.name === 'meta/llama-3.1-70b-instruct') {
-                  displayName = 'Llama 3.1 70B (NIM)';
-                } else if (model.name.includes('llama-3.1-70b')) {
-                  displayName = 'Llama 3.1 70B (NIM)';
-                } else if (model.name.includes('mistral-nemo')) {
-                  displayName = 'Mistral Nemo 12B';
-                } else if (model.name.includes('deepseek-coder')) {
-                  displayName = 'DeepSeek Coder 16B';
-                }
-                
-                return (
-                  <MenuItem key={model.name} value={model.name}>
-                    {displayName} - {model.size || 'Size unknown'}
-                  </MenuItem>
-                );
-              })}
-            </Select>
-          </FormControl>
-          <Typography variant="caption" sx={{ color: '#666', flex: 1 }}>
-            {(() => {
-              if (selectedModel.includes('qwen2.5:32b')) {
-                return 'Primary model with full document/RAG support';
-              } else if (selectedModel.includes('llama3.1:70b') || selectedModel.includes('llama-3.1-70b')) {
-                return 'Solo mode - Maximum intelligence via NVIDIA NIM';
-              } else if (selectedModel.includes('mistral-nemo')) {
-                return 'Fast responses when speed is priority';
-              } else if (selectedModel.includes('deepseek-coder')) {
-                return 'Code generation in self-aware mode';
-              }
-              const currentModel = availableModels.find(m => m.name === selectedModel);
-              if (currentModel) {
-                return `${currentModel.parameters || 'Unknown params'} - ${currentModel.quantization || 'Unknown quantization'}`;
-              }
-              return 'Select a model to see details';
-            })()}
-          </Typography>
-        </Box>
-        
         {/* Input Area */}
         <Paper
           elevation={3}

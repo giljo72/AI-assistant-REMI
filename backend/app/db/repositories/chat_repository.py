@@ -36,7 +36,8 @@ class ChatRepository(BaseRepository[Chat, ChatCreate, ChatUpdate]):
             id=str(uuid4()),
             content=obj_in.content,
             is_user=obj_in.is_user,
-            chat_id=obj_in.chat_id
+            chat_id=obj_in.chat_id,
+            model_info=obj_in.model_info if hasattr(obj_in, 'model_info') else None
         )
         db.add(db_obj)
         db.commit()

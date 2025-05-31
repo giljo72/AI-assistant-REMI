@@ -35,3 +35,14 @@ __pycache__/
 Thumbs.db
 File_managmenet_nav_visual.png
 assistant projectv2.pdf
+
+# User data that should not be committed
+/backend/data/uploads/
+/backend/data/processed/
+/data/uploads/
+/sessions/
+processing_status.json
+backend/data/processing_status.json
+
+# User-specific project instructions
+CLAUDE.local.md

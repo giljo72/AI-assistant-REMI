@@ -12,7 +12,10 @@ import { usePromptPanels } from '../../context/PromptPanelsContext';
 import { useAuth } from '../../context/AuthContext';
 import { Icon } from '../common/Icon';
 import { setContextMode } from '../../store/projectSettingsSlice';
+import { updateContextMode } from '../../store/chatSettingsSlice';
 import { ResourceMonitor } from '../common/ResourceMonitor';
+import { FormControl, Select, MenuItem } from '@mui/material';
+import systemService from '../../services/systemService';
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -40,6 +43,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Dropdown state
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Model selector state
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,6 +64,49 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isUserDropdownOpen]);
+
+  // Fetch available models on mount
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        // First, get active model quickly
+        const activeModel = await systemService.getActiveModelQuick();
+        
+        // Then fetch full model list in background
+        const models = await systemService.getAvailableModels();
+        
+        // Filter out embeddings models and keep only chat models
+        const chatModels = models.filter((m: any) => 
+          !m.name.includes('embedqa') && 
+          m.last_used !== 'Embeddings' &&
+          (m.type !== 'nvidia-nim' || 
+           m.name === 'llama3.1:70b-instruct-q4_K_M' || 
+           m.name === 'meta/llama-3.1-70b-instruct')
+        );
+        setAvailableModels(chatModels);
+        
+        // Validate that the active model exists in the available models list
+        const modelExists = chatModels.some((m: any) => m.name === activeModel);
+        
+        if (modelExists) {
+          setSelectedModel(activeModel);
+        } else if (chatModels.length > 0) {
+          // Prefer Qwen if available, otherwise use first available model
+          const defaultModel = chatModels.find((m: any) => m.name.includes('qwen2.5:32b')) || 
+                              chatModels.find((m: any) => m.name.includes('qwen')) || 
+                              chatModels[0];
+          setSelectedModel(defaultModel.name);
+        } else {
+          setSelectedModel('');
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+        setSelectedModel('');
+        setAvailableModels([]);
+      }
+    };
+    fetchModels();
+  }, []);
 
   return (
     <div className="flex h-screen bg-navy text-white overflow-hidden">
@@ -94,9 +144,102 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-0">
-        <header className="bg-navy-light p-4 border-b border-gold flex justify-between items-center flex-shrink-0">
-          {/* Resource Monitor - replaces AI Assistant text */}
-          <ResourceMonitor />
+        <header className="bg-navy-light p-2 border-b border-gold flex justify-between items-center flex-shrink-0">
+          {/* Left side - Resource Monitor with integrated Model Selector */}
+          <div className="flex items-center">
+            <ResourceMonitor />
+            
+            {/* Model Selector - positioned after CPU section */}
+            <div className="flex items-center gap-1 ml-3">
+              <span className="text-[9px]" style={{ color: '#FCC000' }}>Model:</span>
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <Select
+                  value={selectedModel}
+                  onChange={async (e) => {
+                    const newModel = e.target.value;
+                    setSelectedModel(newModel);
+                    // Switch the model in the backend
+                    try {
+                      const modelType = newModel.includes('meta/') ? 'nvidia-nim' : 'ollama';
+                      await systemService.setActiveModel(newModel, modelType);
+                    } catch (error) {
+                      console.error('Failed to switch model:', error);
+                    }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        backgroundColor: '#1a2b47',
+                        border: '1px solid #FCC000',
+                        '& .MuiMenuItem-root': {
+                          color: '#fff',
+                          fontSize: '0.75rem',
+                          '&:hover': {
+                            backgroundColor: '#243449',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: '#FCC000',
+                            color: '#000',
+                            '&:hover': {
+                              backgroundColor: '#FCC000',
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }}
+                  sx={{
+                    backgroundColor: '#1a2b47',
+                    color: '#fff',
+                    fontSize: '0.65rem',
+                    height: '20px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#152238',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#FCC000',
+                    },
+                    '& .MuiSelect-icon': {
+                      color: '#FCC000',
+                      fontSize: '14px',
+                    },
+                    '& .MuiSelect-select': {
+                      paddingTop: '2px',
+                      paddingBottom: '2px',
+                    }
+                  }}
+                >
+                  {availableModels.length > 0 ? (
+                    availableModels.map((model) => {
+                      // Format model display name - show full names and variants
+                      let displayName = model.name;
+                      if (model.name.includes('qwen2.5:32b')) {
+                        displayName = 'Qwen 2.5 32B Instruct';
+                      } else if (model.name.includes('llama3.1:70b') || model.name === 'meta/llama-3.1-70b-instruct') {
+                        displayName = 'Llama 3.1 70B Instruct';
+                      } else if (model.name.includes('llama-3.1-70b')) {
+                        displayName = 'Llama 3.1 70B Instruct';
+                      } else if (model.name.includes('mistral-nemo')) {
+                        displayName = 'Mistral Nemo 12B Latest';
+                      } else if (model.name.includes('deepseek-coder')) {
+                        displayName = 'DeepSeek Coder V2 16B Lite';
+                      }
+                      
+                      return (
+                        <MenuItem key={model.name} value={model.name}>
+                          {displayName}
+                        </MenuItem>
+                      );
+                    })
+                  ) : (
+                    <MenuItem value="" disabled>
+                      No models
+                    </MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+            </div>
+          </div>
           
           {/* Right side controls */}
           <div className="flex items-center gap-4">
@@ -183,8 +326,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         isOpen={isContextControlsOpen}
         onClose={closeContextControls}
         onApplySettings={(settings) => {
-          // Update the context mode in Redux
-          dispatch(setContextMode(settings.mode));
+          // Update the context mode in both Redux slices
+          dispatch(setContextMode(settings.mode)); // For project settings
+          dispatch(updateContextMode(settings.mode)); // For chat settings
           closeContextControls();
         }}
         initialSettings={{

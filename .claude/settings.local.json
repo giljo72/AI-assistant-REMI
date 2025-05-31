@@ -43,7 +43,20 @@
       "Bash(touch:*)",
       "Bash(chmod:*)",
       "WebFetch(domain:docs.anthropic.com)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(./venv_nemo/Scripts/python.exe backend/app/db/migrations/add_model_info_to_chat_messages.py)",
+      "Bash(../venv_nemo/Scripts/python clear_contacts.py)",
+      "Bash(./venv_nemo/bin/python:*)",
+      "Bash(../venv_nemo/Scripts/python.exe check_models_quick.py)",
+      "Bash(/mnt/f/assistant/venv_nemo/Scripts/python.exe check_models_quick.py)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git add:*)",
+      "Bash(git stash push:*)",
+      "Bash(git remote remove:*)"
     ],
     "deny": []
   },

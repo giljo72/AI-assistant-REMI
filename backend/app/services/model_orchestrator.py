@@ -102,6 +102,8 @@ class ModelOrchestrator:
             OperationalMode.BALANCED: ["qwen2.5:32b-instruct-q4_K_M", "nv-embedqa-e5-v5"]
         }
         self._status_update_callbacks = []
+        # Protected models that should not be automatically unloaded
+        self.protected_models = {self.settings.DEFAULT_LLM_MODEL, "nvidia/nv-embedqa-e5-v5"}
         
     def _initialize_models(self) -> Dict[str, ModelInfo]:
         """Initialize available models configuration"""
@@ -263,6 +265,11 @@ class ModelOrchestrator:
         for name, model, priority in loaded_models:
             if freed >= needed_gb:
                 break
+                
+            # Skip protected models (default model and embeddings)
+            if name in self.protected_models:
+                print(f"Skipping protected model: {name}")
+                continue
                 
             # Skip high priority models unless we really need the memory
             if priority > 100 and freed + model.memory_gb < needed_gb:

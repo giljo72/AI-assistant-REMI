@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware, self_aware_auth, action_approval, self_aware_ops, auth
+from .endpoints import projects, user_prompts, files, semantic_search, chats, admin, health, system, models, self_analysis, personal_profiles, preferences, system_prompts, system_fast, system_resources, self_aware, action_approval, auth
 from .endpoints.fix_files import router as fix_files_router
 
 api_router = APIRouter()
@@ -49,13 +49,13 @@ api_router.include_router(system_resources.router, prefix="/system", tags=["syst
 # Add self-aware endpoints for code introspection
 api_router.include_router(self_aware.router, tags=["self_aware"])
 
-# Add self-aware authentication endpoints
-api_router.include_router(self_aware_auth.router, prefix="/self-aware", tags=["self_aware_auth"])
+# DEPRECATED: Self-aware authentication endpoints - replaced by admin-only authentication
+# api_router.include_router(self_aware_auth.router, prefix="/self-aware", tags=["self_aware_auth"])
 
 # Add action approval endpoints
 api_router.include_router(action_approval.router, prefix="/approvals", tags=["approvals"])
 
-# Add self-aware operations endpoints
-api_router.include_router(self_aware_ops.router, prefix="/self-aware-ops", tags=["self_aware_ops"])
+# DEPRECATED: Self-aware operations endpoints - uses old password authentication
+# api_router.include_router(self_aware_ops.router, prefix="/self-aware-ops", tags=["self_aware_ops"])
 
 # Test file chat endpoint removed - was not used in production

@@ -21,6 +21,15 @@ interface ModelStatus {
     total_requests_active: number;
     gpu_utilization?: number;
     gpu_name?: string;
+    // Future: Multi-GPU support
+    gpus?: Array<{
+      id: number;
+      name: string;
+      total_vram_gb: number;
+      used_vram_gb: number;
+      utilization: number;
+      brand: 'NVIDIA' | 'AMD' | 'Intel';
+    }>;
   };
 }
 
@@ -174,148 +183,199 @@ export const ResourceMonitor: React.FC = () => {
   const diskFormatted = systemResources ? formatStorage(systemResources.disk.total_gb) : { value: 0, unit: 'GB' };
 
   return (
-    <div className="flex items-start space-x-6">
-      {/* NVIDIA GPU Section */}
+    <div className="flex items-center space-x-4">
+      {/* Primary NVIDIA GPU Section */}
       <div className="flex flex-col">
         <div className="flex items-center space-x-2 mb-1">
-          <span className="text-xs font-medium" style={{ color: '#76B900' }}>NVIDIA</span>
-          <span className="text-[10px] text-gray-400">{gpuName}</span>
+          <span className="text-[10px] font-medium" style={{ color: '#76B900' }}>NVIDIA</span>
+          <span className="text-[9px] text-gray-400">{gpuName}</span>
         </div>
         
-        <div className="space-y-2">
-          {/* VRAM Gauge */}
-          <div>
-            <div className="text-[10px] text-gray-400 mb-1">VRAM</div>
-            <HorizontalGauge
-              label=""
-              value={modelStatus.system.used_vram_gb}
-              maxValue={modelStatus.system.total_vram_gb}
-              unit="GB"
-              color="#76B900"
-              width={180}
-            />
+        {/* VRAM */}
+        <div className="flex items-start space-x-2">
+          <span className="text-[9px] text-gray-400" style={{ width: '85px' }}>VRAM used: {modelStatus.system.used_vram_gb.toFixed(1)}GB</span>
+          <div className="relative" style={{ width: '80px', height: '6px', marginTop: '5px' }}>
+            <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full transition-all duration-300 ease-out rounded-full"
+                style={{ 
+                  width: `${Math.min((modelStatus.system.used_vram_gb / modelStatus.system.total_vram_gb) * 100, 100)}%`,
+                  backgroundColor: '#76B900',
+                  boxShadow: '0 0 10px #76B90040'
+                }}
+              />
+            </div>
           </div>
-          
-          {/* GPU Utilization Gauge */}
-          <div>
-            <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
-            <HorizontalGauge
-              label=""
-              value={modelStatus.system.gpu_utilization || 0}
-              maxValue={100}
-              unit="%"
-              color="#76B900"
-              width={180}
-            />
+        </div>
+        
+        {/* GPU Utilization */}
+        <div className="flex items-start space-x-2">
+          <span className="text-[9px] text-gray-400" style={{ width: '85px' }}>Utilization: {(modelStatus.system.gpu_utilization || 0).toFixed(0)}%</span>
+          <div className="relative" style={{ width: '80px', height: '6px', marginTop: '4px' }}>
+            <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full transition-all duration-300 ease-out rounded-full"
+                style={{ 
+                  width: `${modelStatus.system.gpu_utilization || 0}%`,
+                  backgroundColor: '#76B900',
+                  boxShadow: '0 0 10px #76B90040'
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Secondary GPU Section - displays when multiple GPUs detected */}
+      {modelStatus.system.gpus && modelStatus.system.gpus.length > 1 && (
+        modelStatus.system.gpus.slice(1).map((gpu, index) => (
+          <div key={gpu.id} className="flex flex-col">
+            <div className="flex items-center space-x-2 mb-1">
+              <span 
+                className="text-[10px] font-medium" 
+                style={{ color: gpu.brand === 'NVIDIA' ? '#76B900' : gpu.brand === 'AMD' ? '#FF8C00' : '#0078D4' }}
+              >
+                {gpu.brand}
+              </span>
+              <span className="text-[9px] text-gray-400">{gpu.name}</span>
+            </div>
+            
+            {/* VRAM */}
+            <div className="flex items-start space-x-2">
+              <span className="text-[9px] text-gray-400" style={{ width: '85px' }}>VRAM used: {gpu.used_vram_gb.toFixed(1)}GB</span>
+              <div className="relative" style={{ width: '80px', height: '6px', marginTop: '5px' }}>
+                <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full transition-all duration-300 ease-out rounded-full"
+                    style={{ 
+                      width: `${Math.min((gpu.used_vram_gb / gpu.total_vram_gb) * 100, 100)}%`,
+                      backgroundColor: gpu.brand === 'NVIDIA' ? '#76B900' : gpu.brand === 'AMD' ? '#FF8C00' : '#0078D4',
+                      boxShadow: `0 0 10px ${gpu.brand === 'NVIDIA' ? '#76B90040' : gpu.brand === 'AMD' ? '#FF8C0040' : '#0078D440'}`
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* GPU Utilization */}
+            <div className="flex items-start space-x-2">
+              <span className="text-[9px] text-gray-400" style={{ width: '85px' }}>Utilization: {gpu.utilization.toFixed(0)}%</span>
+              <div className="relative" style={{ width: '80px', height: '6px', marginTop: '4px' }}>
+                <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full transition-all duration-300 ease-out rounded-full"
+                    style={{ 
+                      width: `${gpu.utilization}%`,
+                      backgroundColor: gpu.brand === 'NVIDIA' ? '#76B900' : gpu.brand === 'AMD' ? '#FF8C00' : '#0078D4',
+                      boxShadow: `0 0 10px ${gpu.brand === 'NVIDIA' ? '#76B90040' : gpu.brand === 'AMD' ? '#FF8C0040' : '#0078D440'}`
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+
       {/* Divider */}
-      <div className="h-20 w-px bg-gray-700"></div>
+      <div className="h-8 w-px bg-gray-700"></div>
 
       {/* CPU Section */}
       {systemResources && (
         <div className="flex flex-col">
-          <div className="flex items-center space-x-2 mb-1">
+          <div className="flex items-center space-x-1 mb-1">
             <span 
-              className="text-xs font-medium" 
+              className="text-[10px] font-medium" 
               style={{ color: getCpuColor() }}
             >
               {systemResources.cpu.brand}
             </span>
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[9px] text-gray-400">
               {truncateCpuModel(systemResources.cpu.model)}
             </span>
           </div>
-          <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
-          <HorizontalGauge
-            label=""
-            value={systemResources.cpu.usage}
-            maxValue={100}
-            unit="%"
-            color={getCpuColor()}
-            width={150}
-          />
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <span className="text-[9px] text-gray-400" style={{ width: '50px' }}>Usage: {systemResources.cpu.usage.toFixed(0)}%</span>
+            <div className="relative" style={{ width: '71px', height: '6px', marginTop: '4px', marginLeft: '1px' }}>
+              <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ 
+                    width: `${systemResources.cpu.usage}%`,
+                    backgroundColor: getCpuColor(),
+                    boxShadow: `0 0 10px ${getCpuColor()}40`
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* RAM Section */}
       {systemResources && (
         <div className="flex flex-col">
-          <div className="flex items-center space-x-2 mb-1">
-            <span className="text-xs font-medium text-purple-500">RAM</span>
+          <div className="flex items-center space-x-1 mb-1">
+            <span className="text-[10px] font-medium text-purple-500">RAM</span>
+            <span className="text-[9px] text-gray-400">{Math.ceil(systemResources.ram.total_gb)}GB</span>
             {systemResources.ram.speed && (
-              <span className="text-[10px] text-gray-400">{systemResources.ram.speed}</span>
+              <span className="text-[9px] text-gray-400">{systemResources.ram.speed}</span>
             )}
           </div>
-          <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
-          <HorizontalGauge
-            label=""
-            value={systemResources.ram.used_gb}
-            maxValue={systemResources.ram.total_gb}
-            unit="GB"
-            color="#9B59B6"
-            width={120}
-          />
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <span className="text-[9px] text-gray-400" style={{ width: '50px' }}>Used: {Math.ceil(systemResources.ram.used_gb)}GB</span>
+            <div className="relative" style={{ width: '45px', height: '6px', marginTop: '4px', marginLeft: '1px' }}>
+              <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ 
+                    width: `${Math.min((systemResources.ram.used_gb / systemResources.ram.total_gb) * 100, 100)}%`,
+                    backgroundColor: '#9B59B6',
+                    boxShadow: '0 0 10px #9B59B640'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Storage Section */}
       {systemResources && (
         <div className="flex flex-col">
-          <div className="flex items-center space-x-2 mb-1">
-            <span className="text-xs font-medium text-white">Storage</span>
+          <div className="flex items-center space-x-1 mb-1">
+            <span className="text-[10px] font-medium text-white">Storage</span>
             {systemResources.disk.type && (
-              <span className="text-[10px] text-gray-400">{systemResources.disk.type}</span>
+              <span className="text-[9px] text-gray-400">{systemResources.disk.type} {Math.floor(systemResources.disk.total_gb)}GB</span>
             )}
           </div>
-          <div className="text-[10px] text-gray-400 mb-1">Utilization</div>
-          <HorizontalGauge
-            label=""
-            value={systemResources.disk.used_gb}
-            maxValue={systemResources.disk.total_gb}
-            unit={diskFormatted.unit}
-            color="#FFFFFF"
-            width={120}
-          />
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <span className="text-[9px] text-gray-400" style={{ width: '50px' }}>Used: {Math.floor(systemResources.disk.used_gb)}GB</span>
+            <div className="relative" style={{ width: '35px', height: '6px', marginTop: '4px', marginLeft: '1px' }}>
+              <div className="absolute inset-0 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ 
+                    width: `${Math.min((systemResources.disk.used_gb / systemResources.disk.total_gb) * 100, 100)}%`,
+                    backgroundColor: '#FFFFFF',
+                    boxShadow: '0 0 10px #FFFFFF40'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Divider */}
-      <div className="h-20 w-px bg-gray-700"></div>
-
-      {/* Model Info */}
-      <div className="flex flex-col justify-center h-20">
-        {activeModel && (
-          <div className="flex items-center space-x-2 mb-1">
-            <span className="text-xs text-gray-400">Model:</span>
-            <span className="text-xs text-gold font-medium">
-              {activeModel.display_name}
-            </span>
-          </div>
-        )}
-        
-        {/* Token Speed */}
-        {activeModel && activeModel.tokens_per_second > 0 && (
-          <div className="flex items-center space-x-2 mb-1">
-            <span className="text-xs text-gray-400">Speed:</span>
-            <span className="text-xs text-green-400">
-              {activeModel.tokens_per_second.toFixed(1)} tok/s
-            </span>
-          </div>
-        )}
-
-        {/* Active Requests */}
-        {modelStatus.system.total_requests_active > 0 && (
-          <div className="flex items-center space-x-1">
-            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-            <span className="text-xs text-blue-400">
-              {modelStatus.system.total_requests_active} active
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Token Speed only - removed active requests */}
+      {activeModel && activeModel.tokens_per_second > 0 && (
+        <div className="flex items-center space-x-1 ml-2">
+          <span className="text-[9px] text-gray-400">Speed:</span>
+          <span className="text-[9px] text-green-400">
+            {activeModel.tokens_per_second.toFixed(1)} tok/s
+          </span>
+        </div>
+      )}
     </div>
   );
 };

@@ -1765,3 +1765,41 @@ Applied consistent visual styling to modals:
 - **System Models Panel** (ElegantSystemModelsPanel): Matching style for visual consistency
 
 These changes create a cohesive visual theme across all modal windows with rounded corners and distinctive yellow borders.
+
+## January 30, 2025 - Implemented Clean Admin-Only Self-Aware Mode
+
+### Major Refactor: Replaced Band-Aid File Access with Proper Admin Authentication
+
+Completed implementation of clean self-aware mode that requires admin privileges instead of password authentication.
+
+#### Changes Made:
+
+1. **Backend Updates**:
+   - Updated `/api/chats/{chat_id}/generate` endpoint to check admin role for self-aware mode
+   - Updated `/api/chats/{chat_id}/generate-stream` endpoint with same admin check
+   - Both endpoints now use `get_current_user` dependency to verify authentication
+   - Replaced band-aid `simple_file_access.py` with proper `SelfAwareService` calls
+   - Deprecated `/api/self-aware/authenticate` endpoints (password-based)
+   - Deprecated `/api/self-aware-ops/*` endpoints (used old auth system)
+   - Added deprecation comments to `simple_file_access.py`
+
+2. **Frontend Updates**:
+   - Updated `ContextControlsPanel.tsx` to check user role instead of showing password modal
+   - Replaced password authentication flow with admin role verification
+   - Shows "Admin Access Required" modal when non-admin users try self-aware mode
+   - Updated option text to "Self-Aware (Admin Only)" to indicate requirement
+   - Updated mode description to mention admin requirement
+   - Removed `selfAwareService` import as it's no longer needed
+
+3. **Security Improvements**:
+   - Self-aware mode now properly integrated with RBAC system
+   - No more hardcoded passwords in environment variables
+   - File system access properly restricted to admin users only
+   - All actions in self-aware mode use admin user ID for audit trails
+
+4. **Code Cleanup**:
+   - Commented out deprecated routes in `api.py`
+   - Added DEPRECATED headers to old files
+   - Removed password-related state variables from frontend
+
+This completes the "File Access System Bypass" band-aid fix from TECHNICAL_DEBT_TODO.md by implementing a proper, secure solution using the existing admin authentication system.

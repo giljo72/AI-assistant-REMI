@@ -216,7 +216,7 @@ class PersonalProfileService {
       return context;
     }).join('\n\n---\n\n');
 
-    return `Personal Context Information:\n${'='.repeat(40)}\n${formatted}`;
+    return `IMPORTANT: The following are people the USER knows (contacts/relationships), NOT the user themselves:\n${'='.repeat(60)}\n${formatted}\n${'='.repeat(60)}\nREMEMBER: The user is NOT any of these people. These are their contacts.`;
   }
 
   /**

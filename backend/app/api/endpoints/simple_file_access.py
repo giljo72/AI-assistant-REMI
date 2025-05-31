@@ -1,4 +1,8 @@
 """
+DEPRECATED: This band-aid solution has been replaced by admin-only self-aware mode.
+The functionality is no longer used - file access now requires admin authentication
+and only works in self-aware context mode.
+
 Simplified file access for the AI assistant - works in ANY context
 """
 import re

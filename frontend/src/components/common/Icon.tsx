@@ -23,6 +23,7 @@ const icons = {
   question: '/icons/question.svg',
   refresh: '/icons/refresh.svg',
   save: '/icons/save.svg',
+  scout: '/icons/scout.svg',
   search: '/icons/search.svg',
   settings: '/icons/settings.svg',
   table: '/icons/table.svg',

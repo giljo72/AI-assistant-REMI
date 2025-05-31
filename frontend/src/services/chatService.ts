@@ -7,6 +7,13 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   chat_id: string;
   created_at: string;
+  model_info?: {
+    model_name: string;
+    device: string;
+    is_initialized: boolean;
+    nemo_available: boolean;
+    model_type: string;
+  };
 }
 
 export interface ChatGenerateRequest {
@@ -372,7 +379,8 @@ class ChatService {
     try {
       const defaultProfile = await personalProfileService.getDefaultProfile();
       if (defaultProfile) {
-        return personalProfileService.formatProfileForPrompt(defaultProfile);
+        // Use formatProfilesForPrompt with an array containing the single profile
+        return personalProfileService.formatProfilesForPrompt([defaultProfile]);
       }
     } catch (error) {
       console.error('Error fetching personal profile:', error);

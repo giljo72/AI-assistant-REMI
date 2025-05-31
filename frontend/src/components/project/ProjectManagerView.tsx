@@ -440,15 +440,13 @@ const ProjectManagerView: React.FC<ProjectManagerViewProps> = ({ projectId, onOp
             </div>
             <div className="space-y-2">
               {projectChats.map(chat => (
-                <div key={chat.id} className="p-3 bg-navy hover:bg-navy-lighter rounded flex justify-between items-center">
+                <div 
+                  key={chat.id} 
+                  className="p-3 bg-navy hover:bg-navy-lighter rounded flex justify-between items-center cursor-pointer"
+                  onClick={() => handleOpenChat(chat.id)}
+                >
                   <span>{chat.name}</span>
-                  <div className="flex space-x-2">
-                    <button 
-                      className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded"
-                      onClick={() => handleOpenChat(chat.id)}
-                    >
-                      Open
-                    </button>
+                  <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                     <button className="text-xs px-2 py-1 bg-navy-light hover:bg-navy rounded">
                       Edit
                     </button>
